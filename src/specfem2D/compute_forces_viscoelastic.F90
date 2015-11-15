@@ -1170,7 +1170,19 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
               accel_elastic(3,iglob) = accel_elastic(3,iglob) - (tempz1(k,j)*hprimewgll_xx(k,i) + tempz2(i,k)*hprimewgll_zz(k,j))
             enddo
           endif
-
+          !!!by lcx: I think this is where I should absorb the scatter wave
+          !!!this is just draft. 
+          !!!1. We need to store the background velocity field in order to calculate the traction of  the scatter wavefield
+          !!!2. what is the input for this local domain. Except the main first coming wave, there are other reflected wave from
+          !!! the background field. How should we deal with that? I think we can just add the background field to the boundaries
+          !!! as a fix boundaries condition?
+          !!! possible way: replace the accel_elastic() in the right side with background info which has been stored
+          !!! END
+!!          if(is_local_boundary(ispec) .and. ABSORB_SCATTER_WAVE ) then
+!!              accel_elastic(1,iglob) = accel_elastic(1,iglob) - (tx_scat) * weight 
+!!              accel_elastic(2,iglob) = accel_elastic(2,iglob) - (ty_scat) * weight 
+!!              accel_elastic(3,iglob) = accel_elastic(3,iglob) - (tz_scat) * weight
+!!          endif
           !!! PML_BOUNDARY_CONDITIONS
           if( is_PML(ispec) .and. PML_BOUNDARY_CONDITIONS ) then
             accel_elastic(1,iglob) = accel_elastic(1,iglob) - accel_elastic_PML(1,i,j)
@@ -1203,6 +1215,16 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
       kappal  = lambdal_unrelaxed_elastic + TWO*mul_unrelaxed_elastic/3._CUSTOM_REAL
       cpl = sqrt((kappal + 4._CUSTOM_REAL*mul_unrelaxed_elastic/3._CUSTOM_REAL)/rhol)
       csl = sqrt(mul_unrelaxed_elastic/rhol)
+
+      !!by lcx: loop over elements, then i=1 for left side, i=NGLLX for right side, 
+      !!j=1 for bottom side, j=NGLLZ for top side.
+      !!I guess if( add_Bielak_conditions .and. initialfield ) is used to add the additional wavefield 
+      !!when dealing with the boundaries. But whether this only is taken into account for boundaries
+      !! treatment? How about its effect to the wavefield propagation? And I think I can add another
+      !! 'if' sentence here so that I can read the background solution stored before then let the scattered
+      !! wavefield absorbed in the free surface. But this is just virtual absorbing boundaries conditions,
+      !! so I may need to add that to just the regular elements but not here?
+      !!END
 
       !--- left absorbing boundary
       if( codeabs(IEDGE4,ispecabs) ) then
@@ -1335,6 +1357,8 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
           nz = - xgamma / jacobian1D
 
           weight = jacobian1D * wzgll(j)
+          
+          !!by lcx: what is veloc_horiz/vert here
 
           vx = veloc_elastic(1,iglob) - veloc_horiz
           vy = veloc_elastic(2,iglob)
