@@ -2208,6 +2208,16 @@ end subroutine rotate_mesh_for_axisym
   end subroutine part_scotch
 #endif
 
+  !--------------------------------------------------
+  !by lcx: do we need to reppart the local/background elemnts, so that 
+  !specfem solver could read the info correctly when using MPI?
+  ! repartitioning: local/background elements are transferred to the same partition
+  !follow subroutine acoustic_elastic_repartitioning
+  !--------------------------------------------------
+
+  subroutine localbackground_repartitioning()
+
+  end subroutine localbackground_repartitioning
 
   !--------------------------------------------------
   ! repartitioning: coupled acoustic/elastic elements are transferred to the same partition
@@ -2585,6 +2595,44 @@ end subroutine rotate_mesh_for_axisym
   enddo
 
   end subroutine periodic_edges_repartitioning
+
+
+  !--------------------------------------------------
+  !by lcx
+  ! Write local/background domain edges ( local elements and corresponding backgound elements)
+  ! pertaining to iproc partition in the corresponding Database
+  !--------------------------------------------------
+
+!! subroutine write_localbackground_edges_database(IIN_database, nedges_coupled_bis, nedges_coupled_loc_bis, &
+!!                                            edges_coupled_bis, iproc, num_phase)
+!!
+!!  implicit none
+!!
+!!  integer, intent(in)  :: IIN_database
+!!  integer, intent(in)  :: nedges_coupled_bis
+!!  integer, intent(inout)  :: nedges_coupled_loc_bis
+!!  integer, dimension(:,:), pointer  :: edges_coupled_bis
+!!  integer, intent(in)  :: iproc
+!!  integer, intent(in)  :: num_phase
+!!
+!!  integer  :: i
+!!
+!!  if ( num_phase == 1 ) then
+!!     nedges_coupled_loc_bis = 0
+!!     do i = 1, nedges_coupled_bis
+!!        if ( part(edges_coupled_bis(1,i)) == iproc ) then
+!!           nedges_coupled_loc_bis = nedges_coupled_loc_bis + 1
+!!        endif
+!!     enddo
+!!  else
+!!     do i = 1, nedges_coupled_bis
+!!        if ( part(edges_coupled_bis(1,i)) == iproc ) then
+!!           write(IIN_database,*) glob2loc_elmnts(edges_coupled_bis(1,i))+1, glob2loc_elmnts(edges_coupled_bis(2,i))+1
+!!        endif
+!!     enddo
+!!  endif
+!!
+!!  end subroutine write_localbackground_edges_database
 
 
   !--------------------------------------------------
