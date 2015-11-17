@@ -418,6 +418,16 @@ program meshfem2D
   integer :: i_source
   double precision :: tang1,tangN
 
+  
+  ! ***by lcx
+  ! *** read the material number of local and background domain
+  ! ***
+  print *,'Reading the material of local and background domain'
+  open(unit=7, file='./DATA/number_material_localbackground',form='FORMATTED',status='old')
+  read(7,*) material_local_domain, material_backg_domain
+  close(7)
+  !!end
+
   ! ***
   ! *** read the parameter file
   ! ***
@@ -960,6 +970,17 @@ program meshfem2D
      end select
 
   endif
+
+  !by lcx: local-background edges: coupled elements are transferred to the same partition
+  !! repartition the local/background elemnts. Necessary?
+  if ( ngnod == 9 ) then
+     call localbackground_repartitioning(elmnts_bis, nb_materials, num_material, nproc,&
+          material_local_domain, material_backg_domain)
+  else
+     call localbackground_repartitioning(elmnts, nb_materials, num_material, nproc,&
+           material_local_domain, material_backg_domain)
+  endif
+
 
   ! fluid-solid edges: coupled elements are transferred to the same partition
   if ( ngnod == 9 ) then

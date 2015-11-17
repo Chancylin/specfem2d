@@ -101,6 +101,7 @@ module part_unstruct
   ! for local/background coupled elements
   integer :: nedges_localg_coupled
   integer, dimension(:,:), pointer  :: edges_localg_coupled
+  integer :: material_local_domain, material_backg_domain
 
   ! for acoustic/elastic coupled elements
   integer :: nedges_coupled
@@ -2220,7 +2221,8 @@ end subroutine rotate_mesh_for_axisym
   !follow subroutine acoustic_elastic_repartitioning
   !--------------------------------------------------
 
-  subroutine localbackground_repartitioning(elmnts_l, nb_materials, num_material, nproc, material_local_domain, material_backg_domain)
+  subroutine localbackground_repartitioning(elmnts_l, nb_materials, num_material, nproc,&
+                material_local_domain, material_backg_domain)
 
   implicit none
   include "constants.h"
@@ -2344,8 +2346,8 @@ end subroutine rotate_mesh_for_axisym
   enddo
   
   !by lcx
-  open(unit=7, file='./OUTPUT_FILES/fluid_solid_element_eladj.txt',form='FORMATTED',status='new')
-  write(7,*) 'element  el_adj adjny_l(el_adj):'
+ ! open(unit=7, file='./OUTPUT_FILES/fluid_solid_element_eladj.txt',form='FORMATTED',status='new')
+ ! write(7,*) 'element  el_adj adjny_l(el_adj):'
   !end
   ! determines maximum neighbors based on 2 common nodes (common edge)
   call mesh2dual_ncommonnodes(elmnts_l, 2, xadj_l, adjncy_l)
@@ -2371,7 +2373,7 @@ end subroutine rotate_mesh_for_axisym
         do el_adj = xadj_l(el), xadj_l(el+1) - 1
            if ( is_elastic(num_material(adjncy_l(el_adj)+1)) ) then
            !by lcx: test what xadj_l is
-              write(7,*) el, el_adj, adjncy_l(el_adj)
+           !  write(7,*) el, el_adj, adjncy_l(el_adj)
            !end
               nedges_coupled = nedges_coupled + 1
               edges_coupled(1,nedges_coupled) = el
@@ -2693,43 +2695,42 @@ end subroutine rotate_mesh_for_axisym
 
   end subroutine periodic_edges_repartitioning
 
-
   !--------------------------------------------------
-  !by lcx
-  ! Write local/background domain edges ( local elements and corresponding backgound elements)
+  !by lcx:
+  ! Write local/background edges (local elements and corresponding background elements)
   ! pertaining to iproc partition in the corresponding Database
   !--------------------------------------------------
 
-!! subroutine write_localbackground_edges_database(IIN_database, nedges_coupled_bis, nedges_coupled_loc_bis, &
-!!                                            edges_coupled_bis, iproc, num_phase)
-!!
-!!  implicit none
-!!
-!!  integer, intent(in)  :: IIN_database
-!!  integer, intent(in)  :: nedges_coupled_bis
-!!  integer, intent(inout)  :: nedges_coupled_loc_bis
-!!  integer, dimension(:,:), pointer  :: edges_coupled_bis
-!!  integer, intent(in)  :: iproc
-!!  integer, intent(in)  :: num_phase
-!!
-!!  integer  :: i
-!!
-!!  if ( num_phase == 1 ) then
-!!     nedges_coupled_loc_bis = 0
-!!     do i = 1, nedges_coupled_bis
-!!        if ( part(edges_coupled_bis(1,i)) == iproc ) then
-!!           nedges_coupled_loc_bis = nedges_coupled_loc_bis + 1
-!!        endif
-!!     enddo
-!!  else
-!!     do i = 1, nedges_coupled_bis
-!!        if ( part(edges_coupled_bis(1,i)) == iproc ) then
-!!           write(IIN_database,*) glob2loc_elmnts(edges_coupled_bis(1,i))+1, glob2loc_elmnts(edges_coupled_bis(2,i))+1
-!!        endif
-!!     enddo
-!!  endif
-!!
-!!  end subroutine write_localbackground_edges_database
+ subroutine write_localb_edges_database(IIN_database, nedges_localg_coupled_bis, nedges_localg_coupled_loc_bis, &
+                                            edges_localg_coupled_bis, iproc, num_phase)
+
+  implicit none
+
+  integer, intent(in)  :: IIN_database
+  integer, intent(in)  :: nedges_localg_coupled_bis
+  integer, intent(inout)  :: nedges_localg_coupled_loc_bis
+  integer, dimension(:,:), pointer  :: edges_localg_coupled_bis
+  integer, intent(in)  :: iproc
+  integer, intent(in)  :: num_phase
+
+  integer  :: i
+
+  if ( num_phase == 1 ) then
+     nedges_localg_coupled_loc_bis = 0
+     do i = 1, nedges_localg_coupled_bis
+        if ( part(edges_localg_coupled_bis(1,i)) == iproc ) then
+           nedges_localg_coupled_loc_bis = nedges_localg_coupled_loc_bis + 1
+        endif
+     enddo
+  else
+     do i = 1, nedges_localg_coupled_bis
+        if ( part(edges_localg_coupled_bis(1,i)) == iproc ) then
+           write(IIN_database,*) glob2loc_elmnts(edges_localg_coupled_bis(1,i))+1, glob2loc_elmnts(edges_localg_coupled_bis(2,i))+1
+        endif
+     enddo
+  endif
+
+  end subroutine write_localb_edges_database
 
 
   !--------------------------------------------------

@@ -73,6 +73,9 @@
   integer :: nedges_acporo_coupled_loc
   integer :: nedges_elporo_coupled_loc
 
+  !!by lcx: for local/background elements
+  integer :: nedges_localg_coupled_loc
+
   character(len=256) :: prname
 
 
@@ -82,6 +85,11 @@
     write(prname, "('./OUTPUT_FILES/Database',i5.5)") iproc
     open(unit=15,file=trim(prname),status='unknown',iostat=ios)
     if( ios /= 0 ) stop 'error saving databases; check that directory OUTPUT_FILES exists'
+    !by lcx: build the file to save local/background elements
+    write(prname, "('./OUTPUT_FILES/local_background_boundary',i5.5)") iproc
+    open(unit=17,file=trim(prname),status='unknown',iostat=ios)
+    if( ios /= 0 ) stop 'error saving local/background boundary elements; check that directory OUTPUT_FILES exists'
+    !!end 
 
     write(15,*) '#'
     write(15,*) '# Database for SPECFEM2D'
@@ -291,6 +299,10 @@
 
     call write_axial_elements_database(15, nelem_on_the_axis, ispec_of_axial_elements,nelem_on_the_axis_loc,iproc,1, &
                                         remove_min_to_start_at_zero)
+   !!by lcx
+    call write_localb_edges_database(17,nedges_localg_coupled, nedges_localg_coupled_loc, &
+                                        edges_localg_coupled, iproc, 1)
+   !!end
 
     if (.not. ( force_normal_to_surface .or. rec_normal_to_surface ) ) then
       nnodes_tangential_curve = 0
@@ -388,8 +400,15 @@
     call write_axial_elements_database(15, nelem_on_the_axis, ispec_of_axial_elements, nelem_on_the_axis_loc, iproc, 2, &
                                        remove_min_to_start_at_zero)
 
+   !!by lcx
+    write(17,*) 'List of local/background elements and edges nodes:'
+    call write_localb_edges_database(17,nedges_localg_coupled, nedges_localg_coupled_loc, &
+                                        edges_localg_coupled, iproc, 2)
+   !!end
+
     ! closes Database file
     close(15)
+    close(17)
 
   enddo
 
