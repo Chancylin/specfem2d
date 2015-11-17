@@ -2255,7 +2255,11 @@ end subroutine rotate_mesh_for_axisym
         is_elastic(i) = .true.
      endif
   enddo
-
+  
+  !by lcx
+  open(unit=7, file='./OUTPUT_FILES/fluid_solid_element_eladj.txt',form='FORMATTED',status='new')
+  write(7,*) 'element  el_adj adjny_l(el_adj):'
+  !end
   ! determines maximum neighbors based on 2 common nodes (common edge)
   call mesh2dual_ncommonnodes(elmnts_l, 2, xadj_l, adjncy_l)
 
@@ -2279,6 +2283,9 @@ end subroutine rotate_mesh_for_axisym
      if ( is_acoustic(num_material(el+1)) ) then
         do el_adj = xadj_l(el), xadj_l(el+1) - 1
            if ( is_elastic(num_material(adjncy_l(el_adj)+1)) ) then
+           !by lcx: test what xadj_l is
+              write(7,*) el, el_adj, adjncy_l(el_adj)
+           !end
               nedges_coupled = nedges_coupled + 1
               edges_coupled(1,nedges_coupled) = el
               edges_coupled(2,nedges_coupled) = adjncy_l(el_adj)
@@ -2306,6 +2313,9 @@ end subroutine rotate_mesh_for_axisym
         exit
      endif
   enddo
+  
+  !!!by lcx:
+  close(7)
 
   deallocate(xadj_l,adjncy_l)
 
