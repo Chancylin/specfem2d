@@ -97,6 +97,11 @@ module part_unstruct
   integer, dimension(:), allocatable  :: ibegin_edge1,iend_edge1,ibegin_edge3,iend_edge3, &
        ibegin_edge4,iend_edge4,ibegin_edge2,iend_edge2
 
+  !by lcx
+  ! for local/background coupled elements
+  integer :: nedges_localg_coupled
+  integer, dimension(:,:), pointer  :: edges_localg_coupled
+
   ! for acoustic/elastic coupled elements
   integer :: nedges_coupled
   integer, dimension(:,:), pointer  :: edges_coupled
@@ -2209,13 +2214,95 @@ end subroutine rotate_mesh_for_axisym
 #endif
 
   !--------------------------------------------------
-  !by lcx: do we need to reppart the local/background elemnts, so that 
+  !by lcx: do we need to repartition the local/background elemnts, so that 
   !specfem solver could read the info correctly when using MPI?
   ! repartitioning: local/background elements are transferred to the same partition
   !follow subroutine acoustic_elastic_repartitioning
   !--------------------------------------------------
 
-  subroutine localbackground_repartitioning()
+  subroutine localbackground_repartitioning(elmnts_l, nb_materials, num_material, nproc, material_local_domain, material_backg_domain)
+
+  implicit none
+  include "constants.h"
+
+  integer, dimension(0:NCORNERS*nelmnts-1), intent(in)  :: elmnts_l
+  integer, intent(in)  :: nproc, nb_materials
+  integer, intent(in)  :: material_local_domain, material_backg_domain
+  integer, dimension(1:nelmnts), intent(in)  :: num_material
+
+  ! local parameters
+  integer, dimension(:), allocatable  :: xadj_l
+  integer, dimension(:), allocatable  :: adjncy_l
+  integer  :: i, num_edge
+  integer  :: el, el_adj
+  logical  :: is_repartitioned
+
+  allocate(xadj_l(0:nelmnts))
+  allocate(adjncy_l(0:MAX_NEIGHBORS*nelmnts-1))
+
+
+  !by lcx
+  !open(unit=7, file='./OUTPUT_FILES/localbackground_elements.txt',form='FORMATTED',status='new')
+  !write(7,*) 'element adjny_l(el_adj):'
+  !end
+  ! determines maximum neighbors based on 2 common nodes (common edge)
+  call mesh2dual_ncommonnodes(elmnts_l, 2, xadj_l, adjncy_l)
+
+  nedges_localg_coupled = 0
+  do el = 0, nelmnts-1
+     if ( num_material(el+1) == material_local_domain ) then
+        do el_adj = xadj_l(el), xadj_l(el+1) - 1
+           if ( num_material(adjncy_l(el_adj)+1) == material_backg_domain ) then
+              nedges_localg_coupled = nedges_localg_coupled + 1
+           endif
+        enddo
+     endif
+  enddo
+
+  print *, 'nedges_localbackg_coupled (local/background)', nedges_localg_coupled
+
+  allocate(edges_localg_coupled(2,nedges_localg_coupled))
+
+  nedges_localg_coupled = 0
+  do el = 0, nelmnts-1
+     if ( num_material(el+1) == material_local_domain ) then
+        do el_adj = xadj_l(el), xadj_l(el+1) - 1
+           if ( num_material(adjncy_l(el_adj)+1) == material_backg_domain ) then
+           !by lcx: test what xadj_l is
+            !  write(7,*) el, adjncy_l(el_adj)
+           !end
+              nedges_localg_coupled = nedges_localg_coupled + 1
+              edges_localg_coupled(1,nedges_localg_coupled) = el
+              edges_localg_coupled(2,nedges_localg_coupled) = adjncy_l(el_adj)
+           endif
+
+        enddo
+     endif
+  enddo
+
+  do i = 1, nedges_localg_coupled*nproc
+     is_repartitioned = .false.
+     do num_edge = 1, nedges_localg_coupled
+        if ( part(edges_localg_coupled(1,num_edge)) /= part(edges_localg_coupled(2,num_edge)) ) then
+           if ( part(edges_localg_coupled(1,num_edge)) < part(edges_localg_coupled(2,num_edge)) ) then
+              part(edges_localg_coupled(2,num_edge)) = part(edges_localg_coupled(1,num_edge))
+           else
+              part(edges_localg_coupled(1,num_edge)) = part(edges_localg_coupled(2,num_edge))
+           endif
+
+           is_repartitioned = .true.
+        endif
+
+     enddo
+     if ( .not. is_repartitioned ) then
+        exit
+     endif
+  enddo
+  
+  !!!by lcx:
+  !close(7)
+
+  deallocate(xadj_l,adjncy_l)
 
   end subroutine localbackground_repartitioning
 
