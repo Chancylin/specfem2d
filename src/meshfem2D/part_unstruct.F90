@@ -2702,7 +2702,7 @@ end subroutine rotate_mesh_for_axisym
   !--------------------------------------------------
 
  subroutine write_localb_edges_database(IIN_database, nedges_localg_coupled_bis, nedges_localg_coupled_loc_bis, &
-                                            edges_localg_coupled_bis, iproc, num_phase)
+                                            edges_localg_coupled_bis, iproc, ngnod, num_phase)
 
   implicit none
 
@@ -2712,8 +2712,13 @@ end subroutine rotate_mesh_for_axisym
   integer, dimension(:,:), pointer  :: edges_localg_coupled_bis
   integer, intent(in)  :: iproc
   integer, intent(in)  :: num_phase
+  integer, intent(in)  :: ngnod
 
   integer  :: i
+  integer  :: j,k,kk,temp1,temp2
+  integer, dimension(0:ngnod-1)  :: temp_nodes
+  integer, dimension(0:ngnod-1)  :: loc_nodes1
+  integer, dimension(0:ngnod-1)  :: loc_nodes2
 
   if ( num_phase == 1 ) then
      nedges_localg_coupled_loc_bis = 0
@@ -2723,9 +2728,40 @@ end subroutine rotate_mesh_for_axisym
         endif
      enddo
   else
+
      do i = 1, nedges_localg_coupled_bis
         if ( part(edges_localg_coupled_bis(1,i)) == iproc ) then
-           write(IIN_database,*) glob2loc_elmnts(edges_localg_coupled_bis(1,i))+1, glob2loc_elmnts(edges_localg_coupled_bis(2,i))+1
+           temp1 = edges_localg_coupled_bis(1,i)
+           temp2 = edges_localg_coupled_bis(2,i)
+           !!!find the ovelapped nodes
+           do j = 0,ngnod-1
+               do k = glob2loc_nodes_nparts(elmnts(temp1*ngnod+j)), glob2loc_nodes_nparts(elmnts(temp1*ngnod+j)+1)-1
+                  if (glob2loc_nodes_parts(k) == iproc) then
+                   loc_nodes1(j) = glob2loc_nodes(k)
+                  endif
+               enddo
+               do k = glob2loc_nodes_nparts(elmnts(temp2*ngnod+j)), glob2loc_nodes_nparts(elmnts(temp2*ngnod+j)+1)-1
+                  if (glob2loc_nodes_parts(k) == iproc) then
+                    loc_nodes2(j) = glob2loc_nodes(k)
+                  endif
+               enddo
+           enddo
+           
+           kk = 0
+           temp_nodes(:) = 0
+           do j = 0,ngnod-1
+              do k = 0, ngnod-1
+                 if ( loc_nodes1(j) == loc_nodes2(k) ) then
+                    temp_nodes(kk) = loc_nodes1(j)
+                    kk = kk + 1
+                 endif
+              enddo
+           enddo
+           write(IIN_database,*) glob2loc_elmnts(edges_localg_coupled_bis(1,i))+1, &
+        glob2loc_elmnts(edges_localg_coupled_bis(2,i))+1,&
+               (temp_nodes(k)+1, k=0,1)
+!!!by lcx: here we just print the first two values of temp_nodes(k)+1, as we know in this case only two nodes for overlapping edges
+!!!but this is not esssentially true in other case with ngnod = 9
         endif
      enddo
   endif

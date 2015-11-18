@@ -301,7 +301,7 @@
                                         remove_min_to_start_at_zero)
    !!by lcx
     call write_localb_edges_database(17,nedges_localg_coupled, nedges_localg_coupled_loc, &
-                                        edges_localg_coupled, iproc, 1)
+                                        edges_localg_coupled, iproc, ngnod, 1)
    !!end
 
     if (.not. ( force_normal_to_surface .or. rec_normal_to_surface ) ) then
@@ -403,7 +403,7 @@
    !!by lcx
     write(17,*) 'List of local/background elements and edges nodes:'
     call write_localb_edges_database(17,nedges_localg_coupled, nedges_localg_coupled_loc, &
-                                        edges_localg_coupled, iproc, 2)
+                                        edges_localg_coupled, iproc, ngnod, 2)
    !!end
 
     ! closes Database file
