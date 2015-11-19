@@ -152,6 +152,15 @@ module specfem_par
   double precision :: xmaxval,xminval,ymaxval,yminval,xtol,xtypdist
   integer :: counter
 
+  !by lcx: local/background boudary
+  integer :: num_local_background_edges, num_local_background_nodes,&
+             record_local_background_boundary
+  logical :: any_local_background_edges
+  integer, dimension(:), allocatable :: localbackground_local_ispec,&
+                                        localbackground_background_ispec,&
+                                        localbackground_nodes
+  !don't forget to deallocate there allocatable variables
+
   ! fluid/solid interface
   integer :: num_fluid_solid_edges
   logical :: coupled_acoustic_elastic,any_fluid_solid_edges

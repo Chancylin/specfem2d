@@ -100,7 +100,7 @@
         xcor = xcor + shape2D(in,ix,iy)*coorg(1,nnum)
         ycor = ycor + shape2D(in,ix,iy)*coorg(2,nnum)
     enddo
-
+!!!by lcx: ilocnum +ieoff is now the global index
     xp(ilocnum + ieoff) = xcor
     yp(ilocnum + ieoff) = ycor
 

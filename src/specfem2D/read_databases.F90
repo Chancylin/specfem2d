@@ -56,6 +56,13 @@
   character(len=80) :: datlin
   character(len=256)  :: prname
 
+  !bylcx:  opens local_background_boundary file
+  write(prname,231) myrank
+  open(unit=19,file=prname,status='old',action='read',iostat=ier)
+  if( ier /= 0 ) call exit_MPI('error opening file OUTPUT/local_background_boundary***')
+  read(19,"(a80)") datlin
+  read(19,*) num_local_background_edges
+
   ! opens Database file
   write(prname,230) myrank
   open(unit=IIN,file=prname,status='old',action='read',iostat=ier)
@@ -310,6 +317,7 @@
 
   ! output formats
 230 format('./OUTPUT_FILES/Database',i5.5)
+231 format('./OUTPUT_FILES/local_background_boundary',i5.5)
 
 200 format(//1x,'C o n t r o l',/1x,13('='),//5x,&
   'Number of spectral element control nodes. . .(npgeo) =',i8/5x, &
@@ -1026,6 +1034,80 @@
   endif
 
   end subroutine read_databases_coupled
+
+!
+!-------------------------------------------------------------------------------------------------
+!by lcx: this subroutine is used to read local/background boundary elements, note that local elements and the corresponding nodes (also coordinates) 
+!be recorded for the purpose of reading back when simulating the local model
+!this subroutine is following subroutine read_databases_coupled()
+
+  subroutine read_localbackground_coupled()
+
+! reads local background coupled edges
+  use specfem_par, only : num_local_background_edges,any_local_background_edges, &
+                          localbackground_local_ispec,localbackground_background_ispec,&
+                          localbackground_nodes, num_local_background_nodes
+
+  implicit none
+  include "constants.h"
+
+  ! local parameters
+  integer :: inum, jnum, kk
+  integer :: localbackground_local_ispec_read,localbackground_background_ispec_read
+  integer :: localbackground_nodes1_read, localbackground_nodes2_read, temp_node
+  integer, dimension(1:2*num_local_background_edges):: localbackground_nodes_temp 
+  integer, dimension(1:2*num_local_background_edges):: localbackground_nodes_temp_exchange 
+  logical :: nodes_exist
+
+  ! initializes
+  localbackground_local_ispec(:) = 0
+  localbackground_background_ispec(:) = 0
+  localbackground_nodes_temp_exchange(:) = -1
+
+  ! reads local and background coupled edges at boundary
+
+  if ( any_local_background_edges ) then
+    do inum = 1, num_local_background_edges
+      read(19,*) localbackground_local_ispec_read,localbackground_background_ispec_read,&
+       localbackground_nodes1_read, localbackground_nodes2_read
+
+      localbackground_local_ispec(inum) = localbackground_local_ispec_read
+      localbackground_background_ispec(inum) = localbackground_background_ispec_read
+      localbackground_nodes_temp(2*inum-1)=localbackground_nodes1_read
+      localbackground_nodes_temp(2*inum)=localbackground_nodes2_read
+    enddo
+    
+    !extract nodes located at the boundary without duplicates
+    kk = 1
+    do inum = 1, 2*num_local_background_edges
+      temp_node = localbackground_nodes_temp(inum)
+      nodes_exist = .false.
+      do jnum = 1,kk
+        if ( temp_node == localbackground_nodes_temp_exchange(jnum) ) then
+           nodes_exist = .true.
+        endif
+      enddo
+      if ( .NOT. nodes_exist ) then
+        localbackground_nodes_temp_exchange(kk) = temp_node
+        kk = kk + 1
+      endif
+    enddo
+    
+    print *, 'total nodes at local/background boundary is', kk-1
+    num_local_background_nodes = kk-1
+
+    !!assign the nodes to localbackground_nodes without duplicates
+    allocate(localbackground_nodes(kk))
+    do inum = 1, num_local_background_nodes
+       localbackground_nodes(inum) = localbackground_nodes_temp_exchange(inum)
+    enddo
+     
+  endif
+
+   
+
+
+  end subroutine read_localbackground_coupled
 
 !
 !-------------------------------------------------------------------------------------------------

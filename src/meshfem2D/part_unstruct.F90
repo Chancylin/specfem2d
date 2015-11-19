@@ -2728,6 +2728,8 @@ end subroutine rotate_mesh_for_axisym
         endif
      enddo
   else
+     
+     write(IIN_database,*) nedges_localg_coupled_bis
 
      do i = 1, nedges_localg_coupled_bis
         if ( part(edges_localg_coupled_bis(1,i)) == iproc ) then

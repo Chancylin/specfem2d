@@ -95,7 +95,8 @@ integer i,j,ispec,k,iglob,irec,i_source,ispecabs, irecloc
 
 !
 !---- generate the global numbering
-!
+
+!by lcx: this is where we obtain ibool(ix,iy,ispec) = iglob(ilocnum + ieoff)
 
 ! "slow and clean" or "quick and dirty" version
   if(FAST_NUMBERING) then
