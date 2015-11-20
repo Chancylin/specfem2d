@@ -656,6 +656,8 @@ module specfem_par
   logical :: anyabs
   double precision :: dxd,dyd,dzd,dcurld,valux,valuy,valuz,valcurl,hlagrange,rhol,xi,gamma,x,z
   double precision :: gravityl,Nsql,hp1,hp2
+  !!by lcx: this is for info storage
+  double precision :: dxv, dyv, dzv
 
   real(kind=CUSTOM_REAL) :: kinetic_energy,potential_energy,kinetic_energy_total,potential_energy_total
   double precision :: vpImin,vpImax,vpIImin,vpIImax

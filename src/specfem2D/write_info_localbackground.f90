@@ -62,7 +62,21 @@
         if ( (.not. node1_located) .or. (.not. node2_located) ) then
            stop 'error, nodes on local/background can not be located' 
         endif
-       
+        
+        if ( node1_i == node2_i ) then
+           do j = 1,NGLLZ
+             dxv = veloc_elastic(1,iglob) 
+             dyv = veloc_elastic(2,iglob)
+             dzv = veloc_elastic(3,iglob)
+             dxd = accel_elastic(1,iglob)
+             dyd = accel_elastic(2,iglob)
+             dzd = accel_elastic(3,iglob)
+           enddo
+        endif 
+        if ( node1_j == node2_j ) then
+           do i = 1,NGLLX
+           enddo
+        endif 
         
        
        coorg(1,node1)
