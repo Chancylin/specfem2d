@@ -104,6 +104,10 @@ integer i,j,ispec,k,iglob,irec,i_source,ispecabs, irecloc
   else
     call createnum_slow()
   endif
+!!!this is a test for ibool(i,j,ispec)
+  print *,'test for ibool(i,j,ispec)'
+  print *,'ibool(i,j,1):', ((ibool(i,j,1),j=1,NGLLZ),i=1,NGLLX)
+  print *,'ibool(i,j,2):', ((ibool(i,j,2),j=1,NGLLZ),i=1,NGLLX)
 
 #ifdef USE_MPI
   call MPI_REDUCE(count_nspec_acoustic, count_nspec_acoustic_total, 1, MPI_INTEGER, MPI_SUM, 0, MPI_COMM_WORLD, ier)

@@ -95,6 +95,9 @@
 
     xcor = zero
     ycor = zero
+!!by lcx: here use ngnod anchors to build the shape functions
+!!and then use Lagrange polynominals to get the coordinates of GLL points.
+!!Is this true?
     do in = 1,ngnod
         nnum = knods(in,ispec)
         xcor = xcor + shape2D(in,ix,iy)*coorg(1,nnum)
