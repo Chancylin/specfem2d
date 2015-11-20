@@ -1348,6 +1348,12 @@ subroutine iterate_time()
    endif  ! of display images at a given time step
 
   enddo ! end of the main time loop
+  
+
+    !by lcx: save info at local/background elments.
+    !!thinking that how to know what nodes in which edges are what we want to store
+    call write_info_localbackground_to_file()
+    !!end
 
 ! *********************************************************
 ! ************* END MAIN LOOP OVER THE TIME STEPS *********

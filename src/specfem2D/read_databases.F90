@@ -1052,17 +1052,17 @@
   include "constants.h"
 
   ! local parameters
-  integer :: inum, jnum, kk
+  integer :: inum!, jnum, kk
   integer :: localbackground_local_ispec_read,localbackground_background_ispec_read
-  integer :: localbackground_nodes1_read, localbackground_nodes2_read, temp_node
-  integer, dimension(1:2*num_local_background_edges):: localbackground_nodes_temp 
-  integer, dimension(1:2*num_local_background_edges):: localbackground_nodes_temp_exchange 
-  logical :: nodes_exist
+  integer :: localbackground_nodes1_read, localbackground_nodes2_readi!, temp_node
+!  integer, dimension(1:2*num_local_background_edges):: localbackground_nodes_temp 
+!  integer, dimension(1:2*num_local_background_edges):: localbackground_nodes_temp_exchange 
+!  logical :: nodes_exist
 
   ! initializes
   localbackground_local_ispec(:) = 0
   localbackground_background_ispec(:) = 0
-  localbackground_nodes_temp_exchange(:) = -1
+  localbackground_nodes(:) = 0
 
   ! reads local and background coupled edges at boundary
 
@@ -1073,34 +1073,34 @@
 
       localbackground_local_ispec(inum) = localbackground_local_ispec_read
       localbackground_background_ispec(inum) = localbackground_background_ispec_read
-      localbackground_nodes_temp(2*inum-1)=localbackground_nodes1_read
-      localbackground_nodes_temp(2*inum)=localbackground_nodes2_read
+      localbackground_nodes(2*inum-1)=localbackground_nodes1_read
+      localbackground_nodes(2*inum)=localbackground_nodes2_read
     enddo
     
     !extract nodes located at the boundary without duplicates
-    kk = 1
-    do inum = 1, 2*num_local_background_edges
-      temp_node = localbackground_nodes_temp(inum)
-      nodes_exist = .false.
-      do jnum = 1,kk
-        if ( temp_node == localbackground_nodes_temp_exchange(jnum) ) then
-           nodes_exist = .true.
-        endif
-      enddo
-      if ( .NOT. nodes_exist ) then
-        localbackground_nodes_temp_exchange(kk) = temp_node
-        kk = kk + 1
-      endif
-    enddo
-    
-    print *, 'total nodes at local/background boundary is', kk-1
-    num_local_background_nodes = kk-1
-
-    !!assign the nodes to localbackground_nodes without duplicates
-    allocate(localbackground_nodes(kk))
-    do inum = 1, num_local_background_nodes
-       localbackground_nodes(inum) = localbackground_nodes_temp_exchange(inum)
-    enddo
+!    kk = 1
+!    do inum = 1, 2*num_local_background_edges
+!      temp_node = localbackground_nodes_temp(inum)
+!      nodes_exist = .false.
+!      do jnum = 1,kk
+!        if ( temp_node == localbackground_nodes_temp_exchange(jnum) ) then
+!           nodes_exist = .true.
+!        endif
+!      enddo
+!      if ( .NOT. nodes_exist ) then
+!        localbackground_nodes_temp_exchange(kk) = temp_node
+!        kk = kk + 1
+!      endif
+!    enddo
+!    
+!    print *, 'total nodes at local/background boundary is', kk-1
+!    num_local_background_nodes = kk-1
+!
+!    !!assign the nodes to localbackground_nodes without duplicates
+!    allocate(localbackground_nodes(kk))
+!    do inum = 1, num_local_background_nodes
+!       localbackground_nodes(inum) = localbackground_nodes_temp_exchange(inum)
+!    enddo
      
   endif
 
