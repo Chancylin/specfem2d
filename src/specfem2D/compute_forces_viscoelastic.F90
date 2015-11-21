@@ -70,13 +70,19 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
                          rmemory_displ_elastic,rmemory_dux_dx,rmemory_dux_dz,rmemory_duz_dx,rmemory_duz_dz, &
                          rmemory_dux_dx_prime,rmemory_dux_dz_prime,rmemory_duz_dx_prime,rmemory_duz_dz_prime, &
                          rmemory_displ_elastic_LDDRK,rmemory_dux_dx_LDDRK,rmemory_dux_dz_LDDRK,rmemory_duz_dx_LDDRK,&
-                         ROTATE_PML_ACTIVATE,ROTATE_PML_ANGLE,STACEY_BOUNDARY_CONDITIONS,acoustic,time_stepping_scheme
-
+                         ROTATE_PML_ACTIVATE,ROTATE_PML_ANGLE,STACEY_BOUNDARY_CONDITIONS,acoustic,time_stepping_scheme, &
+!!!this is for traction storage. by lcx 
+                        f_num, fname, ios,num_local_background_edges,record_local_background_boundary, &
+                        localbackground_edges_type,localbackground_local_ispec
   implicit none
   include "constants.h"
 
   real(kind=CUSTOM_REAL), dimension(3,nglob) :: accel_elastic,veloc_elastic,displ_elastic,displ_elastic_old
   real(kind=CUSTOM_REAL), dimension(NGLLX,NGLLZ,nspec_allocate,N_SLS) :: e1,e11,e13
+
+  !by lcx: for traction storage. by lcx
+  real(kind=CUSTOM_REAL) :: tx_store, tz_store
+  integer  :: kkk
 
   ! for analytical initial plane wave for Bielak's conditions
   double precision x0_source, z0_source,f0
@@ -1017,12 +1023,77 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
           endif
 !!!by lcx: add the code here to read the traction of GLL points
           if ( record_local_background_boundary == 1 ) then
-            loop 1:  do kkk = inum = 1, num_local_background_edges
-                if () then
-                
-                   exit loop 1
-                endif
-             enddo
+            loop1:  do kkk = 1, num_local_background_edges
+                if (ispec == localbackground_local_ispec(kkk)) then
+                   if (i == 1 .and. localbackground_edges_type(kkk) == 1) then!left
+                       xgamma = - xiz(i,j,ispec) * jacobian(i,j,ispec)
+                       zgamma = + xix(i,j,ispec) * jacobian(i,j,ispec)
+                       jacobian1D = sqrt(xgamma**2 + zgamma**2)
+                       nx = - zgamma / jacobian1D
+                       nz = + xgamma / jacobian1D
+                       tx_store = sigma_xx * nx + sigma_xz * nz
+                       tz_store = sigma_zx * nx + sigma_zz * nz
+                       f_num = ispec * 100 + i * 10 + j 
+                       write(fname, "('./OUTPUT_FILES/&
+                            &localboundaryinfo/elmnt',i8.8,'_',&
+                            &i1.1,'_',i1.1)") ispec, i, j
+                       open(unit=f_num,file=trim(fname),status='unknown',&
+                            position='append',iostat=ios)
+                       if( ios /= 0 ) stop 'error saving local/background traction'
+                       !write(f_num,"(i8.8,2x,f8.4,2x,f8.4)",advance='no') it,tx_store,tz_store
+                       write(f_num,"(i8.8,2x,e12.4,2x,e12.4)",advance='no') it,tx_store,tz_store
+                    else if (i == NGLLX .and. localbackground_edges_type(kkk) == 2) then!right
+                       xgamma = - xiz(i,j,ispec) * jacobian(i,j,ispec)
+                       zgamma = + xix(i,j,ispec) * jacobian(i,j,ispec)
+                       jacobian1D = sqrt(xgamma**2 + zgamma**2)
+                       nx = + zgamma / jacobian1D
+                       nz = - xgamma / jacobian1D
+                       tx_store = sigma_xx * nx + sigma_xz * nz
+                       tz_store = sigma_zx * nx + sigma_zz * nz
+                       f_num = ispec * 100 + i * 10 + j 
+                       write(fname, "('./OUTPUT_FILES/&
+                            &localboundaryinfo/elmnt',i8.8,'_',&
+                            &i1.1,'_',i1.1)") ispec, i, j
+                       open(unit=f_num,file=trim(fname),status='unknown',&
+                            position='append',iostat=ios)
+                       if( ios /= 0 ) stop 'error saving local/background traction'
+                       write(f_num,"(i8.8,2x,e12.4,2x,e12.4)",advance='no') it,tx_store,tz_store
+                    else if ( j == NGLLZ .and. localbackground_edges_type(kkk) == 4) then!top
+                       xxi = + gammaz(i,j,ispec) * jacobian(i,j,ispec)
+                       zxi = - gammax(i,j,ispec) * jacobian(i,j,ispec)
+                       jacobian1D = sqrt(xxi**2 + zxi**2)
+                       nx = - zxi / jacobian1D
+                       nz = + xxi / jacobian1D
+                       tx_store = sigma_xx * nx + sigma_xz * nz
+                       tz_store = sigma_zx * nx + sigma_zz * nz
+                       f_num = ispec * 100 + i * 10 + j 
+                       write(fname, "('./OUTPUT_FILES/&
+                            &localboundaryinfo/elmnt',i8.8,'_',&
+                            &i1.1,'_',i1.1)") ispec, i, j
+                       open(unit=f_num,file=trim(fname),status='unknown',&
+                            position='append',iostat=ios)
+                       if( ios /= 0 ) stop 'error saving local/background traction'
+                       write(f_num,"(i8.8,2x,e12.4,2x,e12.4)",advance='no') it,tx_store,tz_store
+                    else if ( j ==1 .and. localbackground_edges_type(kkk) == 3) then!bottom
+                       xxi = + gammaz(i,j,ispec) * jacobian(i,j,ispec)
+                       zxi = - gammax(i,j,ispec) * jacobian(i,j,ispec)
+                       jacobian1D = sqrt(xxi**2 + zxi**2)
+                       nx = + zxi / jacobian1D
+                       nz = - xxi / jacobian1D
+                       tx_store = sigma_xx * nx + sigma_xz * nz
+                       tz_store = sigma_zx * nx + sigma_zz * nz
+                       f_num = ispec * 100 + i * 10 + j 
+                       write(fname, "('./OUTPUT_FILES/&
+                            &localboundaryinfo/elmnt',i8.8,'_',&
+                            &i1.1,'_',i1.1)") ispec, i, j
+                       open(unit=f_num,file=trim(fname),status='unknown',&
+                            position='append',iostat=ios)
+                       if( ios /= 0 ) stop 'error saving local/background traction'
+                       write(f_num,"(i8.8,2x,e12.4,2x,e12.4)",advance='no') it,tx_store,tz_store
+                   endif
+                   exit loop1
+                endif!!end ispec == localbackground_local_ispec(kkk)
+             enddo loop1
           endif
 
         enddo

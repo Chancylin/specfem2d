@@ -90,6 +90,7 @@ subroutine iterate_time()
 !!!by lcx: do this before the solver, so that we know which gll points of the 
 !!!local/background elements are what we want.
   if ( record_local_background_boundary == 1 ) then
+      print *, 'here we check the GLL points of local/background edges'
       call check_nodesToGLL()
   endif
 
@@ -1352,15 +1353,15 @@ subroutine iterate_time()
      seismo_offset = seismo_offset + seismo_current
      seismo_current = 0
    endif  ! of display images at a given time step
+    !by lcx: save info at local/background elments.
+   if ( record_local_background_boundary == 1 ) then
+       call write_info_localbackground_to_file(it)
+   endif
+    !!end
 
   enddo ! end of the main time loop
   
 
-    !by lcx: save info at local/background elments.
-    if ( record_local_background_boundary == 1 ) then
-        call write_info_localbackground_to_file(it)
-    endif
-    !!end
 
 ! *********************************************************
 ! ************* END MAIN LOOP OVER THE TIME STEPS *********

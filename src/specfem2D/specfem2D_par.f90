@@ -163,6 +163,8 @@ module specfem_par
   
   integer, dimension(:,:), allocatable :: localbackground_node1_gll,&
                                           localbackground_node2_gll
+  integer :: f_num
+  character (len=100) :: fname
   !don't forget to deallocate there allocatable variables
 
   ! fluid/solid interface

@@ -11,11 +11,13 @@
   implicit none
 
   integer :: i, j, ispec, node1, node2
+  integer :: node1_i, node1_j, node2_i, node2_j
   logical :: node1_located, node2_located
  
   allocate(localbackground_node1_gll(2,num_local_background_edges))
   allocate(localbackground_node2_gll(2,num_local_background_edges))
   allocate(localbackground_edges_type(num_local_background_edges))
+  localbackground_edges_type(:) = 5
   node1_located = .false.
   node2_located = .false. 
   if ( any_local_background_edges ) then
@@ -69,10 +71,10 @@
         node2_i = localbackground_node2_gll(1,inum)
         node2_j = localbackground_node2_gll(2,inum)
     
-        if (node1_i == node2_i .and. node1_i ==1)then
-           localbackground_edges_type(inum) = 1  !left
-         else if (node1_i == node2_i .and. node1_i == NGLLX) then
+        if (node1_i == node2_i .and. node1_i == NGLLX) then
            localbackground_edges_type(inum) = 2  !right
+         else if (node1_i == node2_i .and. node1_i ==1)then
+           localbackground_edges_type(inum) = 1  !left
          else if (node1_j == node2_j .and. node1_j == 1) then
            localbackground_edges_type(inum) = 3  !bottom
          else if (node1_j == node2_j .and. node1_j == NGLLZ) then
@@ -80,7 +82,11 @@
          else 
             stop 'error, cannot detect what kind of edge for local/background element'
         endif
+        open(199,file='./OUTPUT_FILES/edges_type')
+        write(199,*) ispec, localbackground_edges_type(inum), coorg(1,node1), coorg(2,node1), &
+          node1_i, node1_j, coorg(1,node2), coorg(2,node2), node2_i, node2_j
        enddo
+       close(199)
   endif
   end subroutine check_nodesToGLL 
 
@@ -91,10 +97,9 @@
 
   implicit none
 
-  integer :: i, j, iglob, ispec, f_num
+  integer :: i, j, iglob, ispec
   integer, intent(in) :: t_num
   integer :: node1_i, node1_j, node2_i, node2_j
-  character (len=80) :: fname
 
   if ( any_local_background_edges ) then
     do inum = 1, num_local_background_edges
@@ -112,16 +117,16 @@
              dyd = veloc_elastic(2,iglob)
              dzd = veloc_elastic(3,iglob)
              write(fname, "('./OUTPUT_FILES/&
-                   &localboundaryinfo/elmnt',i8.8,'/',&
+                   &localboundaryinfo/elmnt',i8.8,'_',&
                    &i1.1,'_',i1.1)") &
                    ispec, node1_i,j
              !!!this generate an unique file number to every gll point of 
              !!!every element
-             f_num = 777 + ispec * 100 + node1_i * 10 + j
+             f_num = ispec * 100 + node1_i * 10 + j
              open(unit=f_num,file=trim(fname),status='unknown',&
                   position='append',iostat=ios)
-             if( ios /= 0 ) stop 'error saving local/background boundary nodes info'
-             write(f_num,*) t_num,dxd,dyd,dzd
+             if( ios /= 0 ) stop 'error saving local/background boundary nodes velocity'
+             write(f_num,"(e12.4,2x,e12.4,2x,e12.4)") dxd,dyd,dzd
              if(t_num == NSTEP) close(f_num)
            enddo
         endif 
@@ -133,14 +138,14 @@
              dyd = veloc_elastic(2,iglob)
              dzd = veloc_elastic(3,iglob)
              write(fname, "('./OUTPUT_FILES/&
-                   &localboundaryinfo/elmnt',i8.8,'/',&
+                   &localboundaryinfo/elmnt',i8.8,'_',&
                    &i1.1,'_',i1.1)") &
                    ispec, i,node1_j
-             f_num = 777 + ispec * 100 + i * 10 + node1_j
+             f_num = ispec * 100 + i * 10 + node1_j
              open(unit=f_num,file=trim(fname),status='unknown',&
                   position='append',iostat=ios)
-             if( ios /= 0 ) stop 'error saving local/background boundary nodes info'
-             write(f_num,*) t_num,dxd,dyd,dzd
+             if( ios /= 0 ) stop 'error saving local/background boundary nodes velocity'
+             write(f_num,"(e12.4,2x,e12.4,2x,e12.4)") dxd,dyd,dzd
              if(t_num == NSTEP) close(f_num)
            enddo
         endif 
