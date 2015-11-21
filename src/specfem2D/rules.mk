@@ -150,6 +150,7 @@ specfem2D_OBJECTS = \
 	$O/write_color_image_snaphot.spec.o \
 	$O/write_wavefield_dumps.spec.o \
 	$O/save_read_array_for_undoatt.spec.o \
+	$O/write_info_localbackground.spec.o\
 	$(EMPTY_MACRO)
 
 specfem2D_MODULES = \
@@ -375,7 +376,7 @@ $O/write_output_SU.spec.o: $O/specfem2D_par.spec.o
 $O/write_postscript_snapshot.spec.o: $O/specfem2D_par.spec.o
 $O/write_seismograms.spec.o: $O/specfem2D_par.spec.o
 $O/write_wavefield_dumps.spec.o: $O/specfem2D_par.spec.o
-
+$O/write_info_localbackground.spec.o: $O/specfem2D_par.spec.o
 
 ##
 ## object files

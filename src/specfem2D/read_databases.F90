@@ -1046,7 +1046,7 @@
 ! reads local background coupled edges
   use specfem_par, only : num_local_background_edges,any_local_background_edges, &
                           localbackground_local_ispec,localbackground_background_ispec,&
-                          localbackground_nodes, num_local_background_nodes
+                          localbackground_nodes 
 
   implicit none
   include "constants.h"
@@ -1054,7 +1054,7 @@
   ! local parameters
   integer :: inum!, jnum, kk
   integer :: localbackground_local_ispec_read,localbackground_background_ispec_read
-  integer :: localbackground_nodes1_read, localbackground_nodes2_readi!, temp_node
+  integer :: localbackground_nodes1_read, localbackground_nodes2_read!, temp_node
 !  integer, dimension(1:2*num_local_background_edges):: localbackground_nodes_temp 
 !  integer, dimension(1:2*num_local_background_edges):: localbackground_nodes_temp_exchange 
 !  logical :: nodes_exist

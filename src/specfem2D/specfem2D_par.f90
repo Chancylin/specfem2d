@@ -158,7 +158,11 @@ module specfem_par
   logical :: any_local_background_edges
   integer, dimension(:), allocatable :: localbackground_local_ispec,&
                                         localbackground_background_ispec,&
-                                        localbackground_nodes
+                                        localbackground_nodes, &
+                                        localbackground_edges_type
+  
+  integer, dimension(:,:), allocatable :: localbackground_node1_gll,&
+                                          localbackground_node2_gll
   !don't forget to deallocate there allocatable variables
 
   ! fluid/solid interface

@@ -1015,6 +1015,16 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
             tempz2(i,j) = wxgll(i)*jacobianl*(sigma_xz*gammaxl+sigma_zz*gammazl) ! this goes to accel_z
 
           endif
+!!!by lcx: add the code here to read the traction of GLL points
+          if ( record_local_background_boundary == 1 ) then
+            loop 1:  do kkk = inum = 1, num_local_background_edges
+                if () then
+                
+                   exit loop 1
+                endif
+             enddo
+          endif
+
         enddo
       enddo  ! end of the loops on the collocation points i,j
 

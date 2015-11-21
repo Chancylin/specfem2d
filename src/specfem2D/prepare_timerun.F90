@@ -1574,6 +1574,7 @@ subroutine prepare_timerun_read()
      any_local_background_edges = .true.
      allocate(localbackground_local_ispec(num_local_background_edges))      
      allocate(localbackground_background_ispec(num_local_background_edges))
+     allocate(localbackground_nodes(num_local_background_edges*2))
      call read_localbackground_coupled()
   endif
   close(19)

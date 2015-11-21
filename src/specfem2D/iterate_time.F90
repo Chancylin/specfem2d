@@ -87,6 +87,12 @@ subroutine iterate_time()
 ! ************* MAIN LOOP OVER THE TIME STEPS *************
 ! *********************************************************
 
+!!!by lcx: do this before the solver, so that we know which gll points of the 
+!!!local/background elements are what we want.
+  if ( record_local_background_boundary == 1 ) then
+      call check_nodesToGLL()
+  endif
+
   do it = 1,NSTEP
     ! compute current time
     timeval = (it-1)*deltat
@@ -1351,8 +1357,9 @@ subroutine iterate_time()
   
 
     !by lcx: save info at local/background elments.
-    !!thinking that how to know what nodes in which edges are what we want to store
-    call write_info_localbackground_to_file()
+    if ( record_local_background_boundary == 1 ) then
+        call write_info_localbackground_to_file(it)
+    endif
     !!end
 
 ! *********************************************************
