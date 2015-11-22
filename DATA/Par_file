@@ -1,5 +1,5 @@
 # title of job
-title                           = Test of SPECFEM2D with disk plane
+title                           = Test of SPECFEM2D with disk plane (local)
 
 # axisymmetric (2.5D) or Cartesian planar (2D) simulation
 AXISYM                          = .false.
@@ -118,7 +118,7 @@ output_grid_ASCII               = .false.        # dump the grid in an ASCII tex
 output_energy                   = .false.        # compute and output total acoustic and elastic energy curves (slows down the code significantly)
 
 
-nbmodels                        = 3
+nbmodels                        = 2
 # available material types (see user manual for more information)
 #   acoustic:    model_number 1 rho Vp 0  0 0 QKappa Qmu 0 0 0 0 0 0 (for QKappa and Qmu use 9999 to ignore them)
 #### currently acoustic media have no attenuation and thus QKappa and Qmu are ignored, but this will or should change soon
@@ -135,7 +135,6 @@ nbmodels                        = 3
 
 1 1 10000.0 6000.0 0.0 0 0 9999.0 9999.0 0 0 0 0 0 0
 2 1 5000.0 10000.0 6000.0 0 0 9999.0 9999.0 0 0 0 0 0 0
-3 1 5000.0 10000.0 6000.0 0 0 9999.0 9999.0 0 0 0 0 0 0
 
 # external tomography file
 TOMOGRAPHY_FILE                 = ./DATA/tomo_file.xyz
@@ -161,14 +160,14 @@ GPU_MODE                        = .false.
 
 # data concerning mesh, when generated using third-party app (more info in README)
 # (see also absorbing_conditions above)
-mesh_file                       = ./DATA/mesh_circle/mesh_file   # file containing the mesh
-nodes_coords_file               = ./DATA/mesh_circle/nodes_coords_file   # file containing the nodes coordinates
-materials_file                  = ./DATA/mesh_circle/materials_file   # file containing the material number for each element
-free_surface_file               = ./DATA/mesh_circle/free_surface_file   # file containing the free surface
+mesh_file                       = ./DATA/mesh_circle_local/mesh_file   # file containing the mesh
+nodes_coords_file               = ./DATA/mesh_circle_local/nodes_coords_file   # file containing the nodes coordinates
+materials_file                  = ./DATA/mesh_circle_local/materials_file   # file containing the material number for each element
+free_surface_file               = ./DATA/mesh_circle_local/free_surface_file   # file containing the free surface
 axial_elements_file             = ./DATA/axial_elements_file # file containing the axial elements if AXISYM is true
-absorbing_surface_file          = ./DATA/mesh_circle/absorbing_surface_file   # file containing the absorbing surface
+absorbing_surface_file          = ./DATA/mesh_circle_local/absorbing_surface_file   # file containing the absorbing surface
 acoustic_forcing_surface_file   = ./DATA/MSH/Surf_acforcing_Bottom_enforcing_mesh   # file containing the acoustic forcing surface
-CPML_element_file               = ./DATA/mesh_circle/Elements_CPML_list  # file containing the CPML element numbers
+CPML_element_file               = ./DATA/mesh_circle_local/Elements_CPML_list  # file containing the CPML element numbers
 tangential_detection_curve_file = ./DATA/courbe_eros_nodes # file containing the curve delimiting the velocity model
 
 #-----------------------------------------------------------------------------

@@ -101,7 +101,8 @@ module part_unstruct
   ! for local/background coupled elements
   integer :: nedges_localg_coupled
   integer, dimension(:,:), pointer  :: edges_localg_coupled
-  integer :: material_local_domain, material_backg_domain
+  integer :: material_local_domain, material_backg_domain, extract_info_local_background
+  character(len=256) ::  temp_char
 
   ! for acoustic/elastic coupled elements
   integer :: nedges_coupled

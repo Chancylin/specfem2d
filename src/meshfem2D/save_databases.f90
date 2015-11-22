@@ -86,9 +86,11 @@
     open(unit=15,file=trim(prname),status='unknown',iostat=ios)
     if( ios /= 0 ) stop 'error saving databases; check that directory OUTPUT_FILES exists'
     !by lcx: build the file to save local/background elements
-    write(prname, "('./OUTPUT_FILES/local_background_boundary',i5.5)") iproc
-    open(unit=17,file=trim(prname),status='unknown',iostat=ios)
-    if( ios /= 0 ) stop 'error saving local/background boundary elements; check that directory OUTPUT_FILES exists'
+    if (extract_info_local_background == 1) then
+       write(prname, "('./OUTPUT_FILES/local_background_boundary',i5.5)") iproc
+       open(unit=17,file=trim(prname),status='unknown',iostat=ios)
+       if( ios /= 0 ) stop 'error saving local/background boundary elements; check that directory OUTPUT_FILES exists'
+    endif
     !!end 
 
     write(15,*) '#'
@@ -300,8 +302,10 @@
     call write_axial_elements_database(15, nelem_on_the_axis, ispec_of_axial_elements,nelem_on_the_axis_loc,iproc,1, &
                                         remove_min_to_start_at_zero)
    !!by lcx
+   if( extract_info_local_background == 1 )then
     call write_localb_edges_database(17,nedges_localg_coupled, nedges_localg_coupled_loc, &
                                         edges_localg_coupled, iproc, ngnod, 1)
+   endif
    !!end
 
     if (.not. ( force_normal_to_surface .or. rec_normal_to_surface ) ) then
@@ -401,14 +405,16 @@
                                        remove_min_to_start_at_zero)
 
    !!by lcx
+   if( extract_info_local_background == 1 )then
     write(17,*) 'List of local/background elements and edges nodes:'
     call write_localb_edges_database(17,nedges_localg_coupled, nedges_localg_coupled_loc, &
                                         edges_localg_coupled, iproc, ngnod, 2)
+    close(17)
+    endif
    !!end
 
     ! closes Database file
     close(15)
-    close(17)
 
   enddo
 

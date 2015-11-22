@@ -422,10 +422,17 @@ program meshfem2D
   ! ***by lcx
   ! *** read the material number of local and background domain
   ! ***
-  print *,'Reading the material of local and background domain'
-  open(unit=7, file='./DATA/number_material_localbackground',form='FORMATTED',status='old')
-  read(7,*) material_local_domain, material_backg_domain
-  close(7)
+   
+    open(unit=7, file='./DATA/switch_mesher',form='FORMATTED',status='old')
+    read(7,*) temp_char 
+    read(7,*) extract_info_local_background
+    close(7)
+  if( extract_info_local_background == 1 )then
+    print *,'Reading the material of local and background domain'
+    open(unit=7, file='./DATA/number_material_localbackground',form='FORMATTED',status='old')
+    read(7,*) material_local_domain, material_backg_domain
+    close(7)
+  endif
   !!end
 
   ! ***
@@ -973,12 +980,14 @@ program meshfem2D
 
   !by lcx: local-background edges: coupled elements are transferred to the same partition
   !! repartition the local/background elemnts. Necessary?
-  if ( ngnod == 9 ) then
-     call localbackground_repartitioning(elmnts_bis, nb_materials, num_material, nproc,&
-          material_local_domain, material_backg_domain)
-  else
-     call localbackground_repartitioning(elmnts, nb_materials, num_material, nproc,&
-           material_local_domain, material_backg_domain)
+  if( extract_info_local_background == 1 )then
+     if ( ngnod == 9 ) then
+        call localbackground_repartitioning(elmnts_bis, nb_materials, num_material, nproc,&
+             material_local_domain, material_backg_domain)
+     else
+        call localbackground_repartitioning(elmnts, nb_materials, num_material, nproc,&
+              material_local_domain, material_backg_domain)
+     endif
   endif
 
 
