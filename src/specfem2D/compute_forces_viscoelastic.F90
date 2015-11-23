@@ -1044,7 +1044,7 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
                             position='append',iostat=ios)
                        if( ios /= 0 ) stop 'error saving local/background traction'
                        !write(f_num,"(i8.8,2x,f8.4,2x,f8.4)",advance='no') it,tx_store,tz_store
-                       write(f_num,"(i8.8,2x,e12.4,2x,e12.4,2x)",advance='no') it,tx_store,tz_store
+                       write(f_num,"(i8.8,2x,e12.4,2x,e12.4,2x,e12.4)",advance='no') it, sigma_xx, sigma_xz, sigma_zz
                     else if (i == NGLLX .and. localbackground_edges_type(kkk) == 2) then!right
                        xgamma = - xiz(i,j,ispec) * jacobian(i,j,ispec)
                        zgamma = + xix(i,j,ispec) * jacobian(i,j,ispec)
