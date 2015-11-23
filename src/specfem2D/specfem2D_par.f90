@@ -154,7 +154,7 @@ module specfem_par
 
   !by lcx: local/background boudary
   integer :: num_local_background_edges, num_local_background_nodes,&
-             record_local_background_boundary
+             record_local_background_boundary,read_local_background_boundary
   logical :: any_local_background_edges
   integer, dimension(:), allocatable :: localbackground_local_ispec,&
                                         localbackground_background_ispec,&
@@ -662,8 +662,8 @@ module specfem_par
   logical :: anyabs
   double precision :: dxd,dyd,dzd,dcurld,valux,valuy,valuz,valcurl,hlagrange,rhol,xi,gamma,x,z
   double precision :: gravityl,Nsql,hp1,hp2
-  !!by lcx: this is for info storage
-  double precision :: dxv, dyv, dzv
+  !!by lcx: this is for reading info from local/background
+  !double precision :: tx_store, tz_store
 
   real(kind=CUSTOM_REAL) :: kinetic_energy,potential_energy,kinetic_energy_total,potential_energy_total
   double precision :: vpImin,vpImax,vpIImin,vpIImax

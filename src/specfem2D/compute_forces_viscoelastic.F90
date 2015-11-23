@@ -73,7 +73,8 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
                          ROTATE_PML_ACTIVATE,ROTATE_PML_ANGLE,STACEY_BOUNDARY_CONDITIONS,acoustic,time_stepping_scheme, &
 !!!this is for traction storage. by lcx 
                         f_num, fname, ios,num_local_background_edges,record_local_background_boundary, &
-                        localbackground_edges_type,localbackground_local_ispec
+                        localbackground_edges_type,localbackground_local_ispec,&
+                        read_local_background_boundary, NSTEP
   implicit none
   include "constants.h"
 
@@ -81,8 +82,10 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
   real(kind=CUSTOM_REAL), dimension(NGLLX,NGLLZ,nspec_allocate,N_SLS) :: e1,e11,e13
 
   !by lcx: for traction storage. by lcx
-  real(kind=CUSTOM_REAL) :: tx_store, tz_store
-  integer  :: kkk
+  !actually, you may need to use these values as double precision
+  !but considering we just save them as signle precision
+  real(kind=CUSTOM_REAL) :: tx_store, tz_store, vx_store, vy_store, vz_store
+  integer  :: kkk,it_read
 
   ! for analytical initial plane wave for Bielak's conditions
   double precision x0_source, z0_source,f0
@@ -1041,7 +1044,7 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
                             position='append',iostat=ios)
                        if( ios /= 0 ) stop 'error saving local/background traction'
                        !write(f_num,"(i8.8,2x,f8.4,2x,f8.4)",advance='no') it,tx_store,tz_store
-                       write(f_num,"(i8.8,2x,e12.4,2x,e12.4)",advance='no') it,tx_store,tz_store
+                       write(f_num,"(i8.8,2x,e12.4,2x,e12.4,2x)",advance='no') it,tx_store,tz_store
                     else if (i == NGLLX .and. localbackground_edges_type(kkk) == 2) then!right
                        xgamma = - xiz(i,j,ispec) * jacobian(i,j,ispec)
                        zgamma = + xix(i,j,ispec) * jacobian(i,j,ispec)
@@ -1275,6 +1278,182 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
     endif ! end of test if elastic element
   enddo ! end of loop over all spectral elements
 
+  !by lcx:
+  !--- this is where I apply the boundary treatment to local/background
+  !elements. But note that this is only designed for elastic elements.
+  !here we just use Clayton-Engquist condition to approch the absorbing condition
+  !More work should be done for other types of elements.
+  !
+  if( read_local_background_boundary == 1) then
+    do ispec = 1,nspec
+   loop2:  do kkk = 1, num_local_background_edges
+       if (ispec == localbackground_local_ispec(kkk)) then
+          ! get elastic parameters of current spectral element
+          lambdal_unrelaxed_elastic = poroelastcoef(1,1,kmato(ispec))
+          mul_unrelaxed_elastic = poroelastcoef(2,1,kmato(ispec))
+          lambdaplus2mu_unrelaxed_elastic = lambdal_unrelaxed_elastic + 2._CUSTOM_REAL * mul_unrelaxed_elastic
+          rhol  = density(1,kmato(ispec))
+          kappal  = lambdal_unrelaxed_elastic + TWO*mul_unrelaxed_elastic/3._CUSTOM_REAL
+          cpl = sqrt((kappal + 4._CUSTOM_REAL*mul_unrelaxed_elastic/3._CUSTOM_REAL)/rhol)
+          csl = sqrt(mul_unrelaxed_elastic/rhol)
+          rho_vp = rhol*cpl
+          rho_vs = rhol*csl
+          if (localbackground_edges_type(kkk) == 1) then!left
+              i = 1
+              do  j = 1,NGLLZ  
+                iglob = ibool(i,j,ispec)
+                xgamma = - xiz(i,j,ispec) * jacobian(i,j,ispec)
+                zgamma = + xix(i,j,ispec) * jacobian(i,j,ispec)
+                jacobian1D = sqrt(xgamma**2 + zgamma**2)
+                nx = - zgamma / jacobian1D
+                nz = + xgamma / jacobian1D
+                weight = jacobian1D * wzgll(j)
+
+                f_num = ispec * 100 + i * 10 + j 
+                if(it == 1) then
+                  write(fname, "('./background_model/OUTPUT_FILES/&
+                     &localboundaryinfo/elmnt',i8.8,'_',&
+                     &i1.1,'_',i1.1)") ispec, i, j
+                  open(unit=f_num,file=trim(fname),status='unknown',&
+                       action='read',iostat=ios)
+                  if( ios /= 0 ) stop 'error reading local/background info'
+                endif
+                read(f_num,"(i8.8,2x,e12.4,2x,e12.4,e12.4,2x,e12.4,2x,e12.4)") it_read,tx_store,tz_store,vx_store,vy_store,vx_store
+                vx = veloc_elastic(1,iglob) - vx_store
+                vy = veloc_elastic(2,iglob) - vy_store
+                vz = veloc_elastic(3,iglob) - vz_store
+
+                vn = nx*vx+nz*vz
+
+                tx = rho_vp*vn*nx+rho_vs*(vx-vn*nx)
+                ty = rho_vs*vy
+                tz = rho_vp*vn*nz+rho_vs*(vz-vn*nz)
+
+                accel_elastic(1,iglob) = accel_elastic(1,iglob) - ( tx - 2*tx_store)*weight
+                accel_elastic(2,iglob) = accel_elastic(2,iglob) - ty*weight
+                accel_elastic(3,iglob) = accel_elastic(3,iglob) - ( tz - 2*tz_store)*weight
+                if(it == NSTEP) close(f_num)
+
+              enddo
+           else if (localbackground_edges_type(kkk) == 2) then!right
+              i = NGLLX
+              do j = 1,NGLLZ
+                 iglob = ibool(i,j,ispec)
+                 xgamma = - xiz(i,j,ispec) * jacobian(i,j,ispec)
+                 zgamma = + xix(i,j,ispec) * jacobian(i,j,ispec)
+                 jacobian1D = sqrt(xgamma**2 + zgamma**2)
+                 nx = + zgamma / jacobian1D
+                 nz = - xgamma / jacobian1D
+                 weight = jacobian1D * wzgll(j)
+
+                 f_num = ispec * 100 + i * 10 + j 
+                 if (it == 1) then
+                    write(fname, "('./background_model/OUTPUT_FILES/&
+                         &localboundaryinfo/elmnt',i8.8,'_',&
+                         &i1.1,'_',i1.1)") ispec, i, j
+                    open(unit=f_num,file=trim(fname),status='unknown',&
+                         action='read',iostat=ios)
+                    if( ios /= 0 ) stop 'error reading local/background info'
+                 endif
+                 read(f_num,"(i8.8,2x,e12.4,2x,e12.4,e12.4,2x,e12.4,2x,e12.4)") it_read,tx_store,tz_store,vx_store,vy_store,vx_store
+                 vx = veloc_elastic(1,iglob) - vx_store
+                 vy = veloc_elastic(2,iglob) - vy_store
+                 vz = veloc_elastic(3,iglob) - vz_store
+
+                 vn = nx*vx+nz*vz
+
+                 tx = rho_vp*vn*nx+rho_vs*(vx-vn*nx)
+                 ty = rho_vs*vy
+                 tz = rho_vp*vn*nz+rho_vs*(vz-vn*nz)
+
+                 accel_elastic(1,iglob) = accel_elastic(1,iglob) - (tx - tx_store)*weight
+                 accel_elastic(2,iglob) = accel_elastic(2,iglob) - ty*weight
+                 accel_elastic(3,iglob) = accel_elastic(3,iglob) - (tz - tz_store)*weight
+                if(it == NSTEP) close(f_num)
+
+              enddo
+           else if (localbackground_edges_type(kkk) == 4) then!top
+              j = NGLLZ
+              do i = 1, NGLLX 
+                 iglob = ibool(i,j,ispec)
+                 xxi = + gammaz(i,j,ispec) * jacobian(i,j,ispec)
+                 zxi = - gammax(i,j,ispec) * jacobian(i,j,ispec)
+                 jacobian1D = sqrt(xxi**2 + zxi**2)
+                 nx = - zxi / jacobian1D
+                 nz = + xxi / jacobian1D
+                 weight = jacobian1D * wxgll(i)
+
+                 f_num = ispec * 100 + i * 10 + j 
+                 if (it == 1) then
+                    write(fname, "('./background_model/OUTPUT_FILES/&
+                         &localboundaryinfo/elmnt',i8.8,'_',&
+                         &i1.1,'_',i1.1)") ispec, i, j
+                    open(unit=f_num,file=trim(fname),status='unknown',&
+                         action='read',iostat=ios)
+                    if( ios /= 0 ) stop 'error reading local/background info'
+                 endif
+                 read(f_num,"(i8.8,2x,e12.4,2x,e12.4,e12.4,2x,e12.4,2x,e12.4)") it_read,tx_store,tz_store,vx_store,vy_store,vx_store
+                 vx = veloc_elastic(1,iglob) - vx_store
+                 vy = veloc_elastic(2,iglob) - vy_store
+                 vz = veloc_elastic(3,iglob) - vz_store
+
+                 vn = nx*vx+nz*vz
+
+                 tx = rho_vp*vn*nx+rho_vs*(vx-vn*nx)
+                 ty = rho_vs*vy
+                 tz = rho_vp*vn*nz+rho_vs*(vz-vn*nz)
+
+                 accel_elastic(1,iglob) = accel_elastic(1,iglob) - (tx - tx_store)*weight
+                 accel_elastic(2,iglob) = accel_elastic(2,iglob) - ty*weight
+                 accel_elastic(3,iglob) = accel_elastic(3,iglob) - (tz - tz_store)*weight
+                if(it == NSTEP) close(f_num)
+
+              enddo
+           else if (localbackground_edges_type(kkk) == 3) then!bottom
+              j = 1
+              do i = 1, NGLLX
+                 iglob = ibool(i,j,ispec)
+                 xxi = + gammaz(i,j,ispec) * jacobian(i,j,ispec)
+                 zxi = - gammax(i,j,ispec) * jacobian(i,j,ispec)
+                 jacobian1D = sqrt(xxi**2 + zxi**2)
+                 nx = + zxi / jacobian1D
+                 nz = - xxi / jacobian1D
+                 weight = jacobian1D * wxgll(i)
+
+                 f_num = ispec * 100 + i * 10 + j 
+                 if (it == 1) then
+                    write(fname, "('./background_model/OUTPUT_FILES/&
+                         &localboundaryinfo/elmnt',i8.8,'_',&
+                         &i1.1,'_',i1.1)") ispec, i, j
+                    open(unit=f_num,file=trim(fname),status='unknown',&
+                         action='read',iostat=ios)
+                    if( ios /= 0 ) stop 'error reading local/background info'
+                 endif
+                 read(f_num,"(i8.8,2x,e12.4,2x,e12.4,e12.4,2x,e12.4,2x,e12.4)") it_read,tx_store,tz_store,vx_store,vy_store,vx_store
+                 vx = veloc_elastic(1,iglob) - vx_store
+                 vy = veloc_elastic(2,iglob) - vy_store
+                 vz = veloc_elastic(3,iglob) - vz_store
+
+                 vn = nx*vx+nz*vz
+
+                 tx = rho_vp*vn*nx+rho_vs*(vx-vn*nx)
+                 ty = rho_vs*vy
+                 tz = rho_vp*vn*nz+rho_vs*(vz-vn*nz)
+
+                 accel_elastic(1,iglob) = accel_elastic(1,iglob) - (tx - tx_store)*weight
+                 accel_elastic(2,iglob) = accel_elastic(2,iglob) - ty*weight
+                 accel_elastic(3,iglob) = accel_elastic(3,iglob) - (tz - tz_store)*weight
+                if(it == NSTEP) close(f_num)
+
+              enddo
+          endif
+          exit loop2
+       endif!!end ispec == localbackground_local_ispec(kkk)
+    enddo loop2
+   enddo!end loop over all elements
+  endif
+
+  
   !
   !--- Clayton-Engquist condition if elastic
   !

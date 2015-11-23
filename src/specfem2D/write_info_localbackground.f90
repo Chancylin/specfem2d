@@ -83,8 +83,9 @@
             stop 'error, cannot detect what kind of edge for local/background element'
         endif
         open(199,file='./OUTPUT_FILES/edges_type')
-        write(199,*) ispec, localbackground_edges_type(inum), coorg(1,node1), coorg(2,node1), &
-          node1_i, node1_j, coorg(1,node2), coorg(2,node2), node2_i, node2_j
+        write(199,*) ispec, localbackground_edges_type(inum)
+       ! write(199,*) ispec, localbackground_edges_type(inum), coorg(1,node1), coorg(2,node1), &
+       !   node1_i, node1_j, coorg(1,node2), coorg(2,node2), node2_i, node2_j
        enddo
        close(199)
   endif

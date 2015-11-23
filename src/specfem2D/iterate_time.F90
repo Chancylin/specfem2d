@@ -94,6 +94,28 @@ subroutine iterate_time()
       call check_nodesToGLL()
   endif
 
+ !! !!dirty test by lcx
+ !! print *,'input j'
+ !! read(*,*)j
+ !! i = 1 
+ !! open(111,file='./OUTPUT_FILES/norm_vector')
+ !! do ispec = 1,nspec
+ !!    loop1:  do inum = 1, num_local_background_edges
+ !!    if (ispec == localbackground_local_ispec(inum)) then
+ !!        iglob = ibool(i,j,ispec)
+ !!        xgamma = - xiz(i,j,ispec) * jacobian(i,j,ispec)
+ !!        zgamma = + xix(i,j,ispec) * jacobian(i,j,ispec)
+ !!        jacobian1D = sqrt(xgamma**2 + zgamma**2)
+ !!        nx = - zgamma / jacobian1D
+ !!        nz = + xgamma / jacobian1D
+ !!        write(111,*) coord(1,ibool(i,j,ispec)),'  ',coord(2,ibool(i,j,ispec)),'  ',nx,nz 
+ !!        exit loop1
+ !!    endif
+ !!    enddo loop1
+ !! enddo
+ !! close(111)
+ !! stop 'dirty test is finished'
+  !!
   do it = 1,NSTEP
     ! compute current time
     timeval = (it-1)*deltat

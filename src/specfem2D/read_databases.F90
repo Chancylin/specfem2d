@@ -56,7 +56,7 @@
   character(len=80) :: datlin
   character(len=256)  :: prname
 
-  !bylcx:  opens local_background_boundary file
+  !by lcx:  opens local_background_boundary file
   write(prname,231) myrank
   open(unit=19,file=prname,status='old',action='read',iostat=ier)
   if( ier /= 0 ) call exit_MPI('error opening file OUTPUT/local_background_boundary***')
@@ -1108,6 +1108,40 @@
 
 
   end subroutine read_localbackground_coupled
+
+!
+!-------------------------------------------------------------------------------------------------
+!by lcx: this subroutine is used to read local elements at local boundary from './OUTPUT_FILES/edge_type'.
+! The number and edge type of the element will be read.
+
+  subroutine read_local_element_boundary()
+
+! reads local elements at local boundary
+  use specfem_par, only : num_local_background_edges,&
+                          localbackground_local_ispec,&
+                          localbackground_edges_type
+
+  implicit none
+  include "constants.h"
+
+  ! local parameters
+  integer :: inum!, jnum, kk
+  integer :: localbackground_local_ispec_read,localbackground_edges_type_read
+
+  ! initializes
+  localbackground_local_ispec(:) = 0
+  localbackground_edges_type(:) = 0
+  ! reads local and background coupled edges at boundary
+   open(111,file='./OUTPUT_FILES/edges_type',action='read',status='old')
+    do inum = 1, num_local_background_edges
+      read(111,*) localbackground_local_ispec_read, localbackground_edges_type_read
+      localbackground_local_ispec(inum) = localbackground_local_ispec_read
+      localbackground_edges_type(inum) = localbackground_edges_type_read
+    enddo
+   close(111)
+
+  end subroutine read_local_element_boundary
+
 
 !
 !-------------------------------------------------------------------------------------------------

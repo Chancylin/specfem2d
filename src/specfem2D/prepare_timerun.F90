@@ -917,6 +917,9 @@ subroutine prepare_timerun_read()
   implicit none
 
   integer i,ispec,ispec2,j
+  
+  !by lcx temp_char
+  character(len=256)datlin
 
 #ifdef USE_MPI
   include "precision.h"
@@ -1566,10 +1569,17 @@ subroutine prepare_timerun_read()
   !by lcx
   !------read local background boudary elements and nodes
   !
-  print *, 'will you run this program to record info at local and background boundary'
-  print *, 'if so, enter 1; otherwise enter 0'
+  !switch for recording local/background info
+  !may need to change into MPI code later
+  open(111,file='./DATA/switch_solver',action='read',status='old')
+  read (111,*) datlin
+  read (111,*) record_local_background_boundary
+  read (111,*) datlin
+  read (111,*) read_local_background_boundary
+  print *,'record_local_background_boundary= ',record_local_background_boundary
+  print *,'read_local_background_boundary = ', read_local_background_boundary
+  close (111)
   !read (*,"(i1)") record_local_background_boundary
-  record_local_background_boundary = 1
   if ( record_local_background_boundary == 1 ) then
      any_local_background_edges = .true.
      allocate(localbackground_local_ispec(num_local_background_edges))      
@@ -1578,6 +1588,13 @@ subroutine prepare_timerun_read()
      call read_localbackground_coupled()
   endif
   close(19)
+  
+  if ( read_local_background_boundary == 1 ) then
+     allocate(localbackground_local_ispec(num_local_background_edges))
+     allocate(localbackground_edges_type(num_local_background_edges))
+     !!call this to read info from './OUTPUT_FILES/edges_type'
+     call read_local_element_boundary()
+  endif
   
  ! deallocate ()
 
