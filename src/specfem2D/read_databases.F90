@@ -57,11 +57,16 @@
   character(len=256)  :: prname
 
   !by lcx:  opens local_background_boundary file
-  write(prname,231) myrank
-  open(unit=19,file=prname,status='old',action='read',iostat=ier)
-  if( ier /= 0 ) call exit_MPI('error opening file OUTPUT/local_background_boundary***')
-  read(19,"(a80)") datlin
-  read(19,*) num_local_background_edges
+  !for recording, it read all the info in this file
+  !for reading back, it just read the fisrt two lines to know how many 
+  !local elements at the boundary
+  if(record_local_background_boundary == 1 .or. read_local_background_boundary == 1) then
+     write(prname,231) myrank
+     open(unit=19,file=prname,status='old',action='read',iostat=ier)
+     if( ier /= 0 ) call exit_MPI('error opening file OUTPUT/local_background_boundary***')
+     read(19,"(a80)") datlin
+     read(19,*) num_local_background_edges
+  endif
 
   ! opens Database file
   write(prname,230) myrank
@@ -1101,7 +1106,6 @@
 !    do inum = 1, num_local_background_nodes
 !       localbackground_nodes(inum) = localbackground_nodes_temp_exchange(inum)
 !    enddo
-     
   endif
 
    

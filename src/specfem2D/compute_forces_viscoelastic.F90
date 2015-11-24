@@ -1077,7 +1077,8 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
                        open(unit=f_num,file=trim(fname),status='unknown',&
                             position='append',iostat=ios)
                        if( ios /= 0 ) stop 'error saving local/background traction'
-                       write(f_num,"(i8.8,2x,e12.4,2x,e12.4)",advance='no') it,tx_store,tz_store
+                       write(f_num,"(e12.4,2x,e12.4)") tx_store,tz_store
+                       if(it == NSTEP) close(f_num)
                     else if ( j ==1 .and. localbackground_edges_type(kkk) == 3) then!bottom
                        xxi = + gammaz(i,j,ispec) * jacobian(i,j,ispec)
                        zxi = - gammax(i,j,ispec) * jacobian(i,j,ispec)
@@ -1093,7 +1094,8 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
                        open(unit=f_num,file=trim(fname),status='unknown',&
                             position='append',iostat=ios)
                        if( ios /= 0 ) stop 'error saving local/background traction'
-                       write(f_num,"(i8.8,2x,e12.4,2x,e12.4)",advance='no') it,tx_store,tz_store
+                       write(f_num,"(e12.4,2x,e12.4)") tx_store,tz_store
+                       if(it == NSTEP) close(f_num)
                    endif
                    exit loop1
                 endif!!end ispec == localbackground_local_ispec(kkk)
@@ -1319,7 +1321,7 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
                        action='read',iostat=ios)
                   if( ios /= 0 ) stop 'error reading local/background info'
                 endif
-                read(f_num,"(i8.8,2x,e12.4,2x,e12.4,e12.4,2x,e12.4,2x,e12.4)") it_read,tx_store,tz_store,vx_store,vy_store,vx_store
+                read(f_num,"(i8.8,2x,e12.4,2x,e12.4,2x,e12.4,e12.4,2x,e12.4)") it_read,vx_store,vy_store,vz_store,tx_store,tz_store
                 vx = veloc_elastic(1,iglob) - vx_store
                 vy = veloc_elastic(2,iglob) - vy_store
                 vz = veloc_elastic(3,iglob) - vz_store
@@ -1329,6 +1331,25 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
                 tx = rho_vp*vn*nx+rho_vs*(vx-vn*nx)
                 ty = rho_vs*vy
                 tz = rho_vp*vn*nz+rho_vs*(vz-vn*nz)
+
+                !!!drity test
+             !   if (ispec == 8786 .and. j == 1) then
+             !      if(it == 1)then
+             !      open(111,file='./OUTPUT_FILES/dirty_test_8786_1_1')
+             !      write(111,*) nx,nz
+             !      endif
+             !      write(111,"(i8.8,2x,e12.4,2x,e12.4,2x,e12.4,2x,e12.4)") it,vx,vz,tx,tz
+             !      if(it == NSTEP)close(111)
+             !   endif
+             !   if (ispec == 8596 .and. j == 1) then
+             !      if(it == 1)then
+             !      open(112,file='./OUTPUT_FILES/dirty_test_8596_1_1')
+             !      write(112,*) nx,nz
+             !      endif
+             !      write(112,"(i8.8,2x,e12.4,2x,e12.4,2x,e12.4,2x,e12.4)") it,vx,vz,tx,tz
+             !      if(it == NSTEP)close(111)
+             !   endif
+                !!
 
                 accel_elastic(1,iglob) = accel_elastic(1,iglob) - ( tx - tx_store)*weight
                 accel_elastic(2,iglob) = accel_elastic(2,iglob) - ty*weight
@@ -1356,7 +1377,7 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
                          action='read',iostat=ios)
                     if( ios /= 0 ) stop 'error reading local/background info'
                  endif
-                 read(f_num,"(i8.8,2x,e12.4,2x,e12.4,e12.4,2x,e12.4,2x,e12.4)") it_read,tx_store,tz_store,vx_store,vy_store,vx_store
+                 read(f_num,"(i8.8,2x,e12.4,2x,e12.4,2x,e12.4,e12.4,2x,e12.4)") it_read,vx_store,vy_store,vz_store,tx_store,tz_store
                  vx = veloc_elastic(1,iglob) - vx_store
                  vy = veloc_elastic(2,iglob) - vy_store
                  vz = veloc_elastic(3,iglob) - vz_store
@@ -1393,7 +1414,7 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
                          action='read',iostat=ios)
                     if( ios /= 0 ) stop 'error reading local/background info'
                  endif
-                 read(f_num,"(i8.8,2x,e12.4,2x,e12.4,e12.4,2x,e12.4,2x,e12.4)") it_read,tx_store,tz_store,vx_store,vy_store,vx_store
+                 read(f_num,"(i8.8,2x,e12.4,2x,e12.4,2x,e12.4,e12.4,2x,e12.4)") it_read,vx_store,vy_store,vz_store,tx_store,tz_store
                  vx = veloc_elastic(1,iglob) - vx_store
                  vy = veloc_elastic(2,iglob) - vy_store
                  vz = veloc_elastic(3,iglob) - vz_store
@@ -1430,7 +1451,7 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
                          action='read',iostat=ios)
                     if( ios /= 0 ) stop 'error reading local/background info'
                  endif
-                 read(f_num,"(i8.8,2x,e12.4,2x,e12.4,e12.4,2x,e12.4,2x,e12.4)") it_read,tx_store,tz_store,vx_store,vy_store,vx_store
+                 read(f_num,"(i8.8,2x,e12.4,2x,e12.4,2x,e12.4,e12.4,2x,e12.4)") it_read,vx_store,vy_store,vz_store,tx_store,tz_store
                  vx = veloc_elastic(1,iglob) - vx_store
                  vy = veloc_elastic(2,iglob) - vy_store
                  vz = veloc_elastic(3,iglob) - vz_store

@@ -1,5 +1,5 @@
 # title of job
-title                           = Test of SPECFEM2D with disk plane (global)
+title                           = Test of SPECFEM2D with disk plane (global, hetero)
 
 # axisymmetric (2.5D) or Cartesian planar (2D) simulation
 AXISYM                          = .false.
@@ -134,7 +134,7 @@ nbmodels                        = 3
 #   tomo:        model_number -1 0 0 A 0 0 0 0 0 0 0 0 0 0
 
 1 1 10000.0 6000.0 0.0 0 0 9999.0 9999.0 0 0 0 0 0 0
-2 1 5000.0 10000.0 6000.0 0 0 9999.0 9999.0 0 0 0 0 0 0
+2 1 5000.0 10200.0 6200.0 0 0 9999.0 9999.0 0 0 0 0 0 0
 3 1 5000.0 10000.0 6000.0 0 0 9999.0 9999.0 0 0 0 0 0 0
 
 # external tomography file

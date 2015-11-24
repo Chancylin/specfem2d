@@ -1585,11 +1585,14 @@ subroutine prepare_timerun_read()
      allocate(localbackground_local_ispec(num_local_background_edges))      
      allocate(localbackground_background_ispec(num_local_background_edges))
      allocate(localbackground_nodes(num_local_background_edges*2))
+     !this read all elments and nodes info from 'OUTPUT/local_background_boundary'
      call read_localbackground_coupled()
+     close(19)
   endif
-  close(19)
   
   if ( read_local_background_boundary == 1 ) then
+     close(19)!note that we just get num_local_background_edges from 
+     !OUTPUT/local_background_boundary, then close it
      allocate(localbackground_local_ispec(num_local_background_edges))
      allocate(localbackground_edges_type(num_local_background_edges))
      !!call this to read info from './OUTPUT_FILES/edges_type'
