@@ -250,6 +250,12 @@ subroutine iterate_time()
             endif
           endif
         endif
+
+        !by lcx: save info at local/background elments.
+       if ( record_local_background_boundary == 1 ) then
+           call write_info_localbackground_to_file(it)
+       endif
+    !!end
 ! *********************************************************
 ! ************* main solver for the acoustic elements
 ! *********************************************************
@@ -1375,11 +1381,6 @@ subroutine iterate_time()
      seismo_offset = seismo_offset + seismo_current
      seismo_current = 0
    endif  ! of display images at a given time step
-    !by lcx: save info at local/background elments.
-   if ( record_local_background_boundary == 1 ) then
-       call write_info_localbackground_to_file(it)
-   endif
-    !!end
 
   enddo ! end of the main time loop
   

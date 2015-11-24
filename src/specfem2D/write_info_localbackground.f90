@@ -127,8 +127,8 @@
              open(unit=f_num,file=trim(fname),status='unknown',&
                   position='append',iostat=ios)
              if( ios /= 0 ) stop 'error saving local/background boundary nodes velocity'
-             write(f_num,"(e12.4,2x,e12.4,2x,e12.4)") dxd,dyd,dzd
-             if(t_num == NSTEP) close(f_num)
+             write(f_num,"(i8.8,2x,e12.4,2x,e12.4,2x,e12.4)",advance='no')it, dxd,dyd,dzd
+            ! if(t_num == NSTEP) close(f_num)
            enddo
         endif 
 
@@ -146,8 +146,8 @@
              open(unit=f_num,file=trim(fname),status='unknown',&
                   position='append',iostat=ios)
              if( ios /= 0 ) stop 'error saving local/background boundary nodes velocity'
-             write(f_num,"(e12.4,2x,e12.4,2x,e12.4)") dxd,dyd,dzd
-             if(t_num == NSTEP) close(f_num)
+             write(f_num,"(i8.8,2x,e12.4,2x,e12.4,2x,e12.4)",advance='no')it, dxd,dyd,dzd
+            ! if(t_num == NSTEP) close(f_num)
            enddo
         endif 
     enddo

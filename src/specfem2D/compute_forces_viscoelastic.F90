@@ -84,7 +84,7 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
   !by lcx: for traction storage. by lcx
   !actually, you may need to use these values as double precision
   !but considering we just save them as signle precision
-  real(kind=CUSTOM_REAL) :: tx_store, tz_store, vx_store, vy_store, vz_store
+  real(kind=CUSTOM_REAL) :: tx_store, tz_store, vx_store, vy_store, vz_store 
   integer  :: kkk,it_read
 
   ! for analytical initial plane wave for Bielak's conditions
@@ -1043,8 +1043,8 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
                        open(unit=f_num,file=trim(fname),status='unknown',&
                             position='append',iostat=ios)
                        if( ios /= 0 ) stop 'error saving local/background traction'
-                       !write(f_num,"(i8.8,2x,f8.4,2x,f8.4)",advance='no') it,tx_store,tz_store
-                       write(f_num,"(i8.8,2x,e12.4,2x,e12.4,2x,e12.4)",advance='no') it, sigma_xx, sigma_xz, sigma_zz
+                       write(f_num,"(e12.4,2x,e12.4)") tx_store,tz_store
+                       if(it == NSTEP) close(f_num)
                     else if (i == NGLLX .and. localbackground_edges_type(kkk) == 2) then!right
                        xgamma = - xiz(i,j,ispec) * jacobian(i,j,ispec)
                        zgamma = + xix(i,j,ispec) * jacobian(i,j,ispec)
@@ -1060,7 +1060,8 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
                        open(unit=f_num,file=trim(fname),status='unknown',&
                             position='append',iostat=ios)
                        if( ios /= 0 ) stop 'error saving local/background traction'
-                       write(f_num,"(i8.8,2x,e12.4,2x,e12.4)",advance='no') it,tx_store,tz_store
+                       write(f_num,"(e12.4,2x,e12.4)") tx_store,tz_store
+                       if(it == NSTEP) close(f_num)
                     else if ( j == NGLLZ .and. localbackground_edges_type(kkk) == 4) then!top
                        xxi = + gammaz(i,j,ispec) * jacobian(i,j,ispec)
                        zxi = - gammax(i,j,ispec) * jacobian(i,j,ispec)
@@ -1329,9 +1330,9 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
                 ty = rho_vs*vy
                 tz = rho_vp*vn*nz+rho_vs*(vz-vn*nz)
 
-                accel_elastic(1,iglob) = accel_elastic(1,iglob) - ( tx - 2*tx_store)*weight
+                accel_elastic(1,iglob) = accel_elastic(1,iglob) - ( tx - tx_store)*weight
                 accel_elastic(2,iglob) = accel_elastic(2,iglob) - ty*weight
-                accel_elastic(3,iglob) = accel_elastic(3,iglob) - ( tz - 2*tz_store)*weight
+                accel_elastic(3,iglob) = accel_elastic(3,iglob) - ( tz - tz_store)*weight
                 if(it == NSTEP) close(f_num)
 
               enddo
