@@ -1579,6 +1579,19 @@ subroutine prepare_timerun_read()
   print *,'record_local_background_boundary= ',record_local_background_boundary
   print *,'read_local_background_boundary = ', read_local_background_boundary
   close (111)
+  
+  !by lcx:  opens local_background_boundary file
+  !for recording, it read all the info in this file
+  !for reading back, it just read the fisrt two lines to know how many 
+  !local elements at the boundary
+  if(record_local_background_boundary == 1 .or. read_local_background_boundary == 1) then
+    write(datlin,231) myrank
+231 format('./OUTPUT_FILES/local_background_boundary',i5.5)
+    open(unit=19,file=trim(datlin),status='old',action='read',iostat=ier)
+    if( ier /= 0 ) call exit_MPI('error opening file OUTPUT/local_background_boundary***')
+    read(19,"(a80)") datlin
+    read(19,*) num_local_background_edges
+  endif
   !read (*,"(i1)") record_local_background_boundary
   if ( record_local_background_boundary == 1 ) then
      any_local_background_edges = .true.

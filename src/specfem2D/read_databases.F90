@@ -60,13 +60,18 @@
   !for recording, it read all the info in this file
   !for reading back, it just read the fisrt two lines to know how many 
   !local elements at the boundary
-  if(record_local_background_boundary == 1 .or. read_local_background_boundary == 1) then
-     write(prname,231) myrank
-     open(unit=19,file=prname,status='old',action='read',iostat=ier)
-     if( ier /= 0 ) call exit_MPI('error opening file OUTPUT/local_background_boundary***')
-     read(19,"(a80)") datlin
-     read(19,*) num_local_background_edges
-  endif
+!  print *,'record_local_background_boundary =', record_local_background_boundary
+!  print *,'read_local_background_boundary =', read_local_background_boundary
+!  stop 'test'
+!  if(record_local_background_boundary == 1 .or. read_local_background_boundary == 1) then
+!     write(prname,231) myrank
+!     open(unit=19,file=prname,status='old',action='read',iostat=ier)
+!     if( ier /= 0 ) call exit_MPI('error opening file OUTPUT/local_background_boundary***')
+!     read(19,"(a80)") datlin
+!     read(19,*) num_local_background_edges
+!     print *,num_local_background_edges
+!     stop ',num_local_background_edges read in'
+!  endif
 
   ! opens Database file
   write(prname,230) myrank
@@ -322,7 +327,7 @@
 
   ! output formats
 230 format('./OUTPUT_FILES/Database',i5.5)
-231 format('./OUTPUT_FILES/local_background_boundary',i5.5)
+!231 format('./OUTPUT_FILES/local_background_boundary',i5.5)
 
 200 format(//1x,'C o n t r o l',/1x,13('='),//5x,&
   'Number of spectral element control nodes. . .(npgeo) =',i8/5x, &

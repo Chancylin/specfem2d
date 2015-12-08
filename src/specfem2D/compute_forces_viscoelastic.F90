@@ -1322,6 +1322,7 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
                   if( ios /= 0 ) stop 'error reading local/background info'
                 endif
                 read(f_num,"(i8.8,2x,e12.4,2x,e12.4,2x,e12.4,e12.4,2x,e12.4)") it_read,vx_store,vy_store,vz_store,tx_store,tz_store
+
                 vx = veloc_elastic(1,iglob) - vx_store
                 vy = veloc_elastic(2,iglob) - vy_store
                 vz = veloc_elastic(3,iglob) - vz_store
