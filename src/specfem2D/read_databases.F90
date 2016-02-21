@@ -1136,20 +1136,40 @@
   ! local parameters
   integer :: inum!, jnum, kk
   integer :: localbackground_local_ispec_read,localbackground_edges_type_read
-
+  double precision :: temp_1, temp_2, temp_3, temp_4
   ! initializes
   localbackground_local_ispec(:) = 0
   localbackground_edges_type(:) = 0
   ! reads local and background coupled edges at boundary
    open(111,file='./OUTPUT_FILES/edges_type',action='read',status='old')
     do inum = 1, num_local_background_edges
-      read(111,*) localbackground_local_ispec_read, localbackground_edges_type_read
+      read(111,*) localbackground_local_ispec_read, localbackground_edges_type_read, &
+                   temp_1, temp_2, temp_3, temp_4
       localbackground_local_ispec(inum) = localbackground_local_ispec_read
       localbackground_edges_type(inum) = localbackground_edges_type_read
     enddo
    close(111)
-
   end subroutine read_local_element_boundary
+
+!by lcx: write this temperory subroutine to check whether the edge type of the boundary elements in local model
+!consistent with those in global model
+  subroutine check_edge_local_model()
+  use specfem_par, only : num_local_background_edges,&
+                          localbackground_local_ispec,&
+                          localbackground_edges_type,ibool,coord
+  implicit none
+  integer :: temp_1,temp_2,inum
+  open(113,file='./OUTPUT_FILES/edges_type_check_local',action='write')
+    do inum = 1, num_local_background_edges
+       temp_1=localbackground_local_ispec(inum)
+       temp_2=localbackground_edges_type(inum) !actually we already know this is 1, the left kind edge
+       write(113,*) temp_1,temp_2,coord(1,ibool(1,1,temp_1)),coord(2,ibool(1,1,temp_1)), &
+               coord(1,ibool(1,5,temp_1)),coord(2,ibool(1,5,temp_1))
+    enddo
+  close(113)
+!  stop 'this is a test to check edge coordinate of the boundary elements in local model'
+  end subroutine check_edge_local_model
+!
 
 
 !

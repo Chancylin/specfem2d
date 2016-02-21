@@ -94,6 +94,11 @@ subroutine iterate_time()
       call check_nodesToGLL()
   endif
 
+!!!by lcx: quick test for edges coordinate of the local model
+  if ( read_local_background_boundary == 1 ) then
+      print *, 'here we check the edges coordinate of local model'
+      call check_edge_local_model()
+  endif
  !! !!dirty test by lcx
  !! print *,'input j'
  !! read(*,*)j
