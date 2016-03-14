@@ -135,7 +135,12 @@ subroutine iterate_time()
 
         if( any_acoustic ) then
           ! free surface for an acoustic medium
-          if( nelem_acoustic_surface > 0 ) then
+          !by lcx: I add 'read_local_background_boundary /= 1' here so value at free surface will not
+          !be forced to zero. just a quick trick here. More modification need to do in other place
+          !if models get more complicated
+          if( nelem_acoustic_surface > 0 .and. read_local_background_boundary /= 1) then
+          !if( nelem_acoustic_surface > 0 ) then
+            print *,'run this step. test by lcx'
             call enforce_acoustic_free_surface(potential_dot_dot_acoustic,potential_dot_acoustic, &
                                                potential_acoustic)
           endif
@@ -386,7 +391,12 @@ subroutine iterate_time()
 
         if( any_acoustic ) then
           ! free surface for an acoustic medium
-          if( nelem_acoustic_surface > 0 ) then
+
+          !by lcx: I add 'read_local_background_boundary /= 1' here so value at free surface will not
+          !be forced to zero. just a quick trick here. More modification need to do in other place
+          !if models get more complicated
+          if( nelem_acoustic_surface > 0 .and. read_local_background_boundary /= 1) then
+          !if( nelem_acoustic_surface > 0 ) then
             call enforce_acoustic_free_surface(potential_dot_dot_acoustic,potential_dot_acoustic, &
                                                potential_acoustic)
             if( SIMULATION_TYPE == 3 ) then

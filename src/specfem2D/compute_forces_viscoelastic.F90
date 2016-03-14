@@ -1027,7 +1027,7 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
 !!!by lcx: add the code here to read the traction of GLL points
           if ( record_local_background_boundary == 1 ) then
             loop1:  do kkk = 1, num_local_background_edges
-                if (ispec == localbackground_local_ispec(kkk)) then
+                if (ispec == localbackground_local_ispec(kkk) ) then
                    if (i == 1 .and. localbackground_edges_type(kkk) == 1) then!left
                        xgamma = - xiz(i,j,ispec) * jacobian(i,j,ispec)
                        zgamma = + xix(i,j,ispec) * jacobian(i,j,ispec)
@@ -1290,7 +1290,7 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
   if( read_local_background_boundary == 1) then
     do ispec = 1,nspec
    loop2:  do kkk = 1, num_local_background_edges
-       if (ispec == localbackground_local_ispec(kkk)) then
+       if (ispec == localbackground_local_ispec(kkk) .and. elastic(ispec) ) then
           ! get elastic parameters of current spectral element
           lambdal_unrelaxed_elastic = poroelastcoef(1,1,kmato(ispec))
           mul_unrelaxed_elastic = poroelastcoef(2,1,kmato(ispec))

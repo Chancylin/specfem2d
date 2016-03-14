@@ -112,7 +112,7 @@
        node2_i = localbackground_node2_gll(1,inum)
        node2_j = localbackground_node2_gll(2,inum)
       ! edge_type = localbackground_edges_type(inum)
-        
+       if ( elastic(ispec) ) then !!store boundary info for elastic elements
         if ( node1_i == node2_i ) then
            do j = 1,NGLLZ
              iglob = ibool(node1_i,j,ispec)
@@ -151,7 +151,45 @@
              write(f_num,"(i8.8,2x,e12.4,2x,e12.4,2x,e12.4)",advance='no')it, dxd,dyd,dzd
             ! if(t_num == NSTEP) close(f_num)
            enddo
-        endif 
+        endif
+       else if (acoustic(ispec)) then !store boundary info for acoustic elements
+
+           if ( node1_i == node2_i ) then
+              do j = 1,NGLLZ
+                iglob = ibool(node1_i,j,ispec)
+                pot_dot =  potential_dot_acoustic(iglob)
+                write(fname, "('./OUTPUT_FILES/&
+                      &localboundaryinfo/elmnt',i8.8,'_',&
+                      &i1.1,'_',i1.1)") &
+                      ispec, node1_i,j
+                !!!this generate an unique file number to every gll point of 
+                !!!every element
+                f_num = ispec * 100 + node1_i * 10 + j
+                open(unit=f_num,file=trim(fname),status='unknown',&
+                     position='append',iostat=ios)
+                if( ios /= 0 ) stop 'error saving local/background boundary nodes potential_dot'
+                write(f_num,"(i8.8,2x,e12.4)",advance='no')it, pot_dot
+               ! if(t_num == NSTEP) close(f_num)
+              enddo
+           endif 
+
+           if ( node1_j == node2_j ) then   
+              do i = 1,NGLLX
+                iglob = ibool(i,node1_j,ispec)
+                pot_dot =  potential_dot_acoustic(iglob)
+                write(fname, "('./OUTPUT_FILES/&
+                      &localboundaryinfo/elmnt',i8.8,'_',&
+                      &i1.1,'_',i1.1)") &
+                      ispec, i,node1_j
+                f_num = ispec * 100 + i * 10 + node1_j
+                open(unit=f_num,file=trim(fname),status='unknown',&
+                     position='append',iostat=ios)
+                if( ios /= 0 ) stop 'error saving local/background boundary nodes potential_dot'
+                write(f_num,"(i8.8,2x,e12.4)",advance='no')it, pot_dot
+               ! if(t_num == NSTEP) close(f_num)
+              enddo
+           endif
+       endif 
     enddo
    endif
 

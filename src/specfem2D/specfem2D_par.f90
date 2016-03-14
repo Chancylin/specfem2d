@@ -417,6 +417,9 @@ module specfem_par
   real(kind=CUSTOM_REAL), dimension(:), allocatable :: potential_acoustic_init_rk, potential_dot_acoustic_init_rk
   real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: potential_dot_dot_acoustic_rk, potential_dot_acoustic_rk
   real(kind=CUSTOM_REAL), dimension(:), allocatable :: potential_acoustic_adj_coupling
+  !by lcx: add pot_dot as temp storage for potential_dot_acoustic
+  real(kind=CUSTOM_REAL) :: pot_dot  
+
 
   ! for gravitoacoustic medium
   real(kind=CUSTOM_REAL), dimension(:), allocatable :: &

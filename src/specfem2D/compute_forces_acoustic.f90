@@ -67,7 +67,11 @@
                          rmemory_acoustic_dux_dx,rmemory_acoustic_dux_dz,&
                          rmemory_potential_acoustic_LDDRK,alpha_LDDRK,beta_LDDRK,c_LDDRK, &
                          rmemory_acoustic_dux_dx_LDDRK,rmemory_acoustic_dux_dz_LDDRK,&
-                         deltat,STACEY_BOUNDARY_CONDITIONS
+                         deltat,STACEY_BOUNDARY_CONDITIONS, &
+       !!!this is for potential_dot_dot storage. by lcx 
+                         f_num, fname, ios,num_local_background_edges,record_local_background_boundary, &
+                         localbackground_edges_type,localbackground_local_ispec,&
+                         read_local_background_boundary, NSTEP
 
   implicit none
   include "constants.h"
@@ -76,6 +80,10 @@
   real(kind=CUSTOM_REAL), dimension(nglob) :: potential_dot_dot_acoustic,potential_dot_acoustic, &
                                               potential_acoustic,potential_acoustic_old
 
+  !!by lcx: add the variables for potential_dot and potential_dot_dot storage
+  real(kind=CUSTOM_REAL) :: potential_dot_acoustic_store, potential_dot_dot_acoustic_store
+  integer  :: kkk,it_read
+  
   ! local parameters
   integer :: ispec,i,j,k,iglob,ispecabs,ibegin,iend,jbegin,jend
   integer :: ifirstelem,ilastelem
@@ -430,11 +438,204 @@
             potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) &
                                               - potential_dot_dot_acoustic_PML(i,j)
           endif
+
+!!by lcx: here we store the potential_dot_dot_acoustic for the boundary elements
+         if ( record_local_background_boundary == 1 ) then
+            loop1:  do kkk = 1, num_local_background_edges
+                  if ( ispec == localbackground_local_ispec(kkk) ) then
+                      !!!what type of edges do not matter here? since potential_dot_dot_acoustic(iglob)
+                      !!! is scaler
+                         iglob = ibool(i,j,ispec)
+                         f_num = ispec * 100 + i * 10 + j
+                         if ( i == 1 .and. localbackground_edges_type(kkk) == 1 ) then !left
+                             write(fname, "('./OUTPUT_FILES/&
+                                    &localboundaryinfo/elmnt',i8.8,'_',&
+                                    &i1.1,'_',i1.1)") ispec, i, j
+                             open(unit=f_num,file=trim(fname),status='unknown',&
+                                            position='append',iostat=ios)
+                             if( ios /= 0 ) stop 'error saving local/background potential_dot_dot'
+                             write(f_num,"(e12.4)") potential_dot_dot_acoustic(iglob)
+                             if(it == NSTEP) close(f_num)
+                         endif
+                         if ( i == NGLLX .and. localbackground_edges_type(kkk) == 2 ) then !right
+                             write(fname, "('./OUTPUT_FILES/&
+                                    &localboundaryinfo/elmnt',i8.8,'_',&
+                                    &i1.1,'_',i1.1)") ispec, i, j
+                             open(unit=f_num,file=trim(fname),status='unknown',&
+                                            position='append',iostat=ios)
+                             if( ios /= 0 ) stop 'error saving local/background potential_dot_dot'
+                             write(f_num,"(e12.4)") potential_dot_dot_acoustic(iglob)
+                             if(it == NSTEP) close(f_num)
+                         endif
+                         if ( j == NGLLZ .and. localbackground_edges_type(kkk) == 4 ) then !top
+                             write(fname, "('./OUTPUT_FILES/&
+                                    &localboundaryinfo/elmnt',i8.8,'_',&
+                                    &i1.1,'_',i1.1)") ispec, i, j
+                             open(unit=f_num,file=trim(fname),status='unknown',&
+                                            position='append',iostat=ios)
+                             if( ios /= 0 ) stop 'error saving local/background potential_dot_dot'
+                             write(f_num,"(e12.4)") potential_dot_dot_acoustic(iglob)
+                             if(it == NSTEP) close(f_num)
+                         endif
+                         if ( j == 1 .and. localbackground_edges_type(kkk) == 3 ) then !bottom
+                             write(fname, "('./OUTPUT_FILES/&
+                                    &localboundaryinfo/elmnt',i8.8,'_',&
+                                    &i1.1,'_',i1.1)") ispec, i, j
+                             open(unit=f_num,file=trim(fname),status='unknown',&
+                                            position='append',iostat=ios)
+                             if( ios /= 0 ) stop 'error saving local/background potential_dot_dot'
+                             write(f_num,"(e12.4)") potential_dot_dot_acoustic(iglob)
+                             if(it == NSTEP) close(f_num)
+                         endif
+                     exit loop1
+                   endif
+                enddo loop1
+         endif
+
+          
         enddo ! second loop over the GLL points
       enddo
 
     endif ! end of test if acoustic element
   enddo ! end of loop over all spectral elements
+
+
+!by lcx:
+!!this is where the abosorbing condition for scatter wave is applied.
+!!code modification follows the structure of that in 'compute_forces_viscoelastic.F90'
+!for local simulation
+if( read_local_background_boundary == 1) then
+  do ispec = 1,nspec
+ loop2:  do kkk = 1, num_local_background_edges
+     if (ispec == localbackground_local_ispec(kkk) .and. acoustic(ispec) ) then
+        ! get elastic parameters of current spectral element
+        lambdal_relaxed = poroelastcoef(1,1,kmato(ispec))
+        mul_relaxed = poroelastcoef(2,1,kmato(ispec))
+        kappal  = lambdal_relaxed + TWO * mul_relaxed/3._CUSTOM_REAL
+        rhol = density(1,kmato(ispec))
+
+        cpl = sqrt(kappal/rhol)
+
+         if (localbackground_edges_type(kkk) == 1) then!left
+            i = 1
+            do j = 1,NGLLZ
+                iglob = ibool(i,j,ispec)
+                xgamma = - xiz(i,j,ispec) * jacobian(i,j,ispec)
+                zgamma = + xix(i,j,ispec) * jacobian(i,j,ispec)
+                jacobian1D = sqrt(xgamma ** 2 + zgamma ** 2)
+                weight = jacobian1D * wzgll(j)
+
+                f_num = ispec * 100 + i * 10 + j
+                if(it == 1) then
+                  write(fname, "('./background_model/OUTPUT_FILES/&
+                     &localboundaryinfo/elmnt',i8.8,'_',&
+                     &i1.1,'_',i1.1)") ispec, i, j
+                  open(unit=f_num,file=trim(fname),status='unknown',&
+                       action='read',iostat=ios)
+                  if( ios /= 0 ) stop 'error reading local/background info'
+                endif
+                read(f_num,"(i8.8,2x,e12.4,2x,e12.4)") it_read,potential_dot_acoustic_store,potential_dot_dot_acoustic_store
+                ! adds absorbing boundary contribution
+                !by lcx: is this the correct absobring condition for scatter waves??
+                potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) + &
+                           potential_dot_dot_acoustic_store ! - &
+                         ! ( potential_dot_acoustic(iglob) - potential_dot_acoustic_store ) * &
+                         !  weight/cpl/rhol
+                if(it == NSTEP) close(f_num)
+            enddo
+         else if (localbackground_edges_type(kkk) == 2) then!right
+            i = NGLLX
+            do j = 1,NGLLZ
+                iglob = ibool(i,j,ispec)
+                xgamma = - xiz(i,j,ispec) * jacobian(i,j,ispec)
+                zgamma = + xix(i,j,ispec) * jacobian(i,j,ispec)
+                jacobian1D = sqrt(xgamma ** 2 + zgamma ** 2)
+                weight = jacobian1D * wzgll(j)
+
+                f_num = ispec * 100 + i * 10 + j
+                if(it == 1) then
+                  write(fname, "('./background_model/OUTPUT_FILES/&
+                     &localboundaryinfo/elmnt',i8.8,'_',&
+                     &i1.1,'_',i1.1)") ispec, i, j
+                  open(unit=f_num,file=trim(fname),status='unknown',&
+                       action='read',iostat=ios)
+                  if( ios /= 0 ) stop 'error reading local/background info'
+                endif
+                read(f_num,"(i8.8,2x,e12.4,2x,e12.4)") it_read,potential_dot_acoustic_store,potential_dot_dot_acoustic_store
+                ! adds absorbing boundary contribution
+                !by lcx: is this the correct absobring condition for scatter waves??
+                potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) + &
+                           potential_dot_dot_acoustic_store !- &
+                         ! ( potential_dot_acoustic(iglob) - potential_dot_acoustic_store ) * &
+                         !  weight/cpl/rhol
+                if(it == NSTEP) close(f_num)
+            enddo
+         else if (localbackground_edges_type(kkk) == 4) then!top
+            j = NGLLZ
+            do i = 1,NGLLX
+                iglob = ibool(i,j,ispec)
+                xxi = + gammaz(i,j,ispec) * jacobian(i,j,ispec)
+                zxi = - gammax(i,j,ispec) * jacobian(i,j,ispec)
+                jacobian1D = sqrt(xxi ** 2 + zxi ** 2)
+                weight = jacobian1D * wxgll(i)
+
+                f_num = ispec * 100 + i * 10 + j
+                if(it == 1) then
+                  write(fname, "('./background_model/OUTPUT_FILES/&
+                     &localboundaryinfo/elmnt',i8.8,'_',&
+                     &i1.1,'_',i1.1)") ispec, i, j
+                  open(unit=f_num,file=trim(fname),status='unknown',&
+                       action='read',iostat=ios)
+                  if( ios /= 0 ) stop 'error reading local/background info'
+                endif
+                read(f_num,"(i8.8,2x,e12.4,2x,e12.4)") it_read,potential_dot_acoustic_store,potential_dot_dot_acoustic_store
+                ! adds absorbing boundary contribution
+                !by lcx: is this the correct absobring condition for scatter waves??
+                potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) + & 
+                           potential_dot_dot_acoustic_store ! - &
+                         ! ( potential_dot_acoustic(iglob) - potential_dot_acoustic_store ) * &
+                         !  weight/cpl/rhol
+                if(it == NSTEP) close(f_num)
+            enddo
+         else if (localbackground_edges_type(kkk) == 3) then!bottom
+            j = 1
+            do i = 1,NGLLX
+                iglob = ibool(i,j,ispec)
+                xxi = + gammaz(i,j,ispec) * jacobian(i,j,ispec)
+                zxi = - gammax(i,j,ispec) * jacobian(i,j,ispec)
+                jacobian1D = sqrt(xxi ** 2 + zxi ** 2)
+                weight = jacobian1D * wxgll(i)
+
+                f_num = ispec * 100 + i * 10 + j
+                if(it == 1) then
+                  write(fname, "('./background_model/OUTPUT_FILES/&
+                     &localboundaryinfo/elmnt',i8.8,'_',&
+                     &i1.1,'_',i1.1)") ispec, i, j
+                  open(unit=f_num,file=trim(fname),status='unknown',&
+                       action='read',iostat=ios)
+                  if( ios /= 0 ) stop 'error reading local/background info'
+                endif
+                read(f_num,"(i8.8,2x,e12.4,2x,e12.4)") it_read,potential_dot_acoustic_store,potential_dot_dot_acoustic_store
+                ! adds absorbing boundary contribution
+                !by lcx: is this the correct absobring condition for scatter waves??
+                potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) + &
+                           potential_dot_dot_acoustic_store ! - &
+                        !  ( potential_dot_acoustic(iglob) - potential_dot_acoustic_store ) * &
+                        !   weight/cpl/rhol
+                if(it == NSTEP) close(f_num)
+            enddo
+         endif
+         exit loop2
+     endif!! end ispec == localbackground_local_ispec(kkk)
+   enddo loop2
+  enddo !end loop over all elements
+endif
+
+!!!by lcx: test for one point to see why erroneous arithmetic operation
+
+!print *,'pot_dot_dot = ', potential_dot_dot_acoustic(iglob), '  pot_dot = ', potential_dot_acoustic(iglob)
+
+
 !
 !--- absorbing boundaries
 !
