@@ -81,7 +81,7 @@
                                               potential_acoustic,potential_acoustic_old
 
   !!by lcx: add the variables for potential_dot and potential_dot_dot storage
-  real(kind=CUSTOM_REAL) :: potential_dot_acoustic_store, potential_dot_dot_acoustic_store
+  real(kind=CUSTOM_REAL) :: potential_dot_acoustic_store, nx, nz, grad_pot_x_store, grad_pot_z_store
   integer  :: kkk,it_read
   
   ! local parameters
@@ -163,6 +163,61 @@
           dux_dxl = dux_dxi * xixl + dux_dgamma * gammaxl
           dux_dzl = dux_dxi * xizl + dux_dgamma * gammazl
 
+
+          !! by lcx: here we store the derivatives of potential, which will be read back
+          !! as the boudnary term in the local simulation
+          if ( record_local_background_boundary == 1 ) then
+             loop1:  do kkk = 1, num_local_background_edges
+                   if ( ispec == localbackground_local_ispec(kkk) ) then
+                       !!!what type of edges do not matter here? since potential_dot_dot_acoustic(iglob)
+                       !!! is scaler
+                          iglob = ibool(i,j,ispec)
+                          f_num = ispec * 100 + i * 10 + j
+                          if ( i == 1 .and. localbackground_edges_type(kkk) == 1 ) then !left
+                              write(fname, "('./OUTPUT_FILES/&
+                                     &localboundaryinfo/elmnt',i8.8,'_',&
+                                     &i1.1,'_',i1.1)") ispec, i, j
+                              open(unit=f_num,file=trim(fname),status='unknown',&
+                                             position='append',iostat=ios)
+                              if( ios /= 0 ) stop 'error saving local/background grad(potential)'
+                              write(f_num,"(e12.4,2x,e12.4)") dux_dxl,dux_dzl
+                              if(it == NSTEP) close(f_num)
+                          endif
+                          if ( i == NGLLX .and. localbackground_edges_type(kkk) == 2 ) then !right
+                              write(fname, "('./OUTPUT_FILES/&
+                                     &localboundaryinfo/elmnt',i8.8,'_',&
+                                     &i1.1,'_',i1.1)") ispec, i, j
+                              open(unit=f_num,file=trim(fname),status='unknown',&
+                                             position='append',iostat=ios)
+                              if( ios /= 0 ) stop 'error saving local/background grad(potential)'
+                              write(f_num,"(e12.4,2x,e12.4)") dux_dxl,dux_dzl
+                              if(it == NSTEP) close(f_num)
+                          endif
+                          if ( j == NGLLZ .and. localbackground_edges_type(kkk) == 4 ) then !top
+                              write(fname, "('./OUTPUT_FILES/&
+                                     &localboundaryinfo/elmnt',i8.8,'_',&
+                                     &i1.1,'_',i1.1)") ispec, i, j
+                              open(unit=f_num,file=trim(fname),status='unknown',&
+                                             position='append',iostat=ios)
+                              if( ios /= 0 ) stop 'error saving local/background grad(potential)'
+                              write(f_num,"(e12.4,2x,e12.4)") dux_dxl,dux_dzl
+                              if(it == NSTEP) close(f_num)
+                          endif
+                          if ( j == 1 .and. localbackground_edges_type(kkk) == 3 ) then !bottom
+                              write(fname, "('./OUTPUT_FILES/&
+                                     &localboundaryinfo/elmnt',i8.8,'_',&
+                                     &i1.1,'_',i1.1)") ispec, i, j
+                              open(unit=f_num,file=trim(fname),status='unknown',&
+                                             position='append',iostat=ios)
+                              if( ios /= 0 ) stop 'error saving local/background grad(potential)'
+                              write(f_num,"(e12.4,2x,e12.4)") dux_dxl,dux_dzl
+                              if(it == NSTEP) close(f_num)
+                          endif
+                      exit loop1
+                    endif
+                 enddo loop1
+          endif
+ 
           if( AXISYM .and. is_on_the_axis(ispec) .and. i == 1 ) then ! dchi/dr=rho * u_r=0 on the axis
             dux_dxl = ZERO
           endif
@@ -440,57 +495,57 @@
           endif
 
 !!by lcx: here we store the potential_dot_dot_acoustic for the boundary elements
-         if ( record_local_background_boundary == 1 ) then
-            loop1:  do kkk = 1, num_local_background_edges
-                  if ( ispec == localbackground_local_ispec(kkk) ) then
-                      !!!what type of edges do not matter here? since potential_dot_dot_acoustic(iglob)
-                      !!! is scaler
-                         iglob = ibool(i,j,ispec)
-                         f_num = ispec * 100 + i * 10 + j
-                         if ( i == 1 .and. localbackground_edges_type(kkk) == 1 ) then !left
-                             write(fname, "('./OUTPUT_FILES/&
-                                    &localboundaryinfo/elmnt',i8.8,'_',&
-                                    &i1.1,'_',i1.1)") ispec, i, j
-                             open(unit=f_num,file=trim(fname),status='unknown',&
-                                            position='append',iostat=ios)
-                             if( ios /= 0 ) stop 'error saving local/background potential_dot_dot'
-                             write(f_num,"(e12.4)") potential_dot_dot_acoustic(iglob)
-                             if(it == NSTEP) close(f_num)
-                         endif
-                         if ( i == NGLLX .and. localbackground_edges_type(kkk) == 2 ) then !right
-                             write(fname, "('./OUTPUT_FILES/&
-                                    &localboundaryinfo/elmnt',i8.8,'_',&
-                                    &i1.1,'_',i1.1)") ispec, i, j
-                             open(unit=f_num,file=trim(fname),status='unknown',&
-                                            position='append',iostat=ios)
-                             if( ios /= 0 ) stop 'error saving local/background potential_dot_dot'
-                             write(f_num,"(e12.4)") potential_dot_dot_acoustic(iglob)
-                             if(it == NSTEP) close(f_num)
-                         endif
-                         if ( j == NGLLZ .and. localbackground_edges_type(kkk) == 4 ) then !top
-                             write(fname, "('./OUTPUT_FILES/&
-                                    &localboundaryinfo/elmnt',i8.8,'_',&
-                                    &i1.1,'_',i1.1)") ispec, i, j
-                             open(unit=f_num,file=trim(fname),status='unknown',&
-                                            position='append',iostat=ios)
-                             if( ios /= 0 ) stop 'error saving local/background potential_dot_dot'
-                             write(f_num,"(e12.4)") potential_dot_dot_acoustic(iglob)
-                             if(it == NSTEP) close(f_num)
-                         endif
-                         if ( j == 1 .and. localbackground_edges_type(kkk) == 3 ) then !bottom
-                             write(fname, "('./OUTPUT_FILES/&
-                                    &localboundaryinfo/elmnt',i8.8,'_',&
-                                    &i1.1,'_',i1.1)") ispec, i, j
-                             open(unit=f_num,file=trim(fname),status='unknown',&
-                                            position='append',iostat=ios)
-                             if( ios /= 0 ) stop 'error saving local/background potential_dot_dot'
-                             write(f_num,"(e12.4)") potential_dot_dot_acoustic(iglob)
-                             if(it == NSTEP) close(f_num)
-                         endif
-                     exit loop1
-                   endif
-                enddo loop1
-         endif
+!         if ( record_local_background_boundary == 1 ) then
+!            loop1:  do kkk = 1, num_local_background_edges
+!                  if ( ispec == localbackground_local_ispec(kkk) ) then
+!                      !!!what type of edges do not matter here? since potential_dot_dot_acoustic(iglob)
+!                      !!! is scaler
+!                         iglob = ibool(i,j,ispec)
+!                         f_num = ispec * 100 + i * 10 + j
+!                         if ( i == 1 .and. localbackground_edges_type(kkk) == 1 ) then !left
+!                             write(fname, "('./OUTPUT_FILES/&
+!                                    &localboundaryinfo/elmnt',i8.8,'_',&
+!                                    &i1.1,'_',i1.1)") ispec, i, j
+!                             open(unit=f_num,file=trim(fname),status='unknown',&
+!                                            position='append',iostat=ios)
+!                             if( ios /= 0 ) stop 'error saving local/background potential_dot_dot'
+!                             write(f_num,"(e12.4)") potential_dot_dot_acoustic(iglob)
+!                             if(it == NSTEP) close(f_num)
+!                         endif
+!                         if ( i == NGLLX .and. localbackground_edges_type(kkk) == 2 ) then !right
+!                             write(fname, "('./OUTPUT_FILES/&
+!                                    &localboundaryinfo/elmnt',i8.8,'_',&
+!                                    &i1.1,'_',i1.1)") ispec, i, j
+!                             open(unit=f_num,file=trim(fname),status='unknown',&
+!                                            position='append',iostat=ios)
+!                             if( ios /= 0 ) stop 'error saving local/background potential_dot_dot'
+!                             write(f_num,"(e12.4)") potential_dot_dot_acoustic(iglob)
+!                             if(it == NSTEP) close(f_num)
+!                         endif
+!                         if ( j == NGLLZ .and. localbackground_edges_type(kkk) == 4 ) then !top
+!                             write(fname, "('./OUTPUT_FILES/&
+!                                    &localboundaryinfo/elmnt',i8.8,'_',&
+!                                    &i1.1,'_',i1.1)") ispec, i, j
+!                             open(unit=f_num,file=trim(fname),status='unknown',&
+!                                            position='append',iostat=ios)
+!                             if( ios /= 0 ) stop 'error saving local/background potential_dot_dot'
+!                             write(f_num,"(e12.4)") potential_dot_dot_acoustic(iglob)
+!                             if(it == NSTEP) close(f_num)
+!                         endif
+!                         if ( j == 1 .and. localbackground_edges_type(kkk) == 3 ) then !bottom
+!                             write(fname, "('./OUTPUT_FILES/&
+!                                    &localboundaryinfo/elmnt',i8.8,'_',&
+!                                    &i1.1,'_',i1.1)") ispec, i, j
+!                             open(unit=f_num,file=trim(fname),status='unknown',&
+!                                            position='append',iostat=ios)
+!                             if( ios /= 0 ) stop 'error saving local/background potential_dot_dot'
+!                             write(f_num,"(e12.4)") potential_dot_dot_acoustic(iglob)
+!                             if(it == NSTEP) close(f_num)
+!                         endif
+!                     exit loop1
+!                   endif
+!                enddo loop1
+!         endif
 
           
         enddo ! second loop over the GLL points
@@ -523,6 +578,8 @@ if( read_local_background_boundary == 1) then
                 xgamma = - xiz(i,j,ispec) * jacobian(i,j,ispec)
                 zgamma = + xix(i,j,ispec) * jacobian(i,j,ispec)
                 jacobian1D = sqrt(xgamma ** 2 + zgamma ** 2)
+                nx = - zgamma / jacobian1D
+                nz = + xgamma / jacobian1D
                 weight = jacobian1D * wzgll(j)
 
                 f_num = ispec * 100 + i * 10 + j
@@ -534,13 +591,14 @@ if( read_local_background_boundary == 1) then
                        action='read',iostat=ios)
                   if( ios /= 0 ) stop 'error reading local/background info'
                 endif
-                read(f_num,"(i8.8,2x,e12.4,2x,e12.4)") it_read,potential_dot_acoustic_store,potential_dot_dot_acoustic_store
+                read(f_num,"(i8.8,2x,e12.4,e12.4,2x,e12.4)") it_read,potential_dot_acoustic_store, &
+                                                                grad_pot_x_store,grad_pot_z_store
                 ! adds absorbing boundary contribution
                 !by lcx: is this the correct absobring condition for scatter waves??
                 potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) + &
-                           potential_dot_dot_acoustic_store ! - &
-                         ! ( potential_dot_acoustic(iglob) - potential_dot_acoustic_store ) * &
-                         !  weight/cpl/rhol
+                           ( nx*grad_pot_x_store + nz*grad_pot_z_store ) * weight/rhol - &
+                           ( potential_dot_acoustic(iglob) - potential_dot_acoustic_store ) * &
+                           weight/cpl/rhol
                 if(it == NSTEP) close(f_num)
             enddo
          else if (localbackground_edges_type(kkk) == 2) then!right
@@ -550,6 +608,8 @@ if( read_local_background_boundary == 1) then
                 xgamma = - xiz(i,j,ispec) * jacobian(i,j,ispec)
                 zgamma = + xix(i,j,ispec) * jacobian(i,j,ispec)
                 jacobian1D = sqrt(xgamma ** 2 + zgamma ** 2)
+                nx = + zgamma / jacobian1D
+                nz = - xgamma / jacobian1D
                 weight = jacobian1D * wzgll(j)
 
                 f_num = ispec * 100 + i * 10 + j
@@ -561,13 +621,14 @@ if( read_local_background_boundary == 1) then
                        action='read',iostat=ios)
                   if( ios /= 0 ) stop 'error reading local/background info'
                 endif
-                read(f_num,"(i8.8,2x,e12.4,2x,e12.4)") it_read,potential_dot_acoustic_store,potential_dot_dot_acoustic_store
+                read(f_num,"(i8.8,2x,e12.4,e12.4,2x,e12.4)") it_read,potential_dot_acoustic_store, &
+                                                                grad_pot_x_store,grad_pot_z_store
                 ! adds absorbing boundary contribution
                 !by lcx: is this the correct absobring condition for scatter waves??
                 potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) + &
-                           potential_dot_dot_acoustic_store !- &
-                         ! ( potential_dot_acoustic(iglob) - potential_dot_acoustic_store ) * &
-                         !  weight/cpl/rhol
+                           ( nx*grad_pot_x_store + nz*grad_pot_z_store ) * weight/rhol - &
+                           ( potential_dot_acoustic(iglob) - potential_dot_acoustic_store ) * &
+                           weight/cpl/rhol
                 if(it == NSTEP) close(f_num)
             enddo
          else if (localbackground_edges_type(kkk) == 4) then!top
@@ -577,6 +638,8 @@ if( read_local_background_boundary == 1) then
                 xxi = + gammaz(i,j,ispec) * jacobian(i,j,ispec)
                 zxi = - gammax(i,j,ispec) * jacobian(i,j,ispec)
                 jacobian1D = sqrt(xxi ** 2 + zxi ** 2)
+                nx = - zxi / jacobian1D
+                nz = + xxi / jacobian1D
                 weight = jacobian1D * wxgll(i)
 
                 f_num = ispec * 100 + i * 10 + j
@@ -588,13 +651,14 @@ if( read_local_background_boundary == 1) then
                        action='read',iostat=ios)
                   if( ios /= 0 ) stop 'error reading local/background info'
                 endif
-                read(f_num,"(i8.8,2x,e12.4,2x,e12.4)") it_read,potential_dot_acoustic_store,potential_dot_dot_acoustic_store
+                read(f_num,"(i8.8,2x,e12.4,e12.4,2x,e12.4)") it_read,potential_dot_acoustic_store, &
+                                                                grad_pot_x_store,grad_pot_z_store
                 ! adds absorbing boundary contribution
                 !by lcx: is this the correct absobring condition for scatter waves??
-                potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) + & 
-                           potential_dot_dot_acoustic_store ! - &
-                         ! ( potential_dot_acoustic(iglob) - potential_dot_acoustic_store ) * &
-                         !  weight/cpl/rhol
+                potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) + &
+                           ( nx*grad_pot_x_store + nz*grad_pot_z_store ) * weight/rhol - &
+                           ( potential_dot_acoustic(iglob) - potential_dot_acoustic_store ) * &
+                           weight/cpl/rhol
                 if(it == NSTEP) close(f_num)
             enddo
          else if (localbackground_edges_type(kkk) == 3) then!bottom
@@ -604,6 +668,8 @@ if( read_local_background_boundary == 1) then
                 xxi = + gammaz(i,j,ispec) * jacobian(i,j,ispec)
                 zxi = - gammax(i,j,ispec) * jacobian(i,j,ispec)
                 jacobian1D = sqrt(xxi ** 2 + zxi ** 2)
+                nx = + zxi / jacobian1D
+                nz = - xxi / jacobian1D
                 weight = jacobian1D * wxgll(i)
 
                 f_num = ispec * 100 + i * 10 + j
@@ -615,13 +681,14 @@ if( read_local_background_boundary == 1) then
                        action='read',iostat=ios)
                   if( ios /= 0 ) stop 'error reading local/background info'
                 endif
-                read(f_num,"(i8.8,2x,e12.4,2x,e12.4)") it_read,potential_dot_acoustic_store,potential_dot_dot_acoustic_store
+                read(f_num,"(i8.8,2x,e12.4,e12.4,2x,e12.4)") it_read,potential_dot_acoustic_store, &
+                                                                grad_pot_x_store,grad_pot_z_store
                 ! adds absorbing boundary contribution
                 !by lcx: is this the correct absobring condition for scatter waves??
                 potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) + &
-                           potential_dot_dot_acoustic_store ! - &
-                        !  ( potential_dot_acoustic(iglob) - potential_dot_acoustic_store ) * &
-                        !   weight/cpl/rhol
+                           ( nx*grad_pot_x_store + nz*grad_pot_z_store ) * weight/rhol - &
+                           ( potential_dot_acoustic(iglob) - potential_dot_acoustic_store ) * &
+                           weight/cpl/rhol
                 if(it == NSTEP) close(f_num)
             enddo
          endif
