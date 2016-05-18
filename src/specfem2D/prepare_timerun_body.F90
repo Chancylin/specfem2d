@@ -991,6 +991,8 @@ integer i,j,ispec,k,iglob,irec,i_source,ispecabs, irecloc
     hgammas_store(i,:) = hgammas(:)
   enddo
 
+!by lcx: set up recording point
+   call setup_recording_bd()
 ! displacement, velocity, acceleration and inverse of the mass matrix for elastic elements
     if(any_elastic) then
       nglob_elastic = nglob
