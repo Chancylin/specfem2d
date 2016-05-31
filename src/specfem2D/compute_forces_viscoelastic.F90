@@ -70,7 +70,9 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
                          rmemory_displ_elastic,rmemory_dux_dx,rmemory_dux_dz,rmemory_duz_dx,rmemory_duz_dz, &
                          rmemory_dux_dx_prime,rmemory_dux_dz_prime,rmemory_duz_dx_prime,rmemory_duz_dz_prime, &
                          rmemory_displ_elastic_LDDRK,rmemory_dux_dx_LDDRK,rmemory_dux_dz_LDDRK,rmemory_duz_dx_LDDRK,&
-                         ROTATE_PML_ACTIVATE,ROTATE_PML_ANGLE,STACEY_BOUNDARY_CONDITIONS,acoustic,time_stepping_scheme
+                         ROTATE_PML_ACTIVATE,ROTATE_PML_ANGLE,STACEY_BOUNDARY_CONDITIONS,acoustic,time_stepping_scheme,&
+                         !lcx: para
+                         record_local_bkgd_boundary
 
   implicit none
   include "constants.h"
@@ -1016,7 +1018,15 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
 
           endif
         enddo
+
+      !!!by lcx: store stress tensor here
+      if ( record_local_bkgd_boundary ) then
+         call record_bd_elmnt_elastic(ispec,i,j,&
+             sigma_xx,sigma_xy,sigma_xz,sigma_zz,sigma_zy)
+      endif
+  
       enddo  ! end of the loops on the collocation points i,j
+
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       ! update the displacement memory variable

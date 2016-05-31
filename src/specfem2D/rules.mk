@@ -114,6 +114,7 @@ specfem2D_OBJECTS = \
 	$O/iterate_time_undoatt.spec.o \
 	$O/lagrange_poly.spec.o \
 	$O/locate_receivers.spec.o \
+	$O/locate_recording_point.spec.o \
 	$O/locate_source_force.spec.o \
 	$O/locate_source_moment_tensor.spec.o \
 	$O/netlib_specfun_erf.spec.o \
@@ -133,10 +134,13 @@ specfem2D_OBJECTS = \
 	$O/prepare_timerun_body.spec.o \
 	$O/read_databases.spec.o \
 	$O/read_external_model.spec.o \
+	$O/read_para_hybird.spec.o \
 	$O/recompute_jacobian.spec.o \
+	$O/record_bd_pnt.spec.o \
 	$O/save_adjoint_kernels.spec.o \
 	$O/save_openDX_jacobian.spec.o \
 	$O/set_sources.spec.o \
+	$O/setup_recording_bd.spec.o \
 	$O/setup_sources_receivers.spec.o \
 	$O/sort_array_coordinates.spec.o \
 	$O/specfem2D.spec.o \
@@ -347,6 +351,7 @@ $O/invert_mass_matrix.spec.o: $O/specfem2D_par.spec.o
 $O/iterate_time.spec.o: $O/specfem2D_par.spec.o
 $O/iterate_time_undoatt.spec.o: $O/specfem2D_par.spec.o
 $O/locate_receivers.spec.o: $O/specfem2D_par.spec.o
+$O/locate_recording_point.spec.o: $O/specfem2D_par.spec.o
 $O/noise_tomography.spec.o: $O/specfem2D_par.spec.o
 $O/paco_beyond_critical.spec.o: $O/specfem2D_par.spec.o
 $O/plot_gll.spec.o: $O/specfem2D_par.spec.o
@@ -363,10 +368,13 @@ $O/prepare_timerun_body.spec.o: $O/specfem2D_par.spec.o
 $O/prepare_timerun_gpu.spec.o: $O/specfem2D_par.spec.o
 $O/read_databases.spec.o: $O/specfem2D_par.spec.o
 $O/read_external_model.spec.o: $O/specfem2D_par.spec.o
+$O/read_para_hybird.spec.o: $O/specfem2D_par.spec.o
 $O/recompute_jacobian.spec.o: $O/specfem2D_par.spec.o
+$O/record_bd_pnt.spec.o: $O/specfem2D_par.spec.o
 $O/save_adjoint_kernels.spec.o: $O/specfem2D_par.spec.o
 $O/save_read_array_for_undoatt.spec.o: $O/specfem2D_par.spec.o
 $O/set_sources.spec.o: $O/specfem2D_par.spec.o
+$O/setup_recording_bd.spec.o: $O/specfem2D_par.spec.o
 $O/setup_sources_receivers.spec.o: $O/specfem2D_par.spec.o
 $O/specfem2D.spec.o: $O/specfem2D_par.spec.o
 $O/update_displacement_scheme.spec.o: $O/specfem2D_par.spec.o

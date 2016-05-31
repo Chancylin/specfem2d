@@ -294,6 +294,39 @@ module specfem_par
   double precision, dimension(:), allocatable :: hxis,hgammas,hpxis,hpgammas
   double precision, dimension(:,:), allocatable :: hxis_store,hgammas_store
 
+  !------------------------------------------------------------------
+  !by lcx: parameters for recording info at points of "points profile"
+  !------------------------------------------------------------------
+  logical :: record_local_bkgd_boundary
+  integer :: npnt,nspec_bd_pnt_elastic, nspec_bd_pnt_acoustic
+  integer, dimension(:), allocatable :: ispec_selected_bd_pnt
+  integer :: nspec_bd_elmt_elastic_pure, nspec_bd_elmt_acoustic_pure
+  integer, dimension(:), allocatable :: ispec_bd_elmt_elastic_pure, ispec_bd_elmt_acoustic_pure
+  
+  double precision, dimension(:,:), allocatable :: hxi_bd_store, hgammar_bd_store
+  double precision, dimension(:), allocatable :: xi_bd_pnt,gamma_bd_pnt
+  double precision, dimension(:), allocatable :: bd_pnt_xval,bd_pnt_zval 
+  double precision, dimension(:), allocatable :: nx_pnt,nz_pnt 
+  double precision, dimension(:), allocatable :: x_final_bd_pnt, z_final_bd_pnt 
+  double precision, dimension(:), allocatable :: x_final_bd_pnt_elastic, z_final_bd_pnt_elastic
+  double precision, dimension(:), allocatable :: x_final_bd_pnt_acoustic, z_final_bd_pnt_acoustic
+
+  integer :: f_num
+  character (len=100) :: fname
+
+  !these are the variables for every GLL points of the elements
+  real(kind=CUSTOM_REAL), dimension(:,:,:,:), allocatable :: stress_bd_elastic, vel_bd_elastic 
+  real(kind=CUSTOM_REAL), dimension(:,:,:,:), allocatable :: grad_pot_bd_acoustic
+  real(kind=CUSTOM_REAL), dimension(:,:,:), allocatable :: pot_dot_bd_acoustic 
+
+  !these are the array for the recording points
+  real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: stress_bd_pnt_elastic, vel_bd_pnt_elastic, trac_bd_pnt_elastic
+  real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: grad_pot_bd_pnt_acoustic
+  real(kind=CUSTOM_REAL), dimension(:), allocatable :: pot_dot_bd_pnt_acoustic
+  
+  !-------------------------------------------------------------------
+
+
   !---------------------------------------------------------------------
   ! AXISYM parameters
   !---------------------------------------------------------------------

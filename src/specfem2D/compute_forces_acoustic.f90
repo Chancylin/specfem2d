@@ -67,7 +67,9 @@
                          rmemory_acoustic_dux_dx,rmemory_acoustic_dux_dz,&
                          rmemory_potential_acoustic_LDDRK,alpha_LDDRK,beta_LDDRK,c_LDDRK, &
                          rmemory_acoustic_dux_dx_LDDRK,rmemory_acoustic_dux_dz_LDDRK,&
-                         deltat,STACEY_BOUNDARY_CONDITIONS
+                         deltat,STACEY_BOUNDARY_CONDITIONS,&
+                         !lcx: para
+                         record_local_bkgd_boundary
 
   implicit none
   include "constants.h"
@@ -155,6 +157,11 @@
           dux_dxl = dux_dxi * xixl + dux_dgamma * gammaxl
           dux_dzl = dux_dxi * xizl + dux_dgamma * gammazl
 
+          !by lcx: we will store the gradient of potential here
+          if( record_local_bkgd_boundary ) then
+            call record_bd_elmnt_acoustic(ispec,i,j,dux_dxl,dux_dzl) 
+          endif
+          
           if( AXISYM .and. is_on_the_axis(ispec) .and. i == 1 ) then ! dchi/dr=rho * u_r=0 on the axis
             dux_dxl = ZERO
           endif

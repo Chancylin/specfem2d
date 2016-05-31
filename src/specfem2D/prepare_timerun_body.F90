@@ -30,6 +30,9 @@ integer i,j,ispec,k,iglob,irec,i_source,ispecabs, irecloc
   if(nproc < 1) stop 'should have nproc >= 1'
 
   call prepare_timerun_read()
+  
+  !by lcx: this subroutine is for reading parameter controlling 
+  call read_para_hybird()
 
 
   if(GPU_MODE) then

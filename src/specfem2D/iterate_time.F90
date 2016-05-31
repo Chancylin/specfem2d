@@ -221,6 +221,12 @@ subroutine iterate_time()
             endif
           endif
         endif
+
+      !by lcx: here we store the prediction value of the local/global info we need
+      if ( record_local_bkgd_boundary ) then
+         call record_bd_elemnt_prediction() 
+      endif 
+
 ! *********************************************************
 ! ************* main solver for the acoustic elements
 ! *********************************************************
@@ -1346,6 +1352,11 @@ subroutine iterate_time()
      seismo_offset = seismo_offset + seismo_current
      seismo_current = 0
    endif  ! of display images at a given time step
+
+
+   if ( record_local_bkgd_boundary ) then
+      call write_bd_pnts() 
+   endif
 
   enddo ! end of the main time loop
 
