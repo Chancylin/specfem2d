@@ -44,7 +44,7 @@
 ! XSMOOTH_SEM
 !
 ! USAGE
-!   mpirun -np NPROC bin/xsmooth_sem SIGMA_H SIGMA_V KERNEL_NAME INPUT_DIR OUPUT_DIR GPU_MODE
+!   mpirun -np NPROC bin/xsmooth_sem SIGMA_H SIGMA_V KERNEL_NAME INPUT_DIR OUPUT_DIR
 !
 !
 ! COMMAND LINE ARGUMENTS
@@ -53,8 +53,7 @@
 !   KERNEL_NAME            - kernel name, e.g. alpha_kernel
 !   INPUT_DIR              - directory from which kernels are read
 !   OUTPUT_DIR             - directory to which smoothed kernels are written
-!   GPU_MODE               - use GPUs to process smoothing (logical T F)
-
+!
 ! DESCRIPTION
 !   Smooths kernels by convolution with a Gaussian. Writes the resulting
 !   smoothed kernels to OUTPUT_DIR.
@@ -72,36 +71,34 @@
 
 program smooth_sem
 
-
-
-#ifdef USE_MPI
-  use mpi
-#endif
-
+!! DK DK comments this out to avoid a compilation error  use mpi
   use postprocess_par
 
   implicit none
-
-#ifdef USE_MPI
-  include "precision.h"
-#endif
-
-  integer, parameter :: NARGS = 6
+!! DK DK comments this out to avoid a compilation error  include "precision.h"
+  integer, parameter :: NARGS = 5
 
   ! data must be of dimension: (NGLLX,NGLLZ,NSPEC_AB)
   real(kind=CUSTOM_REAL), dimension(:,:,:),allocatable :: dat
   real(kind=CUSTOM_REAL), dimension(:,:,:,:),allocatable :: dat_store,dat_smooth
-  integer :: NGLOB_me, myrank,nproc, nspec_me, nspec_other, ncuda_devices
-  integer(kind=8) :: Container
+!! DK DK comments this out to avoid a compilation error
+!! DK DK  integer :: NGLOB_me, myrank,nproc, NGLOB_other, nspec_me, nspec_other
+  integer :: myrank,nproc, NGLOB_other, nspec_me, nspec_other
 
-  integer :: i,j,ier,ispec2,ispec, iker, iglob
-  integer :: iproc
+!! DK DK comments this out to avoid a compilation error  integer :: i,j,iglob,ier,ispec2,ispec,inum,iker
+  integer :: i,j,ier,ispec2,ispec,iker
+!! DK DK comments this out to avoid a compilation error
+!! DK DK  integer :: iproc, num_interfaces_ext_mesh, filesize, ninterface, max_interface_size
+  integer :: iproc, ninterface, max_interface_size
+  integer, dimension(:,:),allocatable :: ibool_interfaces_ext_mesh
+  integer, dimension(:),allocatable :: nelmnts_neighbours, nibool_interfaces_ext_mesh
 
-  character(len=MAX_STRING_LEN) :: arg(6)
+  character(len=MAX_STRING_LEN) :: arg(5)
   character(len=MAX_STRING_LEN) :: input_dir, output_dir
+!! DK DK comments this out to avoid a compilation error  character(len=MAX_STRING_LEN) :: prname_lp, prname, local_path
   character(len=MAX_STRING_LEN) :: prname
+!! DK DK comments this out to avoid a compilation error  character(len=MAX_STRING_LEN*2) :: local_data_file
 
-  logical :: GPU_MODE
 
   character(len=MAX_STRING_LEN) :: kernel_names(MAX_KERNEL_NAMES)
   character(len=MAX_STRING_LEN) :: kernel_names_comma_delimited
@@ -110,47 +107,39 @@ program smooth_sem
   ! smoothing parameters
   character(len=MAX_STRING_LEN*2) :: ks_file
 
-  real(kind=CUSTOM_REAL) :: sigma_h, sigma_h2_inv, sigma_h3_sq, sigma_v,sigma_v2_inv, sigma_v3_sq
+  real(kind=CUSTOM_REAL) :: sigma_h, sigma_h2, sigma_h3, sigma_v, sigma_v2, sigma_v3
   real(kind=CUSTOM_REAL) :: norm_h, norm_v
-  real(kind=CUSTOM_REAL), dimension(:),allocatable :: norm, max_old,max_new, min_old, min_new
-  real(kind=CUSTOM_REAL), dimension(NGLLX,NGLLZ) :: exp_val, factor, wgll_sq
-  real(kind=CUSTOM_REAL), dimension(NGLLX) :: wxgll
-  double precision, dimension(NGLLX) :: xigll
-  double precision, parameter :: alphaGLL = 0.d0, betaGLL = 0.d0
-  integer, dimension(:,:,:),allocatable :: ibool_me
-  integer, dimension(:),allocatable :: imask
-  real(kind=CUSTOM_REAL), dimension(:,:),allocatable :: tk
-  real(kind=CUSTOM_REAL), dimension(:),allocatable :: bk
-  real(kind=CUSTOM_REAL), dimension(:,:,:),allocatable :: xstore_me, zstore_me,xstore_other, zstore_other, jacobian
+  real(kind=CUSTOM_REAL), dimension(:),allocatable :: norm, max_old, max_new
+  real(kind=CUSTOM_REAL), dimension(NGLLX,NGLLZ) :: exp_val !,factor
 
+  integer, dimension(:,:,:),allocatable :: ibool_other
+  real(kind=CUSTOM_REAL), dimension(:,:,:,:),allocatable :: tk
+  real(kind=CUSTOM_REAL), dimension(:,:,:),allocatable :: bk
+!! DK DK comments this out to avoid a compilation error
+!! DK DK  real(kind=CUSTOM_REAL), dimension(:,:,:),allocatable :: xl,  zl
+  real(kind=CUSTOM_REAL), dimension(:,:,:),allocatable :: xstore_me, zstore_me,xstore_other, zstore_other
+  integer, dimension(:,:,:),allocatable :: imask
 
   real(kind=CUSTOM_REAL) :: dist_h,dist_v
   real(kind=CUSTOM_REAL) :: element_size
-  real(kind=CUSTOM_REAL), PARAMETER :: PI = 3.1415927
-  real t1,t2
-#ifdef USE_MPI
-  call MPI_INIT(ier)
-  call MPI_COMM_SIZE(MPI_COMM_WORLD,nproc,ier)
-  call MPI_COMM_RANK(MPI_COMM_WORLD,myrank,ier)
-#else
-nproc = 1
-myrank = 0
-#endif
+  REAL(kind=CUSTOM_REAL), PARAMETER :: PI = 3.1415927
 
-  if (myrank == 0) print *,"Running XSMOOTH_SEM on",NPROC,"processors"
-  call cpu_time(t1)
+!! DK DK comments this out to avoid a compilation error  call MPI_INIT(ier)
+!! DK DK comments this out to avoid a compilation error  call MPI_COMM_SIZE(MPI_COMM_WORLD,nproc,ier)
+!! DK DK comments this out to avoid a compilation error  call MPI_COMM_RANK(MPI_COMM_WORLD,myrank,ier)
+
+  if (myrank == 0) print *,"Running XSMOOTH_SEM"
+!! DK DK comments this out to avoid a compilation error  call MPI_BARRIER(MPI_COMM_WORLD,ier)
+  stop 'there is a bug here thus DK DK adds this stop statement for now'
 
   ! parse command line arguments
   if (command_argument_count() /= NARGS) then
     if (myrank == 0) then
-        print *, 'USAGE:  mpirun -np NPROC bin/xsmooth_sem SIGMA_H SIGMA_V KERNEL_NAME INPUT_DIR OUPUT_DIR GPU_MODE'
+        print *, 'USAGE:  mpirun -np NPROC bin/xsmooth_sem SIGMA_H SIGMA_V KERNEL_NAME INPUT_DIR OUPUT_DIR'
       stop ' Please check command line arguments'
     endif
   endif
-
-#ifdef USE_MPI
-  call MPI_BARRIER(MPI_COMM_WORLD,ier)
-#endif
+!! DK DK comments this out to avoid a compilation error  call MPI_BARRIER(MPI_COMM_WORLD,ier)
 
   do i = 1, NARGS
     call get_command_argument(i,arg(i), status=ier)
@@ -163,31 +152,23 @@ myrank = 0
   output_dir = arg(5)
 
   call parse_kernel_names(kernel_names_comma_delimited,kernel_names,nker)
-  allocate(norm(nker),max_new(nker),max_old(nker),min_new(nker),min_old(nker))
+  allocate(norm(nker),max_new(nker),max_old(nker))
 
- if(GPU_MODE) call initialize_cuda_device(myrank,ncuda_devices)
-
-  call zwgljd(xigll,wxgll,NGLLX,alphaGLL,betaGLL)
-  !We assume NGLLX=NGLLZ
-  do j=1,NGLLZ
-    do i=1,NGLLX
-      wgll_sq(i,j) = wxgll(i)*wxgll(j)
-    enddo
-  enddo
+!! DK DK comments this out to avoid a compilation error  call MPI_BARRIER(MPI_COMM_WORLD,ier)
 
   ! check smoothing radii
-  sigma_h2_inv = ( 1.0 / (2.0 * (sigma_h ** 2)) ) ! factor two for gaussian distribution with standard variance sigma
-  sigma_v2_inv = ( 1.0 / (2.0 * (sigma_v ** 2)) )
+  sigma_h2 = 2.0 * sigma_h ** 2  ! factor two for gaussian distribution with standard variance sigma
+  sigma_v2 = 2.0 * sigma_v ** 2
 
-  if ( (1.0 / sigma_h2_inv) < 1.e-18) stop 'Error sigma_h2 zero, must non-zero'
-  if ( (1.0 / sigma_v2_inv) < 1.e-18) stop 'Error sigma_v2 zero, must non-zero'
+  if (sigma_h2 < 1.e-18) stop 'Error sigma_h2 zero, must non-zero'
+  if (sigma_v2 < 1.e-18) stop 'Error sigma_v2 zero, must non-zero'
 
   ! adds margin to search radius
   element_size = max(sigma_h,sigma_v) * 0.5
 
   ! search radius
-  sigma_h3_sq = (3.0  * sigma_h + element_size)**2
-  sigma_v3_sq = (3.0  * sigma_v + element_size)**2
+  sigma_h3 = 3.0  * sigma_h + element_size
+  sigma_v3 = 3.0  * sigma_v + element_size
 
   ! theoretic normal value
   ! (see integral over -inf to +inf of exp[- x*x/(2*sigma) ] = sigma * sqrt(2*pi) )
@@ -206,19 +187,13 @@ myrank = 0
     print *
   endif
 
-
   write(prname,'(a,i6.6,a)') trim(input_dir)//'/proc',myrank,'_NSPEC_ibool.bin'
   open(IIN,file=trim(prname),status='old',action='read',form='unformatted',iostat=ier)
-  if (ier /= 0) then
-      print *,'Error: could not open database file: ',trim(prname)
-      stop 'Error opening _NSPEC_IBOOL file'
-  endif
+  if (ier /= 0) stop 'Error opening smoothed kernel file'
   read(IIN) nspec_me
-  allocate(ibool_me(NGLLX,NGLLZ,nspec_me))
-  read(IIN) ibool_me
   close(IIN)
-  nglob_me = maxval(ibool_me(:,:,:))
-  allocate(xstore_me(NGLLX,NGLLZ,NSPEC_me),zstore_me(NGLLX,NGLLZ,NSPEC_me),imask(nglob_me),stat=ier)
+  allocate(xstore_me(NGLLX,NGLLZ,NSPEC_me),zstore_me(NGLLX,NGLLZ,NSPEC_me),stat=ier)
+
 
     write(prname, '(a,i6.6,a)') trim(input_dir)//'/proc',myrank,'_x.bin'
     ! gets the coordinate x of the points located in my slice
@@ -242,32 +217,19 @@ myrank = 0
     read(IIN) zstore_me
     close(IIN)
 
-
-
   ! synchronizes
-#ifdef USE_MPI
-  call MPI_BARRIER(MPI_COMM_WORLD,ier)
-#endif
-
-if (GPU_MODE) then
-
-  call prepare_GPU(Container,xstore_me,zstore_me,sigma_h2_inv,sigma_v2_inv,sigma_h3_sq,sigma_v3_sq,nspec_me,nker,wgll_sq)
-
-endif
-
-  ! synchronizes
-#ifdef USE_MPI
-  call MPI_BARRIER(MPI_COMM_WORLD,ier)
-#endif
-
+!! DK DK comments this out to avoid a compilation error  call MPI_BARRIER(MPI_COMM_WORLD,ier)
 
 ! loops over slices
-! each process reads all the other slices and gaussian filters the values
-  allocate(tk(nglob_me,nker), bk(nglob_me),stat=ier)
+! each process reads in his own neighbor slices and gaussian filters the values
+  allocate(tk(NGLLX,NGLLZ,NSPEC_ME,nker), bk(NGLLX,NGLLZ,NSPEC_ME),stat=ier)
   if (ier /= 0) stop 'Error allocating array tk and bk'
 
   tk = 0.0_CUSTOM_REAL
   bk = 0.0_CUSTOM_REAL
+
+
+
 
   do iproc = 0,NPROC-1
     ! slice database file
@@ -275,10 +237,14 @@ endif
     open(IIN,file=trim(prname),status='old',action='read',form='unformatted',iostat=ier)
     if (ier /= 0) stop 'Error opening ibool file'
     read(IIN) nspec_other
+    allocate(ibool_other(NGLLX,NGLLZ,nspec_other))
+    read(IIN) ibool_other
     close(IIN)
-    allocate(xstore_other(NGLLX,NGLLZ,NSPEC_other),zstore_other(NGLLX,NGLLZ,NSPEC_other),&
-             jacobian(NGLLX,NGLLZ,NSPEC_other),stat=ier)
+    allocate(xstore_other(NGLLX,NGLLZ,NSPEC_other),zstore_other(NGLLX,NGLLZ,NSPEC_other),stat=ier)
     if (ier /= 0) stop 'Error allocating array xstore_other etc.'
+    nglob_other = maxval(ibool_other(:,:,:))
+    allocate(imask(NGLLX,NGLLZ,nglob_other))
+
 
      write(prname, '(a,i6.6,a)') trim(input_dir)//'/proc',iproc,'_x.bin'
     ! gets the coordinate x of the points located in the other slice
@@ -302,21 +268,28 @@ endif
     read(IIN) zstore_other
     close(IIN)
 
-    write(prname, '(a,i6.6,a)') trim(input_dir)//'/proc',iproc,'_jacobian.bin'
-    ! gets the jacobian of the points located in the other slice
-    open(unit=IIN,file=trim(prname),status='old',action='read',form='unformatted',iostat=ier)
-    if (ier /= 0) then
-      print *,'Error: could not open database file: ',trim(prname)
-      stop 'Error reading jacobian'
-    endif
-    ! global point arrays
-    read(IIN) jacobian
-    close(IIN)
-
     allocate(dat(NGLLX,NGLLZ,NSPEC_other),dat_store(NGLLX,NGLLZ,NSPEC_other,nker),stat=ier)
     if (ier /= 0) stop 'Error allocating dat array'
 
-  do iker= 1, nker
+
+    write(prname,'(a,i6.6,a)') trim(input_dir)//'/proc',iproc,'_MPI_interfaces_info.bin'
+    open(unit=172,file=prname,status='old',action='read',form='unformatted',iostat=ier)
+    if (ier /= 0) then
+      print *,'Error: could not open database file: ',trim(prname)
+      stop 'Error reading MPI info'
+    endif
+    read(172) ninterface
+    allocate(nelmnts_neighbours(ninterface),nibool_interfaces_ext_mesh(ninterface))
+    read(172) nelmnts_neighbours
+    read(172) nibool_interfaces_ext_mesh
+    read(172) max_interface_size
+    allocate(ibool_interfaces_ext_mesh(NGLLX*max_interface_size,ninterface))
+    read(172) ibool_interfaces_ext_mesh
+    close(172)
+
+
+
+do iker= 1, nker
     ! data file
     write(prname,'(a,i6.6,a)') trim(input_dir)//'/proc',iproc,'_'//trim(kernel_names(iker))//'.bin'
 
@@ -328,22 +301,15 @@ endif
     read(IIN) dat
     close(IIN)
 
-  dat_store(:,:,:,iker) = dat(:,:,:)
+dat_store(:,:,:,iker) = dat(:,:,:)
 
-    if (iproc == myrank) then
-      max_old(iker) = maxval(abs(dat(:,:,:)))
-      min_old(iker) = minval(abs(dat(:,:,:)))
-    endif
+    if (iproc == myrank) max_old(iker) = maxval(abs(dat(:,:,:)))
 
-  enddo
-imask=-1
-
-if (GPU_MODE) then
-  call compute_smooth(Container,jacobian,xstore_other,zstore_other,dat_store,nspec_other)
-else
+enddo
     ! loop over elements to be smoothed in the current slice
     do ispec = 1, nspec_me
       ! --- only double loop over the elements in the search radius ---
+      imask(:,:,:)= -1
       do ispec2 = 1, nspec_other
 
         ! calculates horizontal and vertical distance between two element centers
@@ -351,88 +317,66 @@ else
                           xstore_other(1,1,ispec2),zstore_other(1,1,ispec2))
 
         ! checks distance between centers of elements
-   !     if (dist_h > 2*sigma_h3_sq .or. dist_v > 2*sigma_v3_sq) cycle
-
-
-
-        factor(:,:) = jacobian(:,:,ispec2) * wgll_sq(:,:)
+        if (dist_h > sigma_h3**2 .or. dist_v > sigma_v3**2) cycle
 
     ! loop over GLL points of the elements in current slice (ispec)
         do j = 1, NGLLZ
             do i = 1, NGLLX
-              iglob = ibool_me(i,j,ispec)
-              if (imask(iglob)==1) cycle
 
               ! calculate weights based on gaussian smoothing
               exp_val = 0.0_CUSTOM_REAL
-
-              call smoothing_weights_vec(xstore_me(i,j,ispec),zstore_me(i,j,ispec),sigma_h2_inv,sigma_v2_inv,exp_val,&
-                      xstore_other(:,:,ispec2),zstore_other(:,:,ispec2))
-
-              exp_val(:,:) = exp_val(:,:) * factor(:,:)
+              call smoothing_weights_vec(xstore_me(i,j,ispec),zstore_me(i,j,ispec),sigma_h2,sigma_v2,exp_val,&
+                      xstore_other(:,:,ispec2),zstore_other(:,:,ispec2),nglob_other,imask,ispec2,nspec_other,ibool_other, i, j, &
+                      ninterface,nelmnts_neighbours, nibool_interfaces_ext_mesh,max_interface_size,ibool_interfaces_ext_mesh, iproc)
 
               ! adds contribution of element ispec2 to smoothed kernel values
               do iker=1, nker
-              tk(iglob,iker) = tk(iglob,iker) + sum(exp_val(:,:) * dat_store(:,:,ispec2,iker))
+              tk(i,j,ispec,iker) = tk(i,j,ispec,iker) + sum(exp_val(:,:) * dat_store(:,:,ispec2,iker))
               enddo
               ! normalization, integrated values of gaussian smoothing function
-              bk(iglob) = bk(iglob) + sum(exp_val(:,:))
+              bk(i,j,ispec) = bk(i,j,ispec) + sum(exp_val(:,:))
 
-            enddo
-        enddo
-      enddo ! ispec2
-
-        do j = 1, NGLLZ
-            do i = 1, NGLLX
-              imask(ibool_me(i,j,ispec)) = 1
-            enddo
+          enddo
         enddo
 
-    enddo ! ispec
-
-endif !GPU_MODE
-
+      enddo ! iglob2
+    enddo ! iglob
 
     ! frees arrays
-    deallocate(dat,dat_store,xstore_other,zstore_other,jacobian)
+    deallocate(dat,dat_store,xstore_other,zstore_other,imask,ibool_other,nelmnts_neighbours, &
+               nibool_interfaces_ext_mesh,ibool_interfaces_ext_mesh)
 
   enddo ! iproc
+  if (myrank == 0) print *
 
   ! normalizes/scaling factor
-  if (myrank == 0) print *
   if (myrank == 0) print *, 'Scaling values: min/max = ',minval(bk),maxval(bk)
 
   allocate(dat_smooth(NGLLX,NGLLZ,NSPEC_me,nker),stat=ier)
   if (ier /= 0) stop 'Error allocating array dat_smooth'
 
   dat_smooth(:,:,:,:) = 0.0_CUSTOM_REAL
- if (GPU_MODE) then
-    call get_smooth(Container,dat_smooth)
-  else
-
   do ispec = 1, nspec_me
       do j = 1, NGLLZ
         do i = 1, NGLLX
- !         if (abs(bk(i,j,ispec)) < 1.e-18) then
- !           print *, 'Problem norm here --- ', ispec, i, j, bk(i,j,ispec)
-  !        endif
-              iglob = ibool_me(i,j,ispec)
+    !      if (abs(bk(i,j,ispec)) < 1.e-18) then
+    !        print *, 'Problem norm here --- ', ispec, i, j, bk(i,j,ispec), norm
+     !     endif
           ! normalizes smoothed kernel values by integral value of gaussian weighting
-          dat_smooth(i,j,ispec,:) = tk(iglob,:) / bk(iglob)
+          dat_smooth(i,j,ispec,:) = tk(i,j,ispec,:) / bk(i,j,ispec)
         enddo
       enddo
   enddo !  ispec
-
- endif
-
   deallocate(tk,bk)
 
 do iker= 1, nker
 
   max_new(iker) = maxval(abs(dat_smooth(:,:,:,iker)))
-  min_new(iker) = minval(abs(dat_smooth(:,:,:,iker)))
+
   ! file output
   ! smoothed kernel file name
+
+
   write(ks_file,'(a,i6.6,a)') trim(output_dir)//'/proc',myrank,'_'//trim(kernel_names(iker))//'_smooth.bin'
 
   open(IOUT,file=trim(ks_file),status='unknown',form='unformatted',iostat=ier)
@@ -444,83 +388,98 @@ enddo
   ! frees memory
   deallocate(dat_smooth)
 
-#ifdef USE_MPI
   ! synchronizes
-  if (NPROC>1) then
-  call MPI_BARRIER(MPI_COMM_WORLD,ier)
+!! DK DK comments this out to avoid a compilation error  call MPI_BARRIER(MPI_COMM_WORLD,ier)
 
-    ! the maximum value for the smoothed kernel
-    norm(:) = max_old(:)
+  ! the maximum value for the smoothed kernel
+  norm(:) = max_old(:)
 
+!! DK DK comments this out to avoid a compilation error
+!! DK DK call MPI_REDUCE(norm,max_old,nker,CUSTOM_MPI_TYPE,MPI_MAX,0,MPI_COMM_WORLD,ier)
 
-    call MPI_REDUCE(norm,max_old,nker,CUSTOM_MPI_TYPE,MPI_MAX,0,MPI_COMM_WORLD,ier)
-
-    norm(:) = max_new(:)
-
-    call MPI_REDUCE(norm,max_new,nker,CUSTOM_MPI_TYPE,MPI_MAX,0,MPI_COMM_WORLD,ier)
-    norm(:) = min_old(:)
-
-
-    call MPI_REDUCE(norm,min_old,nker,CUSTOM_MPI_TYPE,MPI_MIN,0,MPI_COMM_WORLD,ier)
-
-    norm(:) = min_new(:)
-
-    call MPI_REDUCE(norm,min_new,nker,CUSTOM_MPI_TYPE,MPI_MIN,0,MPI_COMM_WORLD,ier)
+  norm(:) = max_new(:)
+!! DK DK comments this out to avoid a compilation error
+!! DK DK call MPI_REDUCE(norm,max_new,nker,CUSTOM_MPI_TYPE,MPI_MAX,0,MPI_COMM_WORLD,ier)
+do iker= 1, nker
+  if (myrank == 0) then
+    print *
+    print *,'  Maximum data value before smoothing = ', max_old(iker), 'for ', trim(kernel_names(iker))
+    print *,'  Maximum data value after smoothing  = ', max_new(iker), 'for ', trim(kernel_names(iker))
 
   endif
-#endif
-
-  do iker= 1, nker
-    if (myrank == 0) then
-      print *
-      print *,' Min / Max data value before smoothing = ', min_old(iker), max_old(iker), 'for ', trim(kernel_names(iker))
-      print *,' Min / Max data value after smoothing  = ', min_new(iker), max_new(iker), 'for ', trim(kernel_names(iker))
-
-    endif
-  enddo
-   call cpu_time(t2)
-
-  if (GPU_Mode) then
-    print *,'Computation time with GPU:',t2-t1
-  else
-    print *,'Computation time with CPU:',t2-t1
-  endif
-
+enddo
    if (myrank == 0) close(IIN)
 
-#ifdef USE_MPI
   ! stop all the processes and exit
-  call MPI_FINALIZE(ier)
-#endif
+!! DK DK comments this out to avoid a compilation error  call MPI_FINALIZE(ier)
 
 end program smooth_sem
 
 !
 ! -----------------------------------------------------------------------------
 !
-  subroutine smoothing_weights_vec(x0,z0,sigma_h2_inv,sigma_v2_inv,exp_val,xx_elem,zz_elem)
+  subroutine smoothing_weights_vec(x0,z0,sigma_h2,sigma_v2,exp_val,&
+                              xx_elem,zz_elem,nglob_other,imask,ispec,nspec,ibool,i,j,&
+                      ninterface,nelmnts_neighbours, nibool_interfaces_ext_mesh,max_interface_size,ibool_interfaces_ext_mesh,iproc)
 
   use constants
   implicit none
 
   real(kind=CUSTOM_REAL),dimension(NGLLX,NGLLZ),intent(out) :: exp_val
   real(kind=CUSTOM_REAL),dimension(NGLLX,NGLLZ),intent(in) :: xx_elem, zz_elem
-  real(kind=CUSTOM_REAL),intent(in) :: x0,z0,sigma_h2_inv,sigma_v2_inv
-
+  real(kind=CUSTOM_REAL),intent(in) :: x0,z0,sigma_h2,sigma_v2
+  integer :: nglob_other, ispec, nspec, i, j,max_interface_size, ninterface, iproc
+  integer,dimension(NGLLX,NGLLZ,nglob_other) :: imask
+  integer,dimension(NGLLX,NGLLZ,nspec) :: ibool
+  integer,dimension(ninterface) :: nelmnts_neighbours,  nibool_interfaces_ext_mesh
+  integer,dimension(NGLLX*max_interface_size,ninterface) :: ibool_interfaces_ext_mesh
 
   ! local parameters
-  integer :: ii,jj
+  integer :: ii,jj,iglob,k, iinterface, i_former_slice
   real(kind=CUSTOM_REAL) :: dist_h,dist_v
+  real(kind=CUSTOM_REAL) :: sigma_h2_inv,sigma_v2_inv
+  integer :: nb_former_neighbour_slice
 
+  nb_former_neighbour_slice = 0
 
-  do jj = 1, NGLLZ
-    do ii = 1, NGLLX
-      ! gets vertical and horizontal distance
-      call get_distance_square_vec(dist_h,dist_v,x0,z0,xx_elem(ii,jj),zz_elem(ii,jj))
-       ! gaussian function
-      exp_val(ii,jj) = exp(- sigma_h2_inv*dist_h - sigma_v2_inv*dist_v)
+  sigma_h2_inv = 1.0_CUSTOM_REAL / sigma_h2
+  sigma_v2_inv = 1.0_CUSTOM_REAL / sigma_v2
+
+    do k=1, ninterface
+    if (nelmnts_neighbours(k)<iproc)   nb_former_neighbour_slice = nb_former_neighbour_slice + 1
     enddo
-  enddo
+
+    do jj = 1, NGLLZ
+      do ii = 1, NGLLX
+
+    iglob = ibool(ii,jj,ispec)
+
+     ! Check if the point has not already be taken in account in an other element of the same slice
+     if (imask(i,j,iglob)==1) cycle
+
+    ! Check if the point has not already be taken in account in an other element of an other slice
+    ! (located in an interface between MPI slices)
+     if(nb_former_neighbour_slice>0) then
+     iinterface=1
+     do i_former_slice = 1,nb_former_neighbour_slice
+       do while (nelmnts_neighbours(iinterface)<iproc)
+          iinterface= iinterface+1
+       enddo
+       do k = 1, nibool_interfaces_ext_mesh(iinterface)
+          if (iglob==ibool_interfaces_ext_mesh(k,i_former_slice)) imask(i,j,iglob)=1
+       enddo
+     enddo
+       if(imask(i,j,iglob)==1) cycle
+     endif
+        ! point in second slice
+        ! gets vertical and horizontal distance
+        call get_distance_square_vec(dist_h,dist_v,x0,z0,xx_elem(ii,jj),zz_elem(ii,jj))
+        ! gaussian function
+        exp_val(ii,jj) = exp(- sigma_h2_inv*dist_h - sigma_v2_inv*dist_v)
+        ! mark the current gll point as taken in account
+        imask(i,j,iglob)=1
+      enddo
+    enddo
 
   end subroutine smoothing_weights_vec
 
@@ -531,7 +490,7 @@ end program smooth_sem
 
   subroutine get_distance_square_vec(dist_h,dist_v,x0,z0,x1,z1)
 
-! returns square lengths as distances in radial and horizontal direction
+! returns vector lengths as distances in radial and horizontal direction
 ! only for flat earth with z in vertical direction
 
   use constants
