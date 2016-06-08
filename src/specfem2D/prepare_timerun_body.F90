@@ -514,6 +514,10 @@ integer i,j,ispec,k,iglob,irec,i_source,ispecabs, irecloc
     call read_external_model()
   endif
 
+!-----by lcx: here we export the GLL points at the boundaries
+  if( export_gll_pnt_local ) call export_gll_pnt_bd()
+!-----
+
 !
 !----  perform basic checks on parameters read
 !
@@ -995,7 +999,7 @@ integer i,j,ispec,k,iglob,irec,i_source,ispecabs, irecloc
   enddo
 
 !by lcx: set up recording point
-   call setup_recording_bd()
+   if ( record_local_bkgd_boundary ) call setup_recording_bd()
 ! displacement, velocity, acceleration and inverse of the mass matrix for elastic elements
     if(any_elastic) then
       nglob_elastic = nglob
