@@ -18,10 +18,10 @@
              ispec = ispec_bd_elmt_elastic_pure(k)
              do i = 1, NGLLX
                 do j = 1, NGLLZ
-                iglob = ibool(i,j,ispec)
-                vel_bd_elastic(1,i,j,k) = veloc_elastic(1,iglob)
-                vel_bd_elastic(2,i,j,k) = veloc_elastic(2,iglob)
-                vel_bd_elastic(3,i,j,k) = veloc_elastic(3,iglob)
+                   iglob = ibool(i,j,ispec)
+                   vel_bd_elastic(1,i,j,k) = veloc_elastic(1,iglob)
+                   vel_bd_elastic(2,i,j,k) = veloc_elastic(2,iglob)
+                   vel_bd_elastic(3,i,j,k) = veloc_elastic(3,iglob)
                 enddo
              enddo
      enddo loop1
@@ -30,8 +30,8 @@
               ispec = ispec_bd_elmt_acoustic_pure(k)
               do i = 1, NGLLX 
                  do j = 1, NGLLZ
-                 iglob = ibool(i,j,ispec)
-                 pot_dot_bd_acoustic(i,j,k) = potential_dot_acoustic(iglob)
+                    iglob = ibool(i,j,ispec)
+                    pot_dot_bd_acoustic(i,j,k) = potential_dot_acoustic(iglob)
                  enddo
               enddo
      enddo loop2
@@ -45,8 +45,9 @@
 
    implicit none
    include "constants.h"
-   real(kind=CUSTOM_REAL) :: sigma_xx,sigma_xy,sigma_xz,sigma_zz,sigma_zy
-   integer :: ispec,i,j,k   
+   real(kind=CUSTOM_REAL), intent(in) :: sigma_xx,sigma_xy,sigma_xz,sigma_zz,sigma_zy
+   integer, intent(in) :: ispec,i,j
+   integer :: k   
  
    loop1:do k = 1,nspec_bd_elmt_elastic_pure
          if ( ispec_bd_elmt_elastic_pure(k) == ispec ) then
@@ -72,17 +73,22 @@
  subroutine record_bd_elmnt_acoustic(ispec,i,j,dux_dxl,dux_dzl)
   
    use specfem_par, only: grad_pot_bd_acoustic,nspec_bd_elmt_acoustic_pure,&
-                          ispec_bd_elmt_acoustic_pure
+                          ispec_bd_elmt_acoustic_pure!,it
    implicit none
    include "constants.h"
-   real(kind=CUSTOM_REAL) :: dux_dxl,dux_dzl
-   integer :: ispec,i,j,k
+   real(kind=CUSTOM_REAL), intent(in) :: dux_dxl,dux_dzl
+   integer, intent(in) :: ispec,i,j
+   integer :: k
 
    loop2:do k = 1,nspec_bd_elmt_acoustic_pure
          if ( ispec_bd_elmt_acoustic_pure(k) == ispec ) then
 
             grad_pot_bd_acoustic(1,i,j,k) = dux_dxl
             grad_pot_bd_acoustic(2,i,j,k) = dux_dzl
+               
+            !test
+            !print *,'time step: ', it, '  recording ispec i j :', ispec_bd_elmt_acoustic_pure(k),i,j
+            !print *,'dux_dxl = ', dux_dxl, ' dux_dzl = ', dux_dzl
 
             exit loop2
          endif
@@ -101,27 +107,43 @@
                          nspec_bd_elmt_elastic_pure,nspec_bd_elmt_acoustic_pure,&
                          nspec_bd_pnt_elastic,nspec_bd_pnt_acoustic,&
                          grad_pot_bd_pnt_acoustic,pot_dot_bd_pnt_acoustic,&
-                         nx_pnt,nz_pnt
+                         nx_bd_pnt_elastic,nz_bd_pnt_elastic
+
+  !use specfem_par, only: elastic,acoustic,it,& !original para
+  !                       npnt,ispec_selected_bd_pnt,fname,f_num,&
+  !                       ispec_bd_elmt_elastic_pure,&
+  !                       hxi_bd_store, hgammar_bd_store,&
+  !                       stress_bd_elastic,vel_bd_elastic,&
+  !                       stress_bd_pnt_elastic,vel_bd_pnt_elastic,trac_bd_pnt_elastic,&
+  !                       nspec_bd_elmt_elastic_pure,&
+  !                       nspec_bd_pnt_elastic,nspec_bd_pnt_acoustic,&
+  !                       grad_pot_bd_pnt_acoustic,pot_dot_bd_pnt_acoustic,&
+  !                       nx_bd_pnt_elastic,nz_bd_pnt_elastic
 
   implicit none
   include "constants.h"
 
-  integer :: ispec_bd_pnt_elastic = 1, ispec_bd_pnt_acoustic = 1
+  integer :: ispec_bd_pnt_elastic, ispec_bd_pnt_acoustic
   integer :: ipnt,ispec,k,kk,i,j
-  integer :: ios
   double precision :: hlagrange
+  integer :: ios
+  !integer :: k,kk
+  !logical :: switch = .false.
 
+  ispec_bd_pnt_elastic = 0
+  ispec_bd_pnt_acoustic = 0
   do ipnt = 1, npnt
 
      ispec =  ispec_selected_bd_pnt(ipnt)
-
+     
      if ( elastic(ispec) ) then
-
+       
+       ispec_bd_pnt_elastic = ispec_bd_pnt_elastic + 1
 
        loop1: do k = 1,nspec_bd_elmt_elastic_pure
            !here we locate in which element the recording point locates
            if ( ispec_bd_elmt_elastic_pure(k) == ispec ) then
-
+           
               stress_bd_pnt_elastic(:,ispec_bd_pnt_elastic) = 0.0
               vel_bd_pnt_elastic(:,ispec_bd_pnt_elastic) = 0.0
               !we use the lagrange interpolation to calculate
@@ -129,11 +151,22 @@
               !in that element
               do i = 1,NGLLX
                  do j = 1,NGLLZ
+  
+                    !print *,'size of hlagrange is ', hlagrange
+                    !print *,'size of stress_bd_pnt_elastic(:,ispec_bd_pnt_elastic) is ',&
+                    !         shape(stress_bd_pnt_elastic(:,ispec_bd_pnt_elastic))
+                    !print *,'size of stress_bd_elastic(:,i,j,k) is ', shape(stress_bd_elastic(:,i,j,k)) 
+
                     hlagrange = hxi_bd_store(ipnt,i)*hgammar_bd_store(ipnt,j)
 
                     stress_bd_pnt_elastic(:,ispec_bd_pnt_elastic) = &
                     stress_bd_pnt_elastic(:,ispec_bd_pnt_elastic) + &
                     stress_bd_elastic(:,i,j,k)*hlagrange 
+                    !print *,'stress_bd_pnt_elastic(:,ispec_bd_pnt_elastic) is'
+                    !print *,stress_bd_pnt_elastic(:,ispec_bd_pnt_elastic)
+                    !print *,'stress_bd_elastic(:,i,j,k) is'
+                    !print *,stress_bd_elastic(:,i,j,k)
+                    !stop
 
                     vel_bd_pnt_elastic(:,ispec_bd_pnt_elastic) = &
                     vel_bd_pnt_elastic(:,ispec_bd_pnt_elastic) + &
@@ -145,17 +178,18 @@
            endif
         enddo loop1
 
-        ispec_bd_pnt_elastic = ispec_bd_pnt_elastic + 1
-
      endif!elastic pnt
 
      if ( acoustic(ispec) ) then
-
-        grad_pot_bd_pnt_acoustic(:,ispec_bd_pnt_acoustic) = 0.0
-        pot_dot_bd_pnt_acoustic(ispec_bd_pnt_acoustic) = 0.0
+       
+       ispec_bd_pnt_acoustic = ispec_bd_pnt_acoustic + 1
  
        loop2: do kk = 1,nspec_bd_elmt_acoustic_pure
             if ( ispec_bd_elmt_acoustic_pure(kk) == ispec ) then
+
+               grad_pot_bd_pnt_acoustic(:,ispec_bd_pnt_acoustic) = 0.0
+               pot_dot_bd_pnt_acoustic(ispec_bd_pnt_acoustic) = 0.0
+
                do i = 1,NGLLX
                   do j = 1,NGLLZ
                      hlagrange = hxi_bd_store(ipnt,i)*hgammar_bd_store(ipnt,j)
@@ -174,23 +208,32 @@
             endif
         enddo loop2
 
-        ispec_bd_pnt_acoustic = ispec_bd_pnt_acoustic + 1
-
      endif!acoustic pnt
 
   enddo
+  
+  !print *,'npnt = ', npnt
+  !print *,'ispec_bd_pnt_elastic = ',ispec_bd_pnt_elastic
+  !print *,'ispec_bd_pnt_acoustic = ',ispec_bd_pnt_acoustic
 
   !store valuse at recording points at every time step
   !we firstly compute the traction for those recording points
+  !one tricky things here is the normal vector. Since the normal vectors we have
+  !store in the local model is outer_pointing, for traction exerted on local boundary 
+  !elements, I suppose we should transfer to the opposite direction
   !trac_x
-  trac_bd_pnt_elastic(1,:) = nx_pnt(:)*stress_bd_pnt_elastic(:,1) + &
-                             nz_pnt(:)*stress_bd_pnt_elastic(:,3)
+  !print *,'size of trac_bd_pnt_elastic(1,:) is ',shape(trac_bd_pnt_elastic(1,:))
+  !print *,'size of nx_bd_pnt_elastic(:) is ', shape(nx_bd_pnt_elastic(:))
+  !print *,'size of stress_bd_pnt_elastic(1,:) is ', shape(stress_bd_pnt_elastic(1,:))
+  !stop 
+  trac_bd_pnt_elastic(1,:) = -nx_bd_pnt_elastic(:)*stress_bd_pnt_elastic(1,:) - &
+                             nz_bd_pnt_elastic(:)*stress_bd_pnt_elastic(3,:)
   !trac_z
-  trac_bd_pnt_elastic(2,:) = nx_pnt(:)*stress_bd_pnt_elastic(:,3) + &
-                             nz_pnt(:)*stress_bd_pnt_elastic(:,4)
+  trac_bd_pnt_elastic(3,:) = -nx_bd_pnt_elastic(:)*stress_bd_pnt_elastic(3,:) - &
+                             nz_bd_pnt_elastic(:)*stress_bd_pnt_elastic(4,:)
   !trac_y
-  trac_bd_pnt_elastic(3,:) = nx_pnt(:)*stress_bd_pnt_elastic(:,2) + &
-                             nz_pnt(:)*stress_bd_pnt_elastic(:,5)
+  trac_bd_pnt_elastic(2,:) = -nx_bd_pnt_elastic(:)*stress_bd_pnt_elastic(2,:) - &
+                             nz_bd_pnt_elastic(:)*stress_bd_pnt_elastic(5,:)
 
   f_num=113
   !for elastic 

@@ -2,8 +2,7 @@
 !!!this subroutine will determine which elements the recording points
 !belong to. And whether it is in fluid or solid region.
   subroutine locate_recording_point(ibool,coord,nspec,nglob,xigll,zigll, &
-                      coorg,knods,ngnod,npgeo&
-                      )
+                      coorg,knods,ngnod,npgeo)
 
   use specfem_par, only: elastic,acoustic,&
                          npnt,ispec_selected_bd_pnt,nspec_bd_pnt_elastic,nspec_bd_pnt_acoustic,&
@@ -12,6 +11,7 @@
                         hxi_bd_store,hgammar_bd_store,&
                         xi_bd_pnt,gamma_bd_pnt,&
                         bd_pnt_xval,bd_pnt_zval,&
+                        nx_bd_pnt_elastic,nz_bd_pnt_elastic,&
                         nx_pnt,nz_pnt,fname,f_num,&
                         x_final_bd_pnt, z_final_bd_pnt,&
                         x_final_bd_pnt_elastic, z_final_bd_pnt_elastic,&
@@ -55,18 +55,24 @@
   !double precision, dimension(:), allocatable :: bd_pnt_xval,bd_pnt_zval 
   integer, dimension(:), allocatable :: ispec_bd_elmt_elastic,ispec_bd_elmt_acoustic
   integer, dimension(:), allocatable :: temp_bd_elmt_elastic,temp_bd_elmt_acoustic
+  !temperary variables for reading
+  integer :: temp_num
+  character(len=1) temp_side, temp_side_1
 
   !figure out the number of recording point firstly
   npnt = 0
   open(unit=1,file='DATA/boundary_points',iostat=ios,status='old',action='read')
   do while(ios == 0)
-     read(IIN,"(a)",iostat=ios) dummystring
+     read(1,"(a)",iostat=ios) dummystring
      if(ios == 0) npnt=npnt+1
   enddo
   close(1)
-
+ 
+  print *,'total recording points: ',npnt
+  
   allocate(ispec_selected_bd_pnt(npnt))
   allocate(xi_bd_pnt(npnt),gamma_bd_pnt(npnt))
+  allocate(hxi_bd_store(npnt,NGLLX),hgammar_bd_store(npnt,NGLLZ))
   allocate(x_final_bd_pnt(npnt),z_final_bd_pnt(npnt))
 
   allocate(bd_pnt_xval(npnt),bd_pnt_zval(npnt))
@@ -75,6 +81,7 @@
   nspec_bd_pnt_elastic = 0
   nspec_bd_pnt_acoustic = 0
 
+  113 format(i3.3,2x,A1,2x,A1,2x,4(es12.4,2x))
   open(unit=1,file='DATA/boundary_points',status='old',action='read')
   !loop over all points
   ! loop only on points inside the element
@@ -84,7 +91,8 @@
 
     distmin_squared = HUGEVAL
 
-    read(1,*) bd_pnt_xval(ipnt), bd_pnt_zval(ipnt), nx_pnt(ipnt), nz_pnt(ipnt)
+    !read(1,*) bd_pnt_xval(ipnt), bd_pnt_zval(ipnt), nx_pnt(ipnt), nz_pnt(ipnt)
+    read(1,113)temp_num, temp_side, temp_side_1, bd_pnt_xval(ipnt), bd_pnt_zval(ipnt), nx_pnt(ipnt), nz_pnt(ipnt)
 
     do ispec=1,nspec
       do j=2,NGLLZ-1
@@ -101,12 +109,10 @@
           endif
         enddo
       enddo
+    enddo !end the loop for all elements
  
      if(elastic(ispec_selected_bd_pnt(ipnt))) nspec_bd_pnt_elastic=nspec_bd_pnt_elastic +1
      if(acoustic(ispec_selected_bd_pnt(ipnt))) nspec_bd_pnt_acoustic=nspec_bd_pnt_acoustic+1
-
- 
-    enddo !end the loop for all elements
 
     !find the best (xi, gamma) for each recording point
     !start using intial guess in xi and gamma
@@ -184,12 +190,17 @@
   allocate(x_final_bd_pnt_elastic(nspec_bd_pnt_elastic),z_final_bd_pnt_elastic(nspec_bd_pnt_elastic))
   allocate(x_final_bd_pnt_acoustic(nspec_bd_pnt_acoustic),z_final_bd_pnt_acoustic(nspec_bd_pnt_acoustic))
 
+  allocate(nx_bd_pnt_elastic(nspec_bd_pnt_elastic),nz_bd_pnt_elastic(nspec_bd_pnt_elastic))
+
   i = 1
   j = 1
   do ipnt=1,npnt
     if(elastic(ispec_selected_bd_pnt(ipnt)))then
       ispec_bd_elmt_elastic(i) = ispec_selected_bd_pnt(ipnt)
     !here we also record the coordinate for the point
+      nx_bd_pnt_elastic(i) = nx_pnt(ipnt)
+      nz_bd_pnt_elastic(i) = nz_pnt(ipnt)
+
       x_final_bd_pnt_elastic(i) = x_final_bd_pnt(ipnt)
       z_final_bd_pnt_elastic(i) = z_final_bd_pnt(ipnt)
       i = i+1
@@ -225,8 +236,11 @@
     enddo
       k = k + 1
       temp_bd_elmt_elastic(k) = ispec_bd_elmt_elastic(i)
+      !print *,k,' th pure elastic,','global index as ',temp_bd_elmt_elastic(k)
   enddo loop1
   nspec_bd_elmt_elastic_pure = k
+  !test
+  print *,'total pure elastic elments are ', nspec_bd_elmt_elastic_pure
 
   kk=1
   loop2: do i=2,nspec_bd_pnt_acoustic
@@ -237,8 +251,11 @@
     enddo
       kk = kk + 1
       temp_bd_elmt_acoustic(kk) = ispec_bd_elmt_acoustic(i)
+      !print *,kk,' th pure elastic,','global index as ',temp_bd_elmt_acoustic(kk)
   enddo loop2
   nspec_bd_elmt_acoustic_pure = kk  
+  !test
+  print *,'total pure acoustic elments are ', nspec_bd_elmt_acoustic_pure
 
   !here we just export the coordinate of the recording point by separating them 
   !into elastic/acoustic
@@ -249,7 +266,7 @@
   if( ios /= 0 ) stop 'error saving elastic point profile'
 
   do i=1,nspec_bd_pnt_elastic
-     write(f_num,110) x_final_bd_pnt_elastic(i),  z_final_bd_pnt_elastic(i)
+     write(f_num,110) ispec_bd_elmt_elastic(i), x_final_bd_pnt_elastic(i), z_final_bd_pnt_elastic(i)
   enddo
   close(f_num)
  
@@ -259,11 +276,11 @@
   if( ios /= 0 ) stop 'error saving acoustic point profile' 
 
   do i=1,nspec_bd_pnt_acoustic
-     write(f_num,110) x_final_bd_pnt_acoustic(i), z_final_bd_pnt_acoustic(i)
+     write(f_num,110) ispec_bd_elmt_acoustic(i), x_final_bd_pnt_acoustic(i), z_final_bd_pnt_acoustic(i)
   enddo
   close(f_num)
 
-  110 format(3(es12.4,2x))!you may need to adjust the format depending on the precision
+  110 format(i5,2(es12.4,2x))!you may need to adjust the format depending on the precision
   deallocate(x_final_bd_pnt_elastic,z_final_bd_pnt_elastic)
   deallocate(x_final_bd_pnt_acoustic,z_final_bd_pnt_acoustic)
 
@@ -282,17 +299,24 @@
   !allocate(trac_bd_elastic(3,NGLLX,NGLLZ,k))
   allocate(stress_bd_elastic(5,NGLLX,NGLLZ,k))
   allocate(vel_bd_elastic(3,NGLLX,NGLLZ,k))
+  stress_bd_elastic = 0.0
+  vel_bd_elastic = 0.0
   !acoustic
   allocate(grad_pot_bd_acoustic(2,NGLLX,NGLLZ,kk))
   allocate(pot_dot_bd_acoustic(NGLLX,NGLLZ,kk))
-
+  grad_pot_bd_acoustic = 0.0
+  pot_dot_bd_acoustic = 0.0
   !allocate array to store info for these bd points
   !elastic
   allocate(stress_bd_pnt_elastic(5,nspec_bd_pnt_elastic))
   allocate(trac_bd_pnt_elastic(3,nspec_bd_pnt_elastic))
   allocate(vel_bd_pnt_elastic(3,nspec_bd_pnt_elastic))
+  stress_bd_pnt_elastic = 0.0
+  trac_bd_pnt_elastic = 0.0
+  vel_bd_pnt_elastic = 0.0
   !acoustic
   allocate(grad_pot_bd_pnt_acoustic(2,nspec_bd_pnt_acoustic))
   allocate(pot_dot_bd_pnt_acoustic(nspec_bd_pnt_acoustic))
-
+  grad_pot_bd_pnt_acoustic = 0.0
+  pot_dot_bd_pnt_acoustic = 0.0
   end subroutine locate_recording_point

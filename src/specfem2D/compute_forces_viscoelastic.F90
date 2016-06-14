@@ -1017,14 +1017,14 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
             tempz2(i,j) = wxgll(i)*jacobianl*(sigma_xz*gammaxl+sigma_zz*gammazl) ! this goes to accel_z
 
           endif
-        enddo
-
-      !!!by lcx: store stress tensor here
-      if ( record_local_bkgd_boundary ) then
-         call record_bd_elmnt_elastic(ispec,i,j,&
-             sigma_xx,sigma_xy,sigma_xz,sigma_zz,sigma_zy)
-      endif
-  
+          
+          !!!by lcx: store stress tensor here
+          if ( record_local_bkgd_boundary ) then
+             call record_bd_elmnt_elastic(ispec,i,j,&
+                 sigma_xx,sigma_xy,sigma_xz,sigma_zz,sigma_zy)
+          endif
+ 
+        enddo  
       enddo  ! end of the loops on the collocation points i,j
 
 

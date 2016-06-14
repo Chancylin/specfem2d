@@ -306,7 +306,7 @@ module specfem_par
   double precision, dimension(:,:), allocatable :: hxi_bd_store, hgammar_bd_store
   double precision, dimension(:), allocatable :: xi_bd_pnt,gamma_bd_pnt
   double precision, dimension(:), allocatable :: bd_pnt_xval,bd_pnt_zval 
-  double precision, dimension(:), allocatable :: nx_pnt,nz_pnt 
+  double precision, dimension(:), allocatable :: nx_pnt,nz_pnt,nx_bd_pnt_elastic,nz_bd_pnt_elastic 
   double precision, dimension(:), allocatable :: x_final_bd_pnt, z_final_bd_pnt 
   double precision, dimension(:), allocatable :: x_final_bd_pnt_elastic, z_final_bd_pnt_elastic
   double precision, dimension(:), allocatable :: x_final_bd_pnt_acoustic, z_final_bd_pnt_acoustic

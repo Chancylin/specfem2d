@@ -110,6 +110,9 @@ subroutine iterate_time()
                                                                    potential_dot_dot_acoustic,potential_dot_acoustic,&
                                                                    potential_acoustic,potential_acoustic_old, &
                                                                    PML_BOUNDARY_CONDITIONS)
+ 
+          !by lcx: test
+          !  stop 'run prediction for acoustic'
           else
 #ifdef FORCE_VECTORIZATION
             do i = 1,nglob_acoustic
@@ -1353,7 +1356,7 @@ subroutine iterate_time()
      seismo_current = 0
    endif  ! of display images at a given time step
 
-
+   !by lcx: record values of this time step
    if ( record_local_bkgd_boundary ) then
       call write_bd_pnts() 
    endif
