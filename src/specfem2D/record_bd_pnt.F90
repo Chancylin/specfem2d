@@ -226,13 +226,13 @@
   !print *,'size of nx_bd_pnt_elastic(:) is ', shape(nx_bd_pnt_elastic(:))
   !print *,'size of stress_bd_pnt_elastic(1,:) is ', shape(stress_bd_pnt_elastic(1,:))
   !stop 
-  trac_bd_pnt_elastic(1,:) = -nx_bd_pnt_elastic(:)*stress_bd_pnt_elastic(1,:) - &
+  trac_bd_pnt_elastic(1,:) = nx_bd_pnt_elastic(:)*stress_bd_pnt_elastic(1,:) + &
                              nz_bd_pnt_elastic(:)*stress_bd_pnt_elastic(3,:)
   !trac_z
-  trac_bd_pnt_elastic(3,:) = -nx_bd_pnt_elastic(:)*stress_bd_pnt_elastic(3,:) - &
+  trac_bd_pnt_elastic(3,:) = nx_bd_pnt_elastic(:)*stress_bd_pnt_elastic(3,:) + &
                              nz_bd_pnt_elastic(:)*stress_bd_pnt_elastic(4,:)
   !trac_y
-  trac_bd_pnt_elastic(2,:) = -nx_bd_pnt_elastic(:)*stress_bd_pnt_elastic(2,:) - &
+  trac_bd_pnt_elastic(2,:) = nx_bd_pnt_elastic(:)*stress_bd_pnt_elastic(2,:) + &
                              nz_bd_pnt_elastic(:)*stress_bd_pnt_elastic(5,:)
 
   f_num=113

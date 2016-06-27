@@ -69,7 +69,7 @@
                          rmemory_acoustic_dux_dx_LDDRK,rmemory_acoustic_dux_dz_LDDRK,&
                          deltat,STACEY_BOUNDARY_CONDITIONS,&
                          !lcx: para
-                         record_local_bkgd_boundary
+                         record_local_bkgd_boundary,virtual_ab_bd
 
   implicit none
   include "constants.h"
@@ -469,124 +469,128 @@
 
         cpl = sqrt(kappal/rhol)
 
-        !--- left absorbing boundary
-        if( codeabs(IEDGE4,ispecabs) ) then
-          i = 1
-          jbegin = ibegin_edge4(ispecabs)
-          jend = iend_edge4(ispecabs)
-          do j = jbegin,jend
-            iglob = ibool(i,j,ispec)
-            ! external velocity model
-            if( assign_external_model ) then
-              cpl = vpext(i,j,ispec)
-              rhol = rhoext(i,j,ispec)
-            endif
-            xgamma = - xiz(i,j,ispec) * jacobian(i,j,ispec)
-            zgamma = + xix(i,j,ispec) * jacobian(i,j,ispec)
-            jacobian1D = sqrt(xgamma ** 2 + zgamma ** 2)
-            weight = jacobian1D * wzgll(j)
+        if (.NOT. virtual_ab_bd ) then
+           !--- left absorbing boundary
+           if( codeabs(IEDGE4,ispecabs) ) then
+             i = 1
+             jbegin = ibegin_edge4(ispecabs)
+             jend = iend_edge4(ispecabs)
+             do j = jbegin,jend
+               iglob = ibool(i,j,ispec)
+               ! external velocity model
+               if( assign_external_model ) then
+                 cpl = vpext(i,j,ispec)
+                 rhol = rhoext(i,j,ispec)
+               endif
+               xgamma = - xiz(i,j,ispec) * jacobian(i,j,ispec)
+               zgamma = + xix(i,j,ispec) * jacobian(i,j,ispec)
+               jacobian1D = sqrt(xgamma ** 2 + zgamma ** 2)
+               weight = jacobian1D * wzgll(j)
 
-            ! adds absorbing boundary contribution
-            potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) - &
-                      potential_dot_acoustic(iglob) * weight/cpl/rhol
+               ! adds absorbing boundary contribution
+               potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) - &
+                         potential_dot_acoustic(iglob) * weight/cpl/rhol
 
-            if( SAVE_FORWARD ) then
-              ! saves contribution
-              b_absorb_acoustic_left(j,ib_left(ispecabs),it) = potential_dot_acoustic(iglob) * weight/cpl/rhol
-            endif
-          enddo
-        endif  !  end of left absorbing boundary
+               if( SAVE_FORWARD ) then
+                 ! saves contribution
+                 b_absorb_acoustic_left(j,ib_left(ispecabs),it) = potential_dot_acoustic(iglob) * weight/cpl/rhol
+               endif
+             enddo
+           endif  !  end of left absorbing boundary
 
-        !--- right absorbing boundary
-        if( codeabs(IEDGE2,ispecabs) ) then
-          i = NGLLX
-          jbegin = ibegin_edge2(ispecabs)
-          jend = iend_edge2(ispecabs)
-          do j = jbegin,jend
-            iglob = ibool(i,j,ispec)
-            ! external velocity model
-            if( assign_external_model ) then
-              cpl = vpext(i,j,ispec)
-              rhol = rhoext(i,j,ispec)
-            endif
-            xgamma = - xiz(i,j,ispec) * jacobian(i,j,ispec)
-            zgamma = + xix(i,j,ispec) * jacobian(i,j,ispec)
-            jacobian1D = sqrt(xgamma ** 2 + zgamma ** 2)
-            weight = jacobian1D * wzgll(j)
+           !--- right absorbing boundary
+           if( codeabs(IEDGE2,ispecabs) ) then
+             i = NGLLX
+             jbegin = ibegin_edge2(ispecabs)
+             jend = iend_edge2(ispecabs)
+             do j = jbegin,jend
+               iglob = ibool(i,j,ispec)
+               ! external velocity model
+               if( assign_external_model ) then
+                 cpl = vpext(i,j,ispec)
+                 rhol = rhoext(i,j,ispec)
+               endif
+               xgamma = - xiz(i,j,ispec) * jacobian(i,j,ispec)
+               zgamma = + xix(i,j,ispec) * jacobian(i,j,ispec)
+               jacobian1D = sqrt(xgamma ** 2 + zgamma ** 2)
+               weight = jacobian1D * wzgll(j)
 
-            ! adds absorbing boundary contribution
-            potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) - &
-                      potential_dot_acoustic(iglob) * weight/cpl/rhol
+               ! adds absorbing boundary contribution
+               potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) - &
+                         potential_dot_acoustic(iglob) * weight/cpl/rhol
 
-            if( SAVE_FORWARD ) then
-              ! saves contribution
-              b_absorb_acoustic_right(j,ib_right(ispecabs),it) = potential_dot_acoustic(iglob) * weight/cpl/rhol
-            endif
-          enddo
-        endif  !  end of right absorbing boundary
+               if( SAVE_FORWARD ) then
+                 ! saves contribution
+                 b_absorb_acoustic_right(j,ib_right(ispecabs),it) = potential_dot_acoustic(iglob) * weight/cpl/rhol
+               endif
+             enddo
+           endif  !  end of right absorbing boundary
 
-        !--- bottom absorbing boundary
-        if( codeabs(IEDGE1,ispecabs) ) then
-          j = 1
-          ibegin = ibegin_edge1(ispecabs)
-          iend = iend_edge1(ispecabs)
-          ! exclude corners to make sure there is no contradiction on the normal
-          if( codeabs_corner(1,ispecabs)) ibegin = 2
-          if( codeabs_corner(2,ispecabs)) iend = NGLLX-1
-          do i = ibegin,iend
-            iglob = ibool(i,j,ispec)
-            ! external velocity model
-            if( assign_external_model ) then
-              cpl = vpext(i,j,ispec)
-              rhol = rhoext(i,j,ispec)
-            endif
-            xxi = + gammaz(i,j,ispec) * jacobian(i,j,ispec)
-            zxi = - gammax(i,j,ispec) * jacobian(i,j,ispec)
-            jacobian1D = sqrt(xxi ** 2 + zxi ** 2)
-            weight = jacobian1D * wxgll(i)
+           !--- bottom absorbing boundary
+           if( codeabs(IEDGE1,ispecabs) ) then
+             j = 1
+             ibegin = ibegin_edge1(ispecabs)
+             iend = iend_edge1(ispecabs)
+             ! exclude corners to make sure there is no contradiction on the normal
+             if( codeabs_corner(1,ispecabs)) ibegin = 2
+             if( codeabs_corner(2,ispecabs)) iend = NGLLX-1
+             do i = ibegin,iend
+               iglob = ibool(i,j,ispec)
+               ! external velocity model
+               if( assign_external_model ) then
+                 cpl = vpext(i,j,ispec)
+                 rhol = rhoext(i,j,ispec)
+               endif
+               xxi = + gammaz(i,j,ispec) * jacobian(i,j,ispec)
+               zxi = - gammax(i,j,ispec) * jacobian(i,j,ispec)
+               jacobian1D = sqrt(xxi ** 2 + zxi ** 2)
+               weight = jacobian1D * wxgll(i)
 
-            ! adds absorbing boundary contribution
-            potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) - &
-                      potential_dot_acoustic(iglob) * weight/cpl/rhol
+               ! adds absorbing boundary contribution
+               potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) - &
+                         potential_dot_acoustic(iglob) * weight/cpl/rhol
 
-            if( SAVE_FORWARD ) then
-              ! saves contribution
-              b_absorb_acoustic_bottom(i,ib_bottom(ispecabs),it) = potential_dot_acoustic(iglob) * weight/cpl/rhol
-            endif
-          enddo
-        endif  !  end of bottom absorbing boundary
+               if( SAVE_FORWARD ) then
+                 ! saves contribution
+                 b_absorb_acoustic_bottom(i,ib_bottom(ispecabs),it) = potential_dot_acoustic(iglob) * weight/cpl/rhol
+               endif
+             enddo
+           endif  !  end of bottom absorbing boundary
 
-        !--- top absorbing boundary
-        if( codeabs(IEDGE3,ispecabs) ) then
-          j = NGLLZ
-          ibegin = ibegin_edge3(ispecabs)
-          iend = iend_edge3(ispecabs)
-          ! exclude corners to make sure there is no contradiction on the normal
-          if( codeabs_corner(3,ispecabs)) ibegin = 2
-          if( codeabs_corner(4,ispecabs)) iend = NGLLX-1
-          do i = ibegin,iend
-            iglob = ibool(i,j,ispec)
-            ! external velocity model
-            if( assign_external_model ) then
-              cpl = vpext(i,j,ispec)
-              rhol = rhoext(i,j,ispec)
-            endif
-            xxi = + gammaz(i,j,ispec) * jacobian(i,j,ispec)
-            zxi = - gammax(i,j,ispec) * jacobian(i,j,ispec)
-            jacobian1D = sqrt(xxi ** 2 + zxi ** 2)
-            weight = jacobian1D * wxgll(i)
+           !--- top absorbing boundary
+           if( codeabs(IEDGE3,ispecabs) ) then
+             j = NGLLZ
+             ibegin = ibegin_edge3(ispecabs)
+             iend = iend_edge3(ispecabs)
+             ! exclude corners to make sure there is no contradiction on the normal
+             if( codeabs_corner(3,ispecabs)) ibegin = 2
+             if( codeabs_corner(4,ispecabs)) iend = NGLLX-1
+             do i = ibegin,iend
+               iglob = ibool(i,j,ispec)
+               ! external velocity model
+               if( assign_external_model ) then
+                 cpl = vpext(i,j,ispec)
+                 rhol = rhoext(i,j,ispec)
+               endif
+               xxi = + gammaz(i,j,ispec) * jacobian(i,j,ispec)
+               zxi = - gammax(i,j,ispec) * jacobian(i,j,ispec)
+               jacobian1D = sqrt(xxi ** 2 + zxi ** 2)
+               weight = jacobian1D * wxgll(i)
 
-            ! adds absorbing boundary contribution
-            potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) - &
-                      potential_dot_acoustic(iglob) * weight/cpl/rhol
+               ! adds absorbing boundary contribution
+               potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) - &
+                         potential_dot_acoustic(iglob) * weight/cpl/rhol
 
-            if( SAVE_FORWARD ) then
-              ! saves contribution
-              b_absorb_acoustic_top(i,ib_top(ispecabs),it) = potential_dot_acoustic(iglob) * weight/cpl/rhol
-            endif
-          enddo
-        endif  !  end of top absorbing boundary
+               if( SAVE_FORWARD ) then
+                 ! saves contribution
+                 b_absorb_acoustic_top(i,ib_top(ispecabs),it) = potential_dot_acoustic(iglob) * weight/cpl/rhol
+               endif
+             enddo
+           endif  !  end of top absorbing boundary
 
+             else !by lcx: apply virtual absorbing boundary
+               call absorb_scatter_field_fluid(ispec,ispecabs,cpl,rhol,potential_dot_dot_acoustic,potential_dot_acoustic)
+        endif
       endif ! acoustic ispec
     enddo
   endif  ! end of absorbing boundaries

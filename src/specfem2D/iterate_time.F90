@@ -111,8 +111,6 @@ subroutine iterate_time()
                                                                    potential_acoustic,potential_acoustic_old, &
                                                                    PML_BOUNDARY_CONDITIONS)
  
-          !by lcx: test
-          !  stop 'run prediction for acoustic'
           else
 #ifdef FORCE_VECTORIZATION
             do i = 1,nglob_acoustic
@@ -229,6 +227,10 @@ subroutine iterate_time()
       if ( record_local_bkgd_boundary ) then
          call record_bd_elemnt_prediction() 
       endif 
+      !by lcx: here we read the stored boundary info, which will be used for the hybrid for local model
+      if ( supply_local_bkgd_boundary ) then
+         call supply_bd_pnt()
+      endif
 
 ! *********************************************************
 ! ************* main solver for the acoustic elements

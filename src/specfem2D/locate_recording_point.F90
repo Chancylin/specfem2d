@@ -94,6 +94,9 @@
     !read(1,*) bd_pnt_xval(ipnt), bd_pnt_zval(ipnt), nx_pnt(ipnt), nz_pnt(ipnt)
     read(1,113)temp_num, temp_side, temp_side_1, bd_pnt_xval(ipnt), bd_pnt_zval(ipnt), nx_pnt(ipnt), nz_pnt(ipnt)
 
+    !the following loop is used to locate which element the recording point is in
+    !And the algrithm is not perfect, since it could locate the corner recording point
+    !in the neighbor element. I guess this is not a serious issue
     do ispec=1,nspec
       do j=2,NGLLZ-1
         do i=2,NGLLX-1
@@ -172,6 +175,20 @@
   enddo 
 
   close(1)
+ 
+  !!this is a test by lcx: the check could be useful
+  !!to check the the final coordinates located by global mesher are
+  !!consistent with the import one.
+  !fname = './OUTPUT_FILES/bg_record/final_pnts_profile'
+  !open(unit=111,file=trim(fname),status='new',&
+  !     action='write',iostat=ios)
+  !if( ios /= 0 ) stop 'error saving acoustic point profile' 
+  !
+  !do ipnt=1,npnt
+  !   write(111,110) ispec_selected_bd_pnt(ipnt),x_final_bd_pnt(ipnt),z_final_bd_pnt(ipnt)
+  !enddo
+  !close(111)
+  !stop
   
   !define and store lagrange interpolators at all the boundary recording points
   do ipnt=1,npnt
@@ -319,4 +336,5 @@
   allocate(pot_dot_bd_pnt_acoustic(nspec_bd_pnt_acoustic))
   grad_pot_bd_pnt_acoustic = 0.0
   pot_dot_bd_pnt_acoustic = 0.0
+
   end subroutine locate_recording_point

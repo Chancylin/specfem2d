@@ -57,6 +57,7 @@ specfem2D_TARGETS = \
 
 
 specfem2D_OBJECTS = \
+	$O/absorb_scatter_field.spec.o \
 	$O/acoustic_forcing_boundary.spec.o \
 	$O/assemble_MPI.spec.o \
 	$O/attenuation_model.spec.o \
@@ -146,6 +147,7 @@ specfem2D_OBJECTS = \
 	$O/sort_array_coordinates.spec.o \
 	$O/specfem2D.spec.o \
 	$O/specfem2D_par.spec.o \
+	$O/supply_bd_pnt.spec.o \
 	$O/update_displacement_scheme.spec.o \
 	$O/compute_kernels.spec.o \
 	$O/write_jpeg_image.cc.o \
@@ -302,6 +304,7 @@ endif
 ### Module dependencies
 ###
 
+$O/absorb_scatter_field.spec.o: $O/specfem2D_par.spec.o
 $O/acoustic_forcing_boundary.spec.o: $O/specfem2D_par.spec.o
 $O/acoutic_cuda.spec.o: $O/specfem2D_par.spec.o
 $O/assemble_MPI.spec.o: $O/specfem2D_par.spec.o
@@ -379,6 +382,7 @@ $O/set_sources.spec.o: $O/specfem2D_par.spec.o
 $O/setup_recording_bd.spec.o: $O/specfem2D_par.spec.o
 $O/setup_sources_receivers.spec.o: $O/specfem2D_par.spec.o
 $O/specfem2D.spec.o: $O/specfem2D_par.spec.o
+$O/supply_bd_pnt.spec.o: $O/specfem2D_par.spec.o
 $O/update_displacement_scheme.spec.o: $O/specfem2D_par.spec.o
 $O/write_color_image_snaphot.spec.o: $O/specfem2D_par.spec.o
 $O/write_output_SU.spec.o: $O/specfem2D_par.spec.o

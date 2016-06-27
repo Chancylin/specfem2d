@@ -298,6 +298,7 @@ module specfem_par
   !by lcx: parameters for recording info at points of "points profile"
   !------------------------------------------------------------------
   logical :: record_local_bkgd_boundary, export_gll_pnt_local
+  logical :: supply_local_bkgd_boundary, virtual_ab_bd
   integer :: npnt,nspec_bd_pnt_elastic, nspec_bd_pnt_acoustic
   integer, dimension(:), allocatable :: ispec_selected_bd_pnt
   integer :: nspec_bd_elmt_elastic_pure, nspec_bd_elmt_acoustic_pure
