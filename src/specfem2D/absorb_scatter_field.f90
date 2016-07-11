@@ -16,6 +16,19 @@ subroutine absorb_scatter_field_solid(ispec,ispecabs,cpl,csl,rhol,accel_elastic,
   real(kind=CUSTOM_REAL) :: cpl,csl,rhol
   real(kind=CUSTOM_REAL) :: veloc_x_store,veloc_y_store,veloc_z_store,tx_store,ty_store,tz_store
   
+
+
+  !test by lcx
+  !print *,'solid bd element number: ', ispec
+  !if(codeabs(IEDGE4,ispecabs)) then
+  !         print *,'element number: ',ispec,' and element type is L'
+  !  else if( codeabs(IEDGE2,ispecabs) )then
+  !         print *,'element number: ',ispec,' and element type is R'
+  !  else if( codeabs(IEDGE1,ispecabs) )then
+  !         print *,'element number: ',ispec,' and element type is B'
+  !  else if( codeabs(IEDGE3,ispecabs) )then
+  !         print *,'element number: ',ispec,' and element type is T'
+  !endif
   !---left absorbing boundary
   if( codeabs(IEDGE4,ispecabs) ) then
     i = 1
@@ -53,9 +66,11 @@ subroutine absorb_scatter_field_solid(ispec,ispecabs,cpl,csl,rhol,accel_elastic,
        ty = rho_vs*vy
        tz = rho_vp*vn*nz+rho_vs*(vz-vn*nz)
 
-       accel_elastic(1,iglob) = accel_elastic(1,iglob) - (tx + tx_store)*weight 
-       accel_elastic(2,iglob) = accel_elastic(2,iglob) - (ty + ty_store)*weight
-       accel_elastic(3,iglob) = accel_elastic(3,iglob) - (tz + tz_store)*weight
+       !!confirm that tx_store should have plus sign as the contribution to the RHS of the equation
+       accel_elastic(1,iglob) = accel_elastic(1,iglob) - (tx - tx_store)*weight 
+       accel_elastic(2,iglob) = accel_elastic(2,iglob) - (ty - ty_store)*weight
+       accel_elastic(3,iglob) = accel_elastic(3,iglob) - (tz - tz_store)*weight
+
     enddo
   endif
   !---right absorbing boundary
@@ -95,10 +110,11 @@ subroutine absorb_scatter_field_solid(ispec,ispecabs,cpl,csl,rhol,accel_elastic,
        ty = rho_vs*vy
        tz = rho_vp*vn*nz+rho_vs*(vz-vn*nz)
 
-       accel_elastic(1,iglob) = accel_elastic(1,iglob) - (tx + tx_store)*weight
-       accel_elastic(2,iglob) = accel_elastic(2,iglob) - (ty + ty_store)*weight
-       accel_elastic(3,iglob) = accel_elastic(3,iglob) - (tz + tz_store)*weight
+       accel_elastic(1,iglob) = accel_elastic(1,iglob) - (tx - tx_store)*weight
+       accel_elastic(2,iglob) = accel_elastic(2,iglob) - (ty - ty_store)*weight
+       accel_elastic(3,iglob) = accel_elastic(3,iglob) - (tz - tz_store)*weight
        
+
     enddo
   endif
   !---bottom absorbing boundary
@@ -142,9 +158,9 @@ subroutine absorb_scatter_field_solid(ispec,ispecabs,cpl,csl,rhol,accel_elastic,
          tx_store = 0._CUSTOM_REAL; ty_store = 0._CUSTOM_REAL; tz_store = 0._CUSTOM_REAL
        endif
        
-       accel_elastic(1,iglob) = accel_elastic(1,iglob) - (tx + tx_store)*weight
-       accel_elastic(2,iglob) = accel_elastic(2,iglob) - (ty + ty_store)*weight
-       accel_elastic(3,iglob) = accel_elastic(3,iglob) - (tz + tz_store)*weight
+       accel_elastic(1,iglob) = accel_elastic(1,iglob) - (tx - tx_store)*weight
+       accel_elastic(2,iglob) = accel_elastic(2,iglob) - (ty - ty_store)*weight
+       accel_elastic(3,iglob) = accel_elastic(3,iglob) - (tz - tz_store)*weight
        
     enddo
   endif
@@ -191,9 +207,10 @@ subroutine absorb_scatter_field_solid(ispec,ispecabs,cpl,csl,rhol,accel_elastic,
          tx_store = 0._CUSTOM_REAL; ty_store = 0._CUSTOM_REAL; tz_store = 0._CUSTOM_REAL
        endif
 
-       accel_elastic(1,iglob) = accel_elastic(1,iglob) - (tx + tx_store)*weight
-       accel_elastic(2,iglob) = accel_elastic(2,iglob) - (ty + ty_store)*weight
-       accel_elastic(3,iglob) = accel_elastic(3,iglob) - (tz + tz_store)*weight
+       accel_elastic(1,iglob) = accel_elastic(1,iglob) - (tx - tx_store)*weight
+       accel_elastic(2,iglob) = accel_elastic(2,iglob) - (ty - ty_store)*weight
+       accel_elastic(3,iglob) = accel_elastic(3,iglob) - (tz - tz_store)*weight
+
 
     enddo
   endif
@@ -219,7 +236,7 @@ subroutine absorb_scatter_field_fluid(ispec,ispecabs,cpl,rhol,potential_dot_dot_
   integer :: i,j,ibegin,iend,jbegin,jend,iglob
 
   !test by lcx
-  !print *,'test to see the element number: ', ispec
+  !print *,'fluid bd element number: ', ispec
   !if(codeabs(IEDGE4,ispecabs)) then
   !         print *,'element number: ',ispec,' and element type is L'
   !  else if( codeabs(IEDGE2,ispecabs) )then
@@ -232,9 +249,17 @@ subroutine absorb_scatter_field_fluid(ispec,ispecabs,cpl,rhol,potential_dot_dot_
   !--- left absorbing boundary
   if( codeabs(IEDGE4,ispecabs) ) then
     i = 1
+
     jbegin = ibegin_edge4(ispecabs)
     jend = iend_edge4(ispecabs)
+    !test
+    !print *,'element number: ',ispec,' and element type is L, i = ',i
+    !!!!
+      
     do j = jbegin,jend
+    !!!test
+     !print *,'j = ',j
+    !!!
       iglob = ibool(i,j,ispec)
       ! external velocity model
       if( assign_external_model ) then
@@ -250,24 +275,72 @@ subroutine absorb_scatter_field_fluid(ispec,ispecabs,cpl,rhol,potential_dot_dot_
 
       call pnt_info_interpl_fluid(iglob,grad_pot_x_store,grad_pot_z_store,potential_dot_acoustic_store)
 
-      !sampling as test
-     ! if ( ispec == 2 )then
-        ! print *,'j = ',j
-        ! print *,'grad_pot_x, grad_pot_z,potential_dot',&
-        !         grad_pot_x_store, grad_pot_z_store, potential_dot_acoustic_store
-        ! print *,'nx,nz = ',nx,nz
-        ! print *,'potential_dot_dot_acoustic(iglob) = ',potential_dot_dot_acoustic(iglob)
-        ! print *,'potential_dot_acoustic(iglob) = ',potential_dot_acoustic(iglob)
-        ! print *,'weight = ',weight
-        ! print *,'rhol = ',rhol
-        ! print *,'cpl = ',cpl
-     ! endif
       ! adds absorbing boundary contribution
-      potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) - &
+
+      !confirm that backgroundfield has plus sign as contribution to the RHS of equation
+      potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) + &
       ( nx*grad_pot_x_store + nz*grad_pot_z_store ) * weight/rhol - & !backgorund field
       ( potential_dot_acoustic(iglob) - potential_dot_acoustic_store ) * weight/cpl/rhol !scattered field
 
     enddo
+
+!note that if the GLL point is shared by elastic/fluid element,
+!it will not be accounted while the absorbing boundary condition is applied.
+!That is the reason why we need to add the excitation term for this GLL point here.
+    if( jbegin /= 1 )then
+
+       j=1
+    !!!test
+      !print *,'j = ',j
+    !!!
+       iglob = ibool(i,j,ispec)
+       ! external velocity model
+       if( assign_external_model ) then
+         cpl = vpext(i,j,ispec)
+         rhol = rhoext(i,j,ispec)
+       endif
+       xgamma = - xiz(i,j,ispec) * jacobian(i,j,ispec)
+       zgamma = + xix(i,j,ispec) * jacobian(i,j,ispec)
+       jacobian1D = sqrt(xgamma ** 2 + zgamma ** 2)
+       nx = - zgamma / jacobian1D
+       nz = + xgamma / jacobian1D
+       weight = jacobian1D * wzgll(j)
+
+       call pnt_info_interpl_fluid(iglob,grad_pot_x_store,grad_pot_z_store,potential_dot_acoustic_store)
+
+       ! adds absorbing boundary contribution
+        potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) + &
+        ( nx*grad_pot_x_store + nz*grad_pot_z_store ) * weight/rhol !backgorund field
+
+   endif
+
+    if( jend /= NGLLZ )then
+
+       j=NGLLZ
+    !!!test
+      !print *,'j = ',j
+    !!!
+       iglob = ibool(i,j,ispec)
+       ! external velocity model
+       if( assign_external_model ) then
+         cpl = vpext(i,j,ispec)
+         rhol = rhoext(i,j,ispec)
+       endif
+       xgamma = - xiz(i,j,ispec) * jacobian(i,j,ispec)
+       zgamma = + xix(i,j,ispec) * jacobian(i,j,ispec)
+       jacobian1D = sqrt(xgamma ** 2 + zgamma ** 2)
+       nx = - zgamma / jacobian1D
+       nz = + xgamma / jacobian1D
+       weight = jacobian1D * wzgll(j)
+
+       call pnt_info_interpl_fluid(iglob,grad_pot_x_store,grad_pot_z_store,potential_dot_acoustic_store)
+
+       ! adds absorbing boundary contribution
+        potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) + &
+        ( nx*grad_pot_x_store + nz*grad_pot_z_store ) * weight/rhol !backgorund field
+
+   endif
+
   endif
 
   !--- right absorbing boundary
@@ -275,7 +348,13 @@ subroutine absorb_scatter_field_fluid(ispec,ispecabs,cpl,rhol,potential_dot_dot_
     i = NGLLX
     jbegin = ibegin_edge2(ispecabs)
     jend = iend_edge2(ispecabs)
+    !test
+    !print *,'element number: ',ispec,' and element type is R, i = ',i
+    !!!!!
     do j = jbegin,jend
+    !!test
+      !print *,'j = ',j
+    !!
       iglob = ibool(i,j,ispec)
       ! external velocity model
       if( assign_external_model ) then
@@ -292,10 +371,66 @@ subroutine absorb_scatter_field_fluid(ispec,ispecabs,cpl,rhol,potential_dot_dot_
       call pnt_info_interpl_fluid(iglob,grad_pot_x_store,grad_pot_z_store,potential_dot_acoustic_store)
 
       ! adds absorbing boundary contribution
-      potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) - &
+      potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) + &
       ( nx*grad_pot_x_store + nz*grad_pot_z_store ) * weight/rhol - & !backgorund field
       ( potential_dot_acoustic(iglob) - potential_dot_acoustic_store ) * weight/cpl/rhol !scattered field
+
     enddo
+
+    if(jbegin /= 1) then
+      
+      j=1
+    !!!test
+     ! print *,'j = ',j
+    !!!
+      iglob = ibool(i,j,ispec)
+      ! external velocity model
+      if( assign_external_model ) then
+        cpl = vpext(i,j,ispec)
+        rhol = rhoext(i,j,ispec)
+      endif
+      xgamma = - xiz(i,j,ispec) * jacobian(i,j,ispec)
+      zgamma = + xix(i,j,ispec) * jacobian(i,j,ispec)
+      jacobian1D = sqrt(xgamma ** 2 + zgamma ** 2)
+      nx = + zgamma / jacobian1D
+      nz = - xgamma / jacobian1D
+      weight = jacobian1D * wzgll(j)
+
+      call pnt_info_interpl_fluid(iglob,grad_pot_x_store,grad_pot_z_store,potential_dot_acoustic_store)
+
+      ! adds absorbing boundary contribution
+      potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) + &
+      ( nx*grad_pot_x_store + nz*grad_pot_z_store ) * weight/rhol !backgorund field
+
+    endif  
+
+    if(jend /= NGLLZ) then
+      
+      j=NGLLZ
+    !!!test
+      !print *,'j = ',j
+    !!!
+      iglob = ibool(i,j,ispec)
+      ! external velocity model
+      if( assign_external_model ) then
+        cpl = vpext(i,j,ispec)
+        rhol = rhoext(i,j,ispec)
+      endif
+      xgamma = - xiz(i,j,ispec) * jacobian(i,j,ispec)
+      zgamma = + xix(i,j,ispec) * jacobian(i,j,ispec)
+      jacobian1D = sqrt(xgamma ** 2 + zgamma ** 2)
+      nx = + zgamma / jacobian1D
+      nz = - xgamma / jacobian1D
+      weight = jacobian1D * wzgll(j)
+
+      call pnt_info_interpl_fluid(iglob,grad_pot_x_store,grad_pot_z_store,potential_dot_acoustic_store)
+
+      ! adds absorbing boundary contribution
+      potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) + &
+      ( nx*grad_pot_x_store + nz*grad_pot_z_store ) * weight/rhol !backgorund field
+
+    endif  
+
   endif
 
   !--- bottom absorbing boundary
@@ -303,10 +438,16 @@ subroutine absorb_scatter_field_fluid(ispec,ispecabs,cpl,rhol,potential_dot_dot_
     j = 1
     ibegin = ibegin_edge1(ispecabs)
     iend = iend_edge1(ispecabs)
+    !!test
+    !print *,'element number: ',ispec,' and element type is B, j = ',j
+    !!
     ! exclude corners to make sure there is no contradiction on the normal
     if( codeabs_corner(1,ispecabs)) ibegin = 2
     if( codeabs_corner(2,ispecabs)) iend = NGLLX-1
     do i = ibegin,iend
+    !!test
+      !print *,'i = ',i
+    !!
       iglob = ibool(i,j,ispec)
       ! external velocity model
       if( assign_external_model ) then
@@ -323,11 +464,66 @@ subroutine absorb_scatter_field_fluid(ispec,ispecabs,cpl,rhol,potential_dot_dot_
       call pnt_info_interpl_fluid(iglob,grad_pot_x_store,grad_pot_z_store,potential_dot_acoustic_store)
 
       ! adds absorbing boundary contribution
-      potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) - &
+      potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) + &
       ( nx*grad_pot_x_store + nz*grad_pot_z_store ) * weight/rhol - & !backgorund field
       ( potential_dot_acoustic(iglob) - potential_dot_acoustic_store ) * weight/cpl/rhol !scattered field
     
     enddo
+
+    if( (ibegin_edge1(ispecabs) /= 1) .and. (.not. codeabs_corner(1,ispecabs)))then
+
+      i = 1
+    !!test
+      !print *,'i = ',i
+    !!
+      iglob = ibool(i,j,ispec)
+      ! external velocity model
+      if( assign_external_model ) then
+        cpl = vpext(i,j,ispec)
+        rhol = rhoext(i,j,ispec)
+      endif
+      xxi = + gammaz(i,j,ispec) * jacobian(i,j,ispec)
+      zxi = - gammax(i,j,ispec) * jacobian(i,j,ispec)
+      jacobian1D = sqrt(xxi ** 2 + zxi ** 2)
+      nx = + zxi / jacobian1D
+      nz = - xxi / jacobian1D
+      weight = jacobian1D * wxgll(i)
+
+      call pnt_info_interpl_fluid(iglob,grad_pot_x_store,grad_pot_z_store,potential_dot_acoustic_store)
+
+      ! adds absorbing boundary contribution
+      potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) + &
+      ( nx*grad_pot_x_store + nz*grad_pot_z_store ) * weight/rhol !backgorund field
+
+    endif
+
+    if( (iend_edge1(ispecabs) /= NGLLX) .and. (.not. codeabs_corner(2,ispecabs)))then
+
+      i = NGLLX
+    !!test
+      !print *,'i = ',i
+    !!
+      iglob = ibool(i,j,ispec)
+      ! external velocity model
+      if( assign_external_model ) then
+        cpl = vpext(i,j,ispec)
+        rhol = rhoext(i,j,ispec)
+      endif
+      xxi = + gammaz(i,j,ispec) * jacobian(i,j,ispec)
+      zxi = - gammax(i,j,ispec) * jacobian(i,j,ispec)
+      jacobian1D = sqrt(xxi ** 2 + zxi ** 2)
+      nx = + zxi / jacobian1D
+      nz = - xxi / jacobian1D
+      weight = jacobian1D * wxgll(i)
+
+      call pnt_info_interpl_fluid(iglob,grad_pot_x_store,grad_pot_z_store,potential_dot_acoustic_store)
+
+      ! adds absorbing boundary contribution
+      potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) + &
+      ( nx*grad_pot_x_store + nz*grad_pot_z_store ) * weight/rhol !backgorund field
+
+    endif
+
   endif 
 
   !--- top absorbing boundary
@@ -335,10 +531,16 @@ subroutine absorb_scatter_field_fluid(ispec,ispecabs,cpl,rhol,potential_dot_dot_
     j = NGLLZ
     ibegin = ibegin_edge3(ispecabs)
     iend = iend_edge3(ispecabs)
+    !!test
+    !print *,'element number: ',ispec,' and element type is T, j = ',j
+    !!
     ! exclude corners to make sure there is no contradiction on the normal
     if( codeabs_corner(3,ispecabs)) ibegin = 2
     if( codeabs_corner(4,ispecabs)) iend = NGLLX-1
     do i = ibegin,iend
+      !!!test
+      !print *,'i = ',i
+      !!!
       iglob = ibool(i,j,ispec)
       ! external velocity model
       if( assign_external_model ) then
@@ -355,11 +557,66 @@ subroutine absorb_scatter_field_fluid(ispec,ispecabs,cpl,rhol,potential_dot_dot_
       call pnt_info_interpl_fluid(iglob,grad_pot_x_store,grad_pot_z_store,potential_dot_acoustic_store)
 
       ! adds absorbing boundary contribution
-      potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) - &
+      potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) + &
       ( nx*grad_pot_x_store + nz*grad_pot_z_store ) * weight/rhol - & !backgorund field
       ( potential_dot_acoustic(iglob) - potential_dot_acoustic_store ) * weight/cpl/rhol !scattered field
 
     enddo
+
+    if( (ibegin_edge1(ispecabs) /= 1) .and. (.not. codeabs_corner(3,ispecabs)))then
+
+      i = 1
+    !!test
+      !print *,'i = ',i
+    !!
+      iglob = ibool(i,j,ispec)
+      ! external velocity model
+      if( assign_external_model ) then
+        cpl = vpext(i,j,ispec)
+        rhol = rhoext(i,j,ispec)
+      endif
+      xxi = + gammaz(i,j,ispec) * jacobian(i,j,ispec)
+      zxi = - gammax(i,j,ispec) * jacobian(i,j,ispec)
+      jacobian1D = sqrt(xxi ** 2 + zxi ** 2)
+      nx = - zxi / jacobian1D
+      nz = + xxi / jacobian1D
+      weight = jacobian1D * wxgll(i)
+
+      call pnt_info_interpl_fluid(iglob,grad_pot_x_store,grad_pot_z_store,potential_dot_acoustic_store)
+
+      ! adds absorbing boundary contribution
+      potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) + &
+      ( nx*grad_pot_x_store + nz*grad_pot_z_store ) * weight/rhol !backgorund field
+
+    endif
+
+    if( (iend_edge1(ispecabs) /= NGLLX) .and. (.not. codeabs_corner(4,ispecabs)))then
+
+      i = NGLLX
+    !!test
+      !print *,'i = ',i
+    !!
+      iglob = ibool(i,j,ispec)
+      ! external velocity model
+      if( assign_external_model ) then
+        cpl = vpext(i,j,ispec)
+        rhol = rhoext(i,j,ispec)
+      endif
+      xxi = + gammaz(i,j,ispec) * jacobian(i,j,ispec)
+      zxi = - gammax(i,j,ispec) * jacobian(i,j,ispec)
+      jacobian1D = sqrt(xxi ** 2 + zxi ** 2)
+      nx = - zxi / jacobian1D
+      nz = + xxi / jacobian1D
+      weight = jacobian1D * wxgll(i)
+
+      call pnt_info_interpl_fluid(iglob,grad_pot_x_store,grad_pot_z_store,potential_dot_acoustic_store)
+
+      ! adds absorbing boundary contribution
+      potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) + &
+      ( nx*grad_pot_x_store + nz*grad_pot_z_store ) * weight/rhol !backgorund field
+
+    endif
+
   endif
 end subroutine absorb_scatter_field_fluid
 
@@ -402,6 +659,11 @@ subroutine pnt_info_interpl_solid(iglob,veloc_x_store,veloc_y_store,veloc_z_stor
 
   enddo
 
+  !print *,'\n'
+  !print *,'the original coordinate is ',x,z
+  !print *,'the point we interpolate is ',x_final_bd_pnt_elastic(point_locate),&
+  !        z_final_bd_pnt_elastic(point_locate)
+
   veloc_x_store = vel_bd_pnt_elastic(1,point_locate)
   veloc_y_store = vel_bd_pnt_elastic(2,point_locate)
   veloc_z_store = vel_bd_pnt_elastic(3,point_locate)
@@ -442,6 +704,12 @@ subroutine pnt_info_interpl_fluid(iglob,grad_pot_x_store,grad_pot_z_store,potent
 
   enddo
 
+  !test
+  !print *,'\n'
+  !print *,'the original coordinate is ',x,z
+  !print *,'the point we interpolate is ',x_final_bd_pnt_acoustic(point_locate),&
+  !        z_final_bd_pnt_acoustic(point_locate)
+  !!
   grad_pot_x_store = grad_pot_bd_pnt_acoustic(1,point_locate)
   grad_pot_z_store = grad_pot_bd_pnt_acoustic(2,point_locate)
   potential_dot_acoustic_store = pot_dot_bd_pnt_acoustic(point_locate)

@@ -88,6 +88,8 @@ subroutine iterate_time()
 ! *********************************************************
 
   do it = 1,NSTEP
+    !by lcx: for test
+    !if(it == 2) stop
     ! compute current time
     timeval = (it-1)*deltat
 

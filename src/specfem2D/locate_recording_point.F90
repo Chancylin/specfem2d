@@ -58,6 +58,17 @@
   !temperary variables for reading
   integer :: temp_num
   character(len=1) temp_side, temp_side_1
+  logical :: elastic_flag,acoustic_flag
+  double precision :: box_t,box_b,box_l,box_r
+ 
+  !!!geometry bound. Here we play the trick to locate the point in the exact 
+  !!element we want. Otherwise, it could happen that the points at the edges
+  !!are located in the neighbound element
+  box_t = 10000.0
+  box_b = -10000.0
+  box_l = -63989.8
+  box_r = -43989.8
+  !!!
 
   !figure out the number of recording point firstly
   npnt = 0
@@ -81,7 +92,7 @@
   nspec_bd_pnt_elastic = 0
   nspec_bd_pnt_acoustic = 0
 
-  113 format(i3.3,2x,A1,2x,A1,2x,4(es12.4,2x))
+  113 format(i3.3,2x,L1,2x,L1,2x,A1,2x,A1,2x,4(es12.4,2x))
   open(unit=1,file='DATA/boundary_points',status='old',action='read')
   !loop over all points
   ! loop only on points inside the element
@@ -92,27 +103,53 @@
     distmin_squared = HUGEVAL
 
     !read(1,*) bd_pnt_xval(ipnt), bd_pnt_zval(ipnt), nx_pnt(ipnt), nz_pnt(ipnt)
-    read(1,113)temp_num, temp_side, temp_side_1, bd_pnt_xval(ipnt), bd_pnt_zval(ipnt), nx_pnt(ipnt), nz_pnt(ipnt)
+    read(1,113)temp_num, elastic_flag,acoustic_flag, temp_side, temp_side_1, bd_pnt_xval(ipnt), &
+               bd_pnt_zval(ipnt), nx_pnt(ipnt), nz_pnt(ipnt)
 
     !the following loop is used to locate which element the recording point is in
     !And the algrithm is not perfect, since it could locate the corner recording point
     !in the neighbor element. I guess this is not a serious issue
     do ispec=1,nspec
-      do j=2,NGLLZ-1
-        do i=2,NGLLX-1
-          iglob = ibool(i,j,ispec)
-          dist_squared = (bd_pnt_xval(ipnt)-dble(coord(1,iglob)))**2 + &
-          (bd_pnt_zval(ipnt)-dble(coord(2,iglob)))**2
+       
+       !!the if sentence is used to distinguish the edge point which could be shared
+       !!by the neighbour elastic/fluid elements
+       if( (elastic(ispec) .eqv. elastic_flag) .and. (acoustic(ispec) .eqv. acoustic_flag) ) then
 
-          if(dist_squared < distmin_squared) then
-            distmin_squared = dist_squared
-            ispec_selected_bd_pnt(ipnt) = ispec
-            ix_initial_guess = i
-            iz_initial_guess = j
-          endif
-        enddo
-      enddo
-    enddo !end the loop for all elements
+      !!add the geometry bound in case it will pick the neighbor element which is
+      !!out of the loca region.
+      !!but somehow this is unnecessary, considering the traction and velocity should be
+      !!continuous in the media which does not have sudden change of property
+       !iglob = ibool(2,2,ispec)
+       !if((dble(coord(1,iglob)) > box_l) .and. (dble(coord(1,iglob)) < box_r) &
+       ! .and. dble(coord(2,iglob)) > box_b .and. dble(coord(2,iglob)) < box_t )then
+      !!!!!!!!!!!!!!
+         do j=2,NGLLZ-1
+           do i=2,NGLLX-1
+             iglob = ibool(i,j,ispec)
+             dist_squared = (bd_pnt_xval(ipnt)-dble(coord(1,iglob)))**2 + &
+             (bd_pnt_zval(ipnt)-dble(coord(2,iglob)))**2
+
+             if(dist_squared < distmin_squared) then
+               distmin_squared = dist_squared
+               ispec_selected_bd_pnt(ipnt) = ispec
+               ix_initial_guess = i
+               iz_initial_guess = j
+
+               !else if (dist_squared == distmin_squared)then
+
+                    ! if((dble(coord(1,iglob)) > box_l) .and. (dble(coord(1,iglob)) < box_r) .and. &
+                    !     dble(coord(2,iglob)) > box_b .and. dble(coord(2,iglob)) < box_t )then
+
+                       
+             endif
+           enddo
+         enddo
+
+       ! endif!geometry check 
+
+      endif !check if the elastic/acoustic flag is correct
+
+   enddo !end the loop for all elements
  
      if(elastic(ispec_selected_bd_pnt(ipnt))) nspec_bd_pnt_elastic=nspec_bd_pnt_elastic +1
      if(acoustic(ispec_selected_bd_pnt(ipnt))) nspec_bd_pnt_acoustic=nspec_bd_pnt_acoustic+1
@@ -172,7 +209,7 @@
      x_final_bd_pnt(ipnt) = x
      z_final_bd_pnt(ipnt) = z
  
-  enddo 
+  enddo !end loop for all recording points 
 
   close(1)
  
@@ -283,9 +320,12 @@
   if( ios /= 0 ) stop 'error saving elastic point profile'
 
   do i=1,nspec_bd_pnt_elastic
+     !write(f_num,110) ispec_bd_elmt_elastic(i), x_final_bd_pnt_elastic(i), z_final_bd_pnt_elastic(i)
      write(f_num,110) ispec_bd_elmt_elastic(i), x_final_bd_pnt_elastic(i), z_final_bd_pnt_elastic(i)
+                      ! nx_bd_pnt_elastic(i),nz_bd_pnt_elastic(i)
   enddo
   close(f_num)
+  !stop 'here we see the normal vector. DO NOT foget to modify the writing format 100'
  
   fname = './OUTPUT_FILES/bg_record/acoustic_pnts_profile' 
   open(unit=f_num,file=trim(fname),status='new',&

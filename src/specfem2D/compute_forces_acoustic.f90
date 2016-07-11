@@ -589,6 +589,7 @@
            endif  !  end of top absorbing boundary
 
              else !by lcx: apply virtual absorbing boundary
+               !if(it ==2) stop
                call absorb_scatter_field_fluid(ispec,ispecabs,cpl,rhol,potential_dot_dot_acoustic,potential_dot_acoustic)
         endif
       endif ! acoustic ispec

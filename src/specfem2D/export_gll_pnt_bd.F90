@@ -2,13 +2,15 @@
 !note that it will need the database generated from the local model
 subroutine export_gll_pnt_bd()
   use specfem_par, only: nelemabs,ibool,xiz,xix,gammax,gammaz,jacobian,&
-                         coord,numabs,codeabs,codeabs_corner,f_num,typeabs
+                         coord,numabs,codeabs,codeabs_corner,f_num,typeabs, &
+                         elastic,acoustic
   implicit none
   include "constants.h"
 
   real(kind=CUSTOM_REAL) :: nx,nz,xgamma,zgamma,xxi,zxi,jacobian1D
   integer :: i,j,ispec,ispecabs,iglob
   character(len=1) :: geom_side
+  character(len=1) :: elastic_flag, acoustic_flag
 
   f_num = 111
   open(unit=f_num,file='DATA/boundary_points',status='unknown',action='write')
@@ -18,6 +20,18 @@ subroutine export_gll_pnt_bd()
   do ispecabs = 1,nelemabs
 
      ispec = numabs(ispecabs)
+    
+     if(elastic(ispec))then
+         elastic_flag = 'T'
+       else 
+         elastic_flag = 'F'
+     endif
+
+     if(acoustic(ispec))then
+          acoustic_flag = 'T'
+       else
+          acoustic_flag = 'F'
+     endif
      
 !the tricky problem we need to deal with is that if the external mesh has the 
 !rotated elements, which means the left/right/top/bottom may not match
@@ -45,7 +59,7 @@ subroutine export_gll_pnt_bd()
             else
                  geom_side='L' 
           endif
-          write(f_num,113) ispec,'L',geom_side,coord(1,iglob),coord(2,iglob),nx,nz
+          write(f_num,113) ispec,elastic_flag,acoustic_flag,'L',geom_side,coord(1,iglob),coord(2,iglob),nx,nz
 
        enddo
      endif
@@ -72,7 +86,7 @@ subroutine export_gll_pnt_bd()
             else
                  geom_side='L' 
           endif
-          write(f_num,113) ispec,'R',geom_side,coord(1,iglob),coord(2,iglob),nx,nz
+          write(f_num,113) ispec,elastic_flag,acoustic_flag,'R',geom_side,coord(1,iglob),coord(2,iglob),nx,nz
           
        enddo
      endif    
@@ -103,7 +117,7 @@ subroutine export_gll_pnt_bd()
                else
                     geom_side='L' 
              endif
-             write(f_num,113) ispec,'B',geom_side,coord(1,iglob),coord(2,iglob),nx,nz
+             write(f_num,113) ispec,elastic_flag,acoustic_flag,'B',geom_side,coord(1,iglob),coord(2,iglob),nx,nz
          endif
 
       enddo
@@ -135,7 +149,7 @@ subroutine export_gll_pnt_bd()
                  else
                       geom_side='L' 
                endif
-               write(f_num,113) ispec,'T',geom_side,coord(1,iglob),coord(2,iglob),nx,nz
+               write(f_num,113) ispec,elastic_flag,acoustic_flag,'T',geom_side,coord(1,iglob),coord(2,iglob),nx,nz
          endif
 
       enddo
@@ -151,5 +165,5 @@ subroutine export_gll_pnt_bd()
   print *, 'The program will exit here'
   stop
 
-  113 format(i3.3,2x,A1,2x,A1,2x,4(es12.4,2x)) !48 column, make sure the writting format is proper
+  113 format(i3.3,2x,A1,2x,A1,2x,A1,2x,A1,2x,4(es12.4,2x)) !48 column, make sure the writting format is proper
 end subroutine export_gll_pnt_bd
