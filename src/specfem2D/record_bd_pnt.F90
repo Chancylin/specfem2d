@@ -7,13 +7,16 @@
     use specfem_par, only: ibool,veloc_elastic,potential_dot_acoustic,& !original para
                            nspec_bd_elmt_elastic_pure,nspec_bd_elmt_acoustic_pure,&
                            vel_bd_elastic, pot_dot_bd_acoustic,&
-                           ispec_bd_elmt_elastic_pure,ispec_bd_elmt_acoustic_pure
+                           ispec_bd_elmt_elastic_pure,ispec_bd_elmt_acoustic_pure,&
+                           it,record_nt1,record_nt2 !control time step for recording
    
     implicit none
     include "constants.h"
 
     integer :: i,j,k,iglob,ispec
      
+    if (it < record_nt1 .or. it > record_nt2 ) return
+
     loop1:do k = 1,nspec_bd_elmt_elastic_pure
              ispec = ispec_bd_elmt_elastic_pure(k)
              do i = 1, NGLLX
@@ -41,13 +44,16 @@
             sigma_xx,sigma_xy,sigma_xz,sigma_zz,sigma_zy)
 
    use specfem_par, only: stress_bd_elastic,nspec_bd_elmt_elastic_pure,&
-                          ispec_bd_elmt_elastic_pure
+                          ispec_bd_elmt_elastic_pure,&
+                          it,record_nt1,record_nt2 !control time step for recording
 
    implicit none
    include "constants.h"
    real(kind=CUSTOM_REAL), intent(in) :: sigma_xx,sigma_xy,sigma_xz,sigma_zz,sigma_zy
    integer, intent(in) :: ispec,i,j
    integer :: k   
+
+   if (it < record_nt1 .or. it > record_nt2 ) return
  
    loop1:do k = 1,nspec_bd_elmt_elastic_pure
          if ( ispec_bd_elmt_elastic_pure(k) == ispec ) then
@@ -73,13 +79,15 @@
  subroutine record_bd_elmnt_acoustic(ispec,i,j,dux_dxl,dux_dzl)
   
    use specfem_par, only: grad_pot_bd_acoustic,nspec_bd_elmt_acoustic_pure,&
-                          ispec_bd_elmt_acoustic_pure!,it
+                          ispec_bd_elmt_acoustic_pure,&
+                          it,record_nt1,record_nt2 !control time step for recording
    implicit none
    include "constants.h"
    real(kind=CUSTOM_REAL), intent(in) :: dux_dxl,dux_dzl
    integer, intent(in) :: ispec,i,j
    integer :: k
 
+   if (it < record_nt1 .or. it > record_nt2 ) return
    loop2:do k = 1,nspec_bd_elmt_acoustic_pure
          if ( ispec_bd_elmt_acoustic_pure(k) == ispec ) then
 
@@ -107,7 +115,8 @@
                          nspec_bd_elmt_elastic_pure,nspec_bd_elmt_acoustic_pure,&
                          nspec_bd_pnt_elastic,nspec_bd_pnt_acoustic,&
                          grad_pot_bd_pnt_acoustic,pot_dot_bd_pnt_acoustic,&
-                         nx_bd_pnt_elastic,nz_bd_pnt_elastic
+                         nx_bd_pnt_elastic,nz_bd_pnt_elastic,&
+                         record_nt1,record_nt2 !control time step for recording
 
   !use specfem_par, only: elastic,acoustic,it,& !original para
   !                       npnt,ispec_selected_bd_pnt,fname,f_num,&
@@ -127,8 +136,12 @@
   integer :: ipnt,ispec,k,kk,i,j
   double precision :: hlagrange
   integer :: ios
+  integer :: length_unf_1
+  integer :: length_unf_2
   !integer :: k,kk
   !logical :: switch = .false.
+
+  if (it < record_nt1 .or. it > record_nt2 ) return
 
   ispec_bd_pnt_elastic = 0
   ispec_bd_pnt_acoustic = 0
@@ -235,32 +248,52 @@
   trac_bd_pnt_elastic(2,:) = nx_bd_pnt_elastic(:)*stress_bd_pnt_elastic(2,:) + &
                              nz_bd_pnt_elastic(:)*stress_bd_pnt_elastic(5,:)
 
+
+  !!!this is the recording length for unformatted recording
+  inquire (iolength = length_unf_1) trac_bd_pnt_elastic(:,1),vel_bd_pnt_elastic(:,1)
+  inquire (iolength = length_unf_2) grad_pot_bd_pnt_acoustic(:,1),pot_dot_bd_pnt_acoustic(1)
+ 
   f_num=113
   !for elastic 
   write(fname,"('./OUTPUT_FILES/bg_record/&
         &elastic_pnts/nt_',i6.6)")it
-  open(unit=f_num,file=trim(fname),status='new',&
-       action='write',iostat=ios) 
+
+  !formatted recording
+  !open(unit=f_num,file=trim(fname),status='new',&
+  !     action='write',iostat=ios) 
+  
+  !unformatted recording
+  open(unit=f_num,file=trim(fname),access='direct',status='new',&
+       action='write',iostat=ios,recl=length_unf_1) 
   if( ios /= 0 ) stop 'error saving values at recording points'
 
   do k = 1, nspec_bd_pnt_elastic
-     write(f_num,111) trac_bd_pnt_elastic(:,k),vel_bd_pnt_elastic(:,k)
+     !write(f_num,111) trac_bd_pnt_elastic(:,k),vel_bd_pnt_elastic(:,k)
+     write(f_num,rec=k) trac_bd_pnt_elastic(:,k),vel_bd_pnt_elastic(:,k)
   enddo
 
   close(f_num)
   !for acoustic
   write(fname,"('./OUTPUT_FILES/bg_record/&
         &acoustic_pnts/nt_',i6.6)")it
-  open(unit=f_num,file=trim(fname),status='new',&
-       action='write',iostat=ios) 
+  
+  !formatted recording
+  !open(unit=f_num,file=trim(fname),status='new',&
+  !     action='write',iostat=ios) 
+
+  
+  !unformatted recording
+  open(unit=f_num,file=trim(fname),access='direct',status='new',&
+       action='write',iostat=ios,recl=length_unf_2) 
   if( ios /= 0 ) stop 'error saving values at recording points'
   
   do kk = 1, nspec_bd_pnt_acoustic
-     write(f_num,112) grad_pot_bd_pnt_acoustic(:,kk),pot_dot_bd_pnt_acoustic(kk)
+     !write(f_num,112) grad_pot_bd_pnt_acoustic(:,kk),pot_dot_bd_pnt_acoustic(kk)
+     write(f_num,rec=kk) grad_pot_bd_pnt_acoustic(:,kk),pot_dot_bd_pnt_acoustic(kk)
   enddo
 
   close(f_num)
 
-  111 format(6(es12.4,2x)) !112 column
-  112 format(3(es12.4,2x)) !36 column
+  !111 format(6(es12.4,2x)) !112 column
+  !112 format(3(es12.4,2x)) !36 column
  end subroutine write_bd_pnts

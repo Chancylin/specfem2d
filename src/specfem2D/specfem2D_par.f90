@@ -299,6 +299,8 @@ module specfem_par
   !------------------------------------------------------------------
   logical :: record_local_bkgd_boundary, export_gll_pnt_local
   logical :: supply_local_bkgd_boundary, virtual_ab_bd
+  integer :: record_nt1,record_nt2,read_nt1,read_nt2
+  double precision :: deltat_record, deltat_read
   integer :: npnt,nspec_bd_pnt_elastic, nspec_bd_pnt_acoustic
   integer, dimension(:), allocatable :: ispec_selected_bd_pnt
   integer :: nspec_bd_elmt_elastic_pure, nspec_bd_elmt_acoustic_pure

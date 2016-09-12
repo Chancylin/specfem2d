@@ -7,10 +7,10 @@ subroutine export_gll_pnt_bd()
   implicit none
   include "constants.h"
 
-  real(kind=CUSTOM_REAL) :: nx,nz,xgamma,zgamma,xxi,zxi,jacobian1D
+  real(kind=CUSTOM_REAL) :: nx,nz,nx_alt,nz_alt,xgamma,zgamma,xxi,zxi,jacobian1D
   integer :: i,j,ispec,ispecabs,iglob
   character(len=1) :: geom_side
-  character(len=1) :: elastic_flag, acoustic_flag
+  character(len=1) :: elastic_flag, acoustic_flag, corner_flag
 
   f_num = 111
   open(unit=f_num,file='DATA/boundary_points',status='unknown',action='write')
@@ -59,7 +59,47 @@ subroutine export_gll_pnt_bd()
             else
                  geom_side='L' 
           endif
-          write(f_num,113) ispec,elastic_flag,acoustic_flag,'L',geom_side,coord(1,iglob),coord(2,iglob),nx,nz
+ 
+         !judge whether this GLL point is corner
+         !if corner, then use average
+          !if( (codeabs_corner(1,ispecabs) .and. j == NGLLZ) ) then
+          !if(ispec==10) then
+          !   print *,ispecabs
+          !   print *,'left: codeabs_corner(3,ispecabs) = ',codeabs_corner(3,ispecabs)
+          !endif
+
+          if( codeabs_corner(1,ispecabs) .and. j == 1 ) then
+            !Left-Bottom
+                 corner_flag = 'T'
+                 
+                 xxi = + gammaz(i,j,ispec) * jacobian(i,j,ispec)
+                 zxi = - gammax(i,j,ispec) * jacobian(i,j,ispec)
+                 jacobian1D = sqrt(xxi**2 + zxi**2)
+                 nx_alt = + zxi / jacobian1D
+                 nz_alt = - xxi / jacobian1D
+
+                 nx = 0.5*nx + 0.5*nx_alt
+                 nz = 0.5*nz + 0.5*nz_alt
+
+            else if ( codeabs_corner(3,ispecabs) .and. j == NGLLZ ) then
+              !Left-Top
+                 corner_flag = 'T'
+
+                 xxi = + gammaz(i,j,ispec) * jacobian(i,j,ispec)
+                 zxi = - gammax(i,j,ispec) * jacobian(i,j,ispec)
+                 jacobian1D = sqrt(xxi**2 + zxi**2)
+                 nx_alt = - zxi / jacobian1D
+                 nz_alt = + xxi / jacobian1D
+                 
+                 nx = 0.5*nx + 0.5*nx_alt
+                 nz = 0.5*nz + 0.5*nz_alt
+
+            else
+                 corner_flag = 'F'
+          endif
+
+          write(f_num,113) ispec,elastic_flag,acoustic_flag,corner_flag,&
+                           'L',geom_side,coord(1,iglob),coord(2,iglob),nx,nz
 
        enddo
      endif
@@ -86,13 +126,48 @@ subroutine export_gll_pnt_bd()
             else
                  geom_side='L' 
           endif
-          write(f_num,113) ispec,elastic_flag,acoustic_flag,'R',geom_side,coord(1,iglob),coord(2,iglob),nx,nz
+         !judge whether this GLL point is corner
+         !if corner, then use average
+          if( (codeabs_corner(2,ispecabs) .and. j == 1) ) then
+            !Right-Bottom
+                 corner_flag = 'T'
+                 
+                 xxi = + gammaz(i,j,ispec) * jacobian(i,j,ispec)
+                 zxi = - gammax(i,j,ispec) * jacobian(i,j,ispec)
+                 jacobian1D = sqrt(xxi**2 + zxi**2)
+                 nx_alt = + zxi / jacobian1D
+                 nz_alt = - xxi / jacobian1D
+
+                 nx = 0.5*nx + 0.5*nx_alt
+                 nz = 0.5*nz + 0.5*nz_alt
+
+            else if ( (codeabs_corner(4,ispecabs) .and. j == NGLLZ) ) then
+              !Right-Top
+                 corner_flag = 'T'
+
+                 xxi = + gammaz(i,j,ispec) * jacobian(i,j,ispec)
+                 zxi = - gammax(i,j,ispec) * jacobian(i,j,ispec)
+                 jacobian1D = sqrt(xxi**2 + zxi**2)
+                 nx_alt = - zxi / jacobian1D
+                 nz_alt = + xxi / jacobian1D
+                 
+                 nx = 0.5*nx + 0.5*nx_alt
+                 nz = 0.5*nz + 0.5*nz_alt
+
+            else
+                 corner_flag = 'F'
+          endif
+          write(f_num,113) ispec,elastic_flag,acoustic_flag,corner_flag,&
+                           'R',geom_side,coord(1,iglob),coord(2,iglob),nx,nz
           
        enddo
      endif    
 
     !--bottom boundary
     if( codeabs(IEDGE1,ispecabs) ) then
+
+      corner_flag = 'F'
+
       j = 1
       do i = 1,NGLLX
          iglob = ibool(i,j,ispec)
@@ -105,6 +180,7 @@ subroutine export_gll_pnt_bd()
       
     !exclude corners to make sure there is no contradiction on the normal
          if( (codeabs_corner(1,ispecabs) .and. i == 1) .or. (codeabs_corner(2,ispecabs) .and. i == NGLLX) ) then 
+            ! print *,'detect a corner GLL'
       !skip this corner point because it has aleady been recorded
            else
              !write(f_num,113) coord(1,iglob),coord(2,iglob),nx,nz
@@ -117,7 +193,8 @@ subroutine export_gll_pnt_bd()
                else
                     geom_side='L' 
              endif
-             write(f_num,113) ispec,elastic_flag,acoustic_flag,'B',geom_side,coord(1,iglob),coord(2,iglob),nx,nz
+             write(f_num,113) ispec,elastic_flag,acoustic_flag,corner_flag,&
+                              'B',geom_side,coord(1,iglob),coord(2,iglob),nx,nz
          endif
 
       enddo
@@ -125,6 +202,9 @@ subroutine export_gll_pnt_bd()
    
     !--top boundary
     if( codeabs(IEDGE3,ispecabs) ) then
+
+      corner_flag = 'F'
+
       j = NGLLZ
       do i = 1,NGLLX
          iglob = ibool(i,j,ispec)
@@ -137,6 +217,7 @@ subroutine export_gll_pnt_bd()
 
     !exclude corners to make sure thers is no contradiction on the normal
          if( (codeabs_corner(3,ispecabs) .and. i == 1) .or. (codeabs_corner(4,ispecabs) .and. i == NGLLX) ) then
+             !print *,'detect a corner GLL'
          !skip recording
            else
                !write(f_num,113) coord(1,iglob),coord(2,iglob),nx,nz
@@ -149,7 +230,8 @@ subroutine export_gll_pnt_bd()
                  else
                       geom_side='L' 
                endif
-               write(f_num,113) ispec,elastic_flag,acoustic_flag,'T',geom_side,coord(1,iglob),coord(2,iglob),nx,nz
+               write(f_num,113) ispec,elastic_flag,acoustic_flag,corner_flag,&
+                                'T',geom_side,coord(1,iglob),coord(2,iglob),nx,nz
          endif
 
       enddo
@@ -165,5 +247,5 @@ subroutine export_gll_pnt_bd()
   print *, 'The program will exit here'
   stop
 
-  113 format(i3.3,2x,A1,2x,A1,2x,A1,2x,A1,2x,4(es12.4,2x)) !48 column, make sure the writting format is proper
+  113 format(i3.3,2x,A1,2x,A1,2x,A1,2x,A1,2x,A1,2x,4(es12.4,2x)) !48 column, make sure the writting format is proper
 end subroutine export_gll_pnt_bd

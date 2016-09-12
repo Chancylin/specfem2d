@@ -5,7 +5,9 @@ subroutine absorb_scatter_field_solid(ispec,ispecabs,cpl,csl,rhol,accel_elastic,
   use specfem_par, only: nglob,ibool,wzgll,wxgll,&
                          xiz,xix,gammaz,gammax,jacobian,&
                          codeabs,codeabs_corner,assign_external_model,&
-                         rhoext,vpext,vsext 
+                         rhoext,vpext,vsext,&
+                         it,read_nt1,read_nt2 !control time step for reading
+ 
   implicit none
   include "constants.h"
 
@@ -18,6 +20,7 @@ subroutine absorb_scatter_field_solid(ispec,ispecabs,cpl,csl,rhol,accel_elastic,
   
 
 
+  if (it < read_nt1 .or. it > read_nt2 ) return
   !test by lcx
   !print *,'solid bd element number: ', ispec
   !if(codeabs(IEDGE4,ispecabs)) then
@@ -65,11 +68,20 @@ subroutine absorb_scatter_field_solid(ispec,ispecabs,cpl,csl,rhol,accel_elastic,
        tx = rho_vp*vn*nx+rho_vs*(vx-vn*nx)
        ty = rho_vs*vy
        tz = rho_vp*vn*nz+rho_vs*(vz-vn*nz)
+ 
+       if( (codeabs_corner(1,ispecabs) .and. j == 1) .or. (codeabs_corner(3,ispecabs) .and. j == NGLLZ) ) then
+       !apply the averaging to deal with the boundary corner: Left-Bottom and Left-Top
+         accel_elastic(1,iglob) = accel_elastic(1,iglob) - 0.5*(tx - tx_store)*weight
+         accel_elastic(2,iglob) = accel_elastic(2,iglob) - 0.5*(ty - ty_store)*weight
+         accel_elastic(3,iglob) = accel_elastic(3,iglob) - 0.5*(tz - tz_store)*weight
+ 
+         else
 
        !!confirm that tx_store should have plus sign as the contribution to the RHS of the equation
-       accel_elastic(1,iglob) = accel_elastic(1,iglob) - (tx - tx_store)*weight 
-       accel_elastic(2,iglob) = accel_elastic(2,iglob) - (ty - ty_store)*weight
-       accel_elastic(3,iglob) = accel_elastic(3,iglob) - (tz - tz_store)*weight
+           accel_elastic(1,iglob) = accel_elastic(1,iglob) - (tx - tx_store)*weight
+           accel_elastic(2,iglob) = accel_elastic(2,iglob) - (ty - ty_store)*weight
+           accel_elastic(3,iglob) = accel_elastic(3,iglob) - (tz - tz_store)*weight
+       endif
 
     enddo
   endif
@@ -110,10 +122,18 @@ subroutine absorb_scatter_field_solid(ispec,ispecabs,cpl,csl,rhol,accel_elastic,
        ty = rho_vs*vy
        tz = rho_vp*vn*nz+rho_vs*(vz-vn*nz)
 
-       accel_elastic(1,iglob) = accel_elastic(1,iglob) - (tx - tx_store)*weight
-       accel_elastic(2,iglob) = accel_elastic(2,iglob) - (ty - ty_store)*weight
-       accel_elastic(3,iglob) = accel_elastic(3,iglob) - (tz - tz_store)*weight
-       
+       if( (codeabs_corner(4,ispecabs) .and. j == NGLLZ) .or. (codeabs_corner(2,ispecabs) .and. j == 1) ) then
+       !apply the averaging to deal with the boundary corner: Right-Top and Right-Bottom
+         accel_elastic(1,iglob) = accel_elastic(1,iglob) - 0.5*(tx - tx_store)*weight
+         accel_elastic(2,iglob) = accel_elastic(2,iglob) - 0.5*(ty - ty_store)*weight
+         accel_elastic(3,iglob) = accel_elastic(3,iglob) - 0.5*(tz - tz_store)*weight
+ 
+         else
+
+           accel_elastic(1,iglob) = accel_elastic(1,iglob) - (tx - tx_store)*weight
+           accel_elastic(2,iglob) = accel_elastic(2,iglob) - (ty - ty_store)*weight
+           accel_elastic(3,iglob) = accel_elastic(3,iglob) - (tz - tz_store)*weight
+       endif
 
     enddo
   endif
@@ -154,14 +174,19 @@ subroutine absorb_scatter_field_solid(ispec,ispecabs,cpl,csl,rhol,accel_elastic,
        tz = rho_vp*vn*nz+rho_vs*(vz-vn*nz)
 
        if( (codeabs_corner(1,ispecabs) .and. i == 1) .or. (codeabs_corner(2,ispecabs) .and. i == NGLLX) ) then
-         tx = 0._CUSTOM_REAL; ty = 0._CUSTOM_REAL; tz = 0._CUSTOM_REAL
-         tx_store = 0._CUSTOM_REAL; ty_store = 0._CUSTOM_REAL; tz_store = 0._CUSTOM_REAL
+       !apply the averaging to deal with the boundary corner  
+         accel_elastic(1,iglob) = accel_elastic(1,iglob) - 0.5*(tx - tx_store)*weight
+         accel_elastic(2,iglob) = accel_elastic(2,iglob) - 0.5*(ty - ty_store)*weight
+         accel_elastic(3,iglob) = accel_elastic(3,iglob) - 0.5*(tz - tz_store)*weight
+ 
+         else
+
+           accel_elastic(1,iglob) = accel_elastic(1,iglob) - (tx - tx_store)*weight
+           accel_elastic(2,iglob) = accel_elastic(2,iglob) - (ty - ty_store)*weight
+           accel_elastic(3,iglob) = accel_elastic(3,iglob) - (tz - tz_store)*weight
        endif
        
-       accel_elastic(1,iglob) = accel_elastic(1,iglob) - (tx - tx_store)*weight
-       accel_elastic(2,iglob) = accel_elastic(2,iglob) - (ty - ty_store)*weight
-       accel_elastic(3,iglob) = accel_elastic(3,iglob) - (tz - tz_store)*weight
-       
+
     enddo
   endif
   !---top absorbing boundary
@@ -203,17 +228,21 @@ subroutine absorb_scatter_field_solid(ispec,ispecabs,cpl,csl,rhol,accel_elastic,
 
        
        if( (codeabs_corner(3,ispecabs) .and. i == 1) .or. (codeabs_corner(4,ispecabs) .and. i == NGLLX) ) then
-         tx = 0._CUSTOM_REAL; ty = 0._CUSTOM_REAL; tz = 0._CUSTOM_REAL
-         tx_store = 0._CUSTOM_REAL; ty_store = 0._CUSTOM_REAL; tz_store = 0._CUSTOM_REAL
+       !apply the averaging to deal with the boundary corner: Top-Left and Top-Right
+         accel_elastic(1,iglob) = accel_elastic(1,iglob) - 0.5*(tx - tx_store)*weight
+         accel_elastic(2,iglob) = accel_elastic(2,iglob) - 0.5*(ty - ty_store)*weight
+         accel_elastic(3,iglob) = accel_elastic(3,iglob) - 0.5*(tz - tz_store)*weight
+ 
+         else
+
+           accel_elastic(1,iglob) = accel_elastic(1,iglob) - (tx - tx_store)*weight
+           accel_elastic(2,iglob) = accel_elastic(2,iglob) - (ty - ty_store)*weight
+           accel_elastic(3,iglob) = accel_elastic(3,iglob) - (tz - tz_store)*weight
        endif
-
-       accel_elastic(1,iglob) = accel_elastic(1,iglob) - (tx - tx_store)*weight
-       accel_elastic(2,iglob) = accel_elastic(2,iglob) - (ty - ty_store)*weight
-       accel_elastic(3,iglob) = accel_elastic(3,iglob) - (tz - tz_store)*weight
-
 
     enddo
   endif
+
   
 end subroutine absorb_scatter_field_solid
 
@@ -224,7 +253,9 @@ subroutine absorb_scatter_field_fluid(ispec,ispecabs,cpl,rhol,potential_dot_dot_
                          codeabs,codeabs_corner,assign_external_model,&
                          rhoext,vpext,&
                          ibegin_edge1,iend_edge1,ibegin_edge3,iend_edge3, &
-                         ibegin_edge4,iend_edge4,ibegin_edge2,iend_edge2
+                         ibegin_edge4,iend_edge4,ibegin_edge2,iend_edge2,&
+                         it, read_nt1, read_nt2 
+
   implicit none
   include "constants.h"
 
@@ -235,6 +266,7 @@ subroutine absorb_scatter_field_fluid(ispec,ispecabs,cpl,rhol,potential_dot_dot_
   real(kind=CUSTOM_REAL) :: grad_pot_x_store,grad_pot_z_store,potential_dot_acoustic_store
   integer :: i,j,ibegin,iend,jbegin,jend,iglob
 
+  if (it < read_nt1 .or. it > read_nt2 ) return
   !test by lcx
   !print *,'fluid bd element number: ', ispec
   !if(codeabs(IEDGE4,ispecabs)) then
@@ -276,11 +308,20 @@ subroutine absorb_scatter_field_fluid(ispec,ispecabs,cpl,rhol,potential_dot_dot_
       call pnt_info_interpl_fluid(iglob,grad_pot_x_store,grad_pot_z_store,potential_dot_acoustic_store)
 
       ! adds absorbing boundary contribution
+          
+      if( (codeabs_corner(1,ispecabs) .and. j == 1) .or. (codeabs_corner(3,ispecabs) .and. j == NGLLZ) ) then
+       !apply the averaging to deal with the boundary corner: Left-Bottom and Left-Top
+        potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) + &
+        0.5*( nx*grad_pot_x_store + nz*grad_pot_z_store ) * weight/rhol - & !backgorund field
+        0.5*( potential_dot_acoustic(iglob) - potential_dot_acoustic_store ) * weight/cpl/rhol !scattered field
 
-      !confirm that backgroundfield has plus sign as contribution to the RHS of equation
-      potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) + &
-      ( nx*grad_pot_x_store + nz*grad_pot_z_store ) * weight/rhol - & !backgorund field
-      ( potential_dot_acoustic(iglob) - potential_dot_acoustic_store ) * weight/cpl/rhol !scattered field
+       else
+         ! adds absorbing boundary contribution
+         potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) + &
+         ( nx*grad_pot_x_store + nz*grad_pot_z_store ) * weight/rhol - & !backgorund field
+         ( potential_dot_acoustic(iglob) - potential_dot_acoustic_store ) * weight/cpl/rhol !scattered field
+   
+      endif
 
     enddo
 
@@ -290,9 +331,7 @@ subroutine absorb_scatter_field_fluid(ispec,ispecabs,cpl,rhol,potential_dot_dot_
     if( jbegin /= 1 )then
 
        j=1
-    !!!test
-      !print *,'j = ',j
-    !!!
+
        iglob = ibool(i,j,ispec)
        ! external velocity model
        if( assign_external_model ) then
@@ -317,9 +356,7 @@ subroutine absorb_scatter_field_fluid(ispec,ispecabs,cpl,rhol,potential_dot_dot_
     if( jend /= NGLLZ )then
 
        j=NGLLZ
-    !!!test
-      !print *,'j = ',j
-    !!!
+
        iglob = ibool(i,j,ispec)
        ! external velocity model
        if( assign_external_model ) then
@@ -370,10 +407,19 @@ subroutine absorb_scatter_field_fluid(ispec,ispecabs,cpl,rhol,potential_dot_dot_
 
       call pnt_info_interpl_fluid(iglob,grad_pot_x_store,grad_pot_z_store,potential_dot_acoustic_store)
 
-      ! adds absorbing boundary contribution
-      potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) + &
-      ( nx*grad_pot_x_store + nz*grad_pot_z_store ) * weight/rhol - & !backgorund field
-      ( potential_dot_acoustic(iglob) - potential_dot_acoustic_store ) * weight/cpl/rhol !scattered field
+      if( (codeabs_corner(4,ispecabs) .and. j == NGLLZ) .or. (codeabs_corner(2,ispecabs) .and. j == 1) ) then
+      !apply the averaging to deal with the boundary corner: Right-Top and Right-Bottom
+       potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) + &
+       0.5*( nx*grad_pot_x_store + nz*grad_pot_z_store ) * weight/rhol - & !backgorund field
+       0.5*( potential_dot_acoustic(iglob) - potential_dot_acoustic_store ) * weight/cpl/rhol !scattered field
+
+      else
+        ! adds absorbing boundary contribution
+        potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) + &
+        ( nx*grad_pot_x_store + nz*grad_pot_z_store ) * weight/rhol - & !backgorund field
+        ( potential_dot_acoustic(iglob) - potential_dot_acoustic_store ) * weight/cpl/rhol !scattered field
+   
+      endif
 
     enddo
 
@@ -438,12 +484,10 @@ subroutine absorb_scatter_field_fluid(ispec,ispecabs,cpl,rhol,potential_dot_dot_
     j = 1
     ibegin = ibegin_edge1(ispecabs)
     iend = iend_edge1(ispecabs)
-    !!test
-    !print *,'element number: ',ispec,' and element type is B, j = ',j
     !!
-    ! exclude corners to make sure there is no contradiction on the normal
-    if( codeabs_corner(1,ispecabs)) ibegin = 2
-    if( codeabs_corner(2,ispecabs)) iend = NGLLX-1
+    !! exclude corners to make sure there is no contradiction on the normal
+    !if( codeabs_corner(1,ispecabs)) ibegin = 2
+    !if( codeabs_corner(2,ispecabs)) iend = NGLLX-1
     do i = ibegin,iend
     !!test
       !print *,'i = ',i
@@ -463,11 +507,21 @@ subroutine absorb_scatter_field_fluid(ispec,ispecabs,cpl,rhol,potential_dot_dot_
 
       call pnt_info_interpl_fluid(iglob,grad_pot_x_store,grad_pot_z_store,potential_dot_acoustic_store)
 
-      ! adds absorbing boundary contribution
-      potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) + &
-      ( nx*grad_pot_x_store + nz*grad_pot_z_store ) * weight/rhol - & !backgorund field
-      ( potential_dot_acoustic(iglob) - potential_dot_acoustic_store ) * weight/cpl/rhol !scattered field
-    
+       if( (codeabs_corner(1,ispecabs) .and. i == 1) .or. (codeabs_corner(2,ispecabs) .and. i == NGLLX) ) then
+
+           
+         potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) + &
+         0.5*( nx*grad_pot_x_store + nz*grad_pot_z_store ) * weight/rhol - & !backgorund field
+         0.5*( potential_dot_acoustic(iglob) - potential_dot_acoustic_store ) * weight/cpl/rhol !scattered field
+
+        else
+          ! adds absorbing boundary contribution
+          potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) + &
+          ( nx*grad_pot_x_store + nz*grad_pot_z_store ) * weight/rhol - & !backgorund field
+          ( potential_dot_acoustic(iglob) - potential_dot_acoustic_store ) * weight/cpl/rhol !scattered field
+   
+       endif
+ 
     enddo
 
     if( (ibegin_edge1(ispecabs) /= 1) .and. (.not. codeabs_corner(1,ispecabs)))then
@@ -534,9 +588,9 @@ subroutine absorb_scatter_field_fluid(ispec,ispecabs,cpl,rhol,potential_dot_dot_
     !!test
     !print *,'element number: ',ispec,' and element type is T, j = ',j
     !!
-    ! exclude corners to make sure there is no contradiction on the normal
-    if( codeabs_corner(3,ispecabs)) ibegin = 2
-    if( codeabs_corner(4,ispecabs)) iend = NGLLX-1
+    !! exclude corners to make sure there is no contradiction on the normal
+    !if( codeabs_corner(3,ispecabs)) ibegin = 2
+    !if( codeabs_corner(4,ispecabs)) iend = NGLLX-1
     do i = ibegin,iend
       !!!test
       !print *,'i = ',i
@@ -556,10 +610,19 @@ subroutine absorb_scatter_field_fluid(ispec,ispecabs,cpl,rhol,potential_dot_dot_
 
       call pnt_info_interpl_fluid(iglob,grad_pot_x_store,grad_pot_z_store,potential_dot_acoustic_store)
 
-      ! adds absorbing boundary contribution
-      potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) + &
-      ( nx*grad_pot_x_store + nz*grad_pot_z_store ) * weight/rhol - & !backgorund field
-      ( potential_dot_acoustic(iglob) - potential_dot_acoustic_store ) * weight/cpl/rhol !scattered field
+      if( (codeabs_corner(3,ispecabs) .and. i == 1) .or. (codeabs_corner(4,ispecabs) .and. i == NGLLX) ) then
+          
+        potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) + &
+        0.5*( nx*grad_pot_x_store + nz*grad_pot_z_store ) * weight/rhol - & !backgorund field
+        0.5*( potential_dot_acoustic(iglob) - potential_dot_acoustic_store ) * weight/cpl/rhol !scattered field
+
+       else
+         ! adds absorbing boundary contribution
+         potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) + &
+         ( nx*grad_pot_x_store + nz*grad_pot_z_store ) * weight/rhol - & !backgorund field
+         ( potential_dot_acoustic(iglob) - potential_dot_acoustic_store ) * weight/cpl/rhol !scattered field
+   
+      endif
 
     enddo
 

@@ -1,8 +1,11 @@
 !by lcx:the subroutine prepares parameters to control recording or
 !reading back the local/global bd info
   subroutine read_para_hybird()
+
     use specfem_par, only: record_local_bkgd_boundary,export_gll_pnt_local,&
-                           supply_local_bkgd_boundary,virtual_ab_bd
+                           supply_local_bkgd_boundary,virtual_ab_bd,&
+                           record_nt1,record_nt2,deltat_record,&
+                           read_nt1,read_nt2,deltat_read
 
     character(len=256)datlin
 
@@ -12,7 +15,12 @@
     read(111,*) datlin
     read(111,*) record_local_bkgd_boundary
     read(111,*) datlin
+    read(111,*) deltat_record,record_nt1,record_nt2
+    read(111,*) datlin
     read(111,*) supply_local_bkgd_boundary
+    read(111,*) datlin
+    read(111,*) deltat_read,read_nt1,read_nt2
+
     close(111)
     if(supply_local_bkgd_boundary) then
        virtual_ab_bd = .true.

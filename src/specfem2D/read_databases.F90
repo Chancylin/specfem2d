@@ -694,7 +694,11 @@
 
 ! detection of the corner element
     do inum = 1,nelemabs
-
+!by lcx:
+! in the definition of the original code, the corner element is only being detected,
+! when Top/Bottom edged is found coupled with Left/Right edges.
+! Here I also add the Left/Right edges coupled with Top/Bottom into account
+      !bottom
       if (codeabs(IEDGE1,inum)) then
         do inum_duplicate = 1,nelemabs
            if (inum == inum_duplicate) then
@@ -713,7 +717,7 @@
            endif
         enddo
       endif
-
+      !top
       if (codeabs(IEDGE3,inum)) then
         do inum_duplicate = 1,nelemabs
            if (inum == inum_duplicate) then
@@ -733,6 +737,45 @@
         enddo
       endif
 
+      !!left
+      if (codeabs(IEDGE4,inum)) then
+        do inum_duplicate = 1,nelemabs
+           if (inum == inum_duplicate) then
+             ! left for blank, since no operation is needed.
+           else
+             if (numabs(inum) == numabs(inum_duplicate)) then
+                if (codeabs(IEDGE1,inum_duplicate)) then
+                   codeabs_corner(1,inum) = .true.
+                endif
+
+                if (codeabs(IEDGE3,inum_duplicate)) then
+                   codeabs_corner(3,inum) = .true.
+                endif
+
+             endif
+           endif
+        enddo
+      endif
+
+      !!right
+      if (codeabs(IEDGE2,inum)) then
+        do inum_duplicate = 1,nelemabs
+           if (inum == inum_duplicate) then
+             ! left for blank, since no operation is needed.
+           else
+             if (numabs(inum) == numabs(inum_duplicate)) then
+                if (codeabs(IEDGE1,inum_duplicate)) then
+                   codeabs_corner(2,inum) = .true.
+                endif
+
+                if (codeabs(IEDGE3,inum_duplicate)) then
+                   codeabs_corner(4,inum) = .true.
+                endif
+
+             endif
+           endif
+        enddo
+      endif
     enddo
 
 ! detection of the corner element

@@ -58,7 +58,7 @@
   !temperary variables for reading
   integer :: temp_num
   character(len=1) temp_side, temp_side_1
-  logical :: elastic_flag,acoustic_flag
+  logical :: elastic_flag,acoustic_flag,corner_flag
   double precision :: box_t,box_b,box_l,box_r
  
   !!!geometry bound. Here we play the trick to locate the point in the exact 
@@ -92,7 +92,7 @@
   nspec_bd_pnt_elastic = 0
   nspec_bd_pnt_acoustic = 0
 
-  113 format(i3.3,2x,L1,2x,L1,2x,A1,2x,A1,2x,4(es12.4,2x))
+  113 format(i3.3,2x,L1,2x,L1,2x,L1,2x,A1,2x,A1,2x,4(es12.4,2x))
   open(unit=1,file='DATA/boundary_points',status='old',action='read')
   !loop over all points
   ! loop only on points inside the element
@@ -103,7 +103,8 @@
     distmin_squared = HUGEVAL
 
     !read(1,*) bd_pnt_xval(ipnt), bd_pnt_zval(ipnt), nx_pnt(ipnt), nz_pnt(ipnt)
-    read(1,113)temp_num, elastic_flag,acoustic_flag, temp_side, temp_side_1, bd_pnt_xval(ipnt), &
+    read(1,113)temp_num, elastic_flag,acoustic_flag, corner_flag,&
+               temp_side, temp_side_1, bd_pnt_xval(ipnt), &
                bd_pnt_zval(ipnt), nx_pnt(ipnt), nz_pnt(ipnt)
 
     !the following loop is used to locate which element the recording point is in

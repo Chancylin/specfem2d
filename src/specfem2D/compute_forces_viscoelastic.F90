@@ -1175,6 +1175,7 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
             endif
           else !if AXISYM == false
             do k = 1,NGLLX
+
               accel_elastic(1,iglob) = accel_elastic(1,iglob) - (tempx1(k,j)*hprimewgll_xx(k,i) + tempx2(i,k)*hprimewgll_zz(k,j))
               accel_elastic(2,iglob) = accel_elastic(2,iglob) - (tempy1(k,j)*hprimewgll_xx(k,i) + tempy2(i,k)*hprimewgll_zz(k,j))
               accel_elastic(3,iglob) = accel_elastic(3,iglob) - (tempz1(k,j)*hprimewgll_xx(k,i) + tempz2(i,k)*hprimewgll_zz(k,j))
@@ -1449,9 +1450,9 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
               tx = rho_vp*vn*nx+rho_vs*(vx-vn*nx)
               ty = rho_vs*vy
               tz = rho_vp*vn*nz+rho_vs*(vz-vn*nz)
-! exc    lude corners to make sure there is no contradiction on the normal
-! for     Stacey absorbing conditions but not for incident plane waves;
-! thu    s subtract nothing i.e. zero in that case
+! exclude corners to make sure there is no contradiction on the normal
+! for Stacey absorbing conditions but not for incident plane waves;
+! thus subtract nothing i.e. zero in that case
               if( (codeabs_corner(1,ispecabs) .and. i == 1) .or. (codeabs_corner(2,ispecabs) .and. i == NGLLX) ) then
                 tx = 0._CUSTOM_REAL; ty = 0._CUSTOM_REAL; tz = 0._CUSTOM_REAL
               endif
@@ -1543,9 +1544,9 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
               tx = rho_vp*vn*nx+rho_vs*(vx-vn*nx)
               ty = rho_vs*vy
               tz = rho_vp*vn*nz+rho_vs*(vz-vn*nz)
-! exc    lude corners to make sure there is no contradiction on the normal
-! for     Stacey absorbing conditions but not for incident plane waves;
-! thu    s subtract nothing i.e. zero in that case
+! exclude corners to make sure there is no contradiction on the normal
+! for Stacey absorbing conditions but not for incident plane waves;
+! thus subtract nothing i.e. zero in that case
               if( (codeabs_corner(3,ispecabs) .and. i == 1) .or. (codeabs_corner(4,ispecabs) .and. i == NGLLX) ) then
                 tx = 0._CUSTOM_REAL; ty = 0._CUSTOM_REAL; tz = 0._CUSTOM_REAL
               endif

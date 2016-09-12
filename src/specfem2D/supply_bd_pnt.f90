@@ -2,13 +2,13 @@
 !for local simulation. Every time step it will be called
 subroutine supply_bd_pnt()
 
-  use specfem_par, only: it,& !original para
+  use specfem_par, only: it,read_nt1,read_nt2,& !original para
                          nspec_bd_pnt_elastic,nspec_bd_pnt_acoustic,&
                          x_final_bd_pnt_elastic,z_final_bd_pnt_elastic,&
                          trac_bd_pnt_elastic,vel_bd_pnt_elastic,&
                          x_final_bd_pnt_acoustic,z_final_bd_pnt_acoustic,&
                          grad_pot_bd_pnt_acoustic,pot_dot_bd_pnt_acoustic,&
-                         f_num,fname
+                         f_num!,fname
                          
 
   implicit none
@@ -16,25 +16,26 @@ subroutine supply_bd_pnt()
 
   integer :: i,ios,temp_read                         
   character(len=150) dummystring
-  nspec_bd_pnt_elastic = 0
-  nspec_bd_pnt_acoustic = 0
-  !count the total boundary points for 
-  open(unit=1,file='./OUTPUT_FILES/bg_record/elastic_pnts_profile',iostat=ios,status='old',action='read')
-  do while(ios == 0)
-     read(1,"(a)",iostat=ios) dummystring
-     if(ios == 0) nspec_bd_pnt_elastic = nspec_bd_pnt_elastic + 1
-  enddo
-  close(1)
 
-  open(unit=1,file='./OUTPUT_FILES/bg_record/acoustic_pnts_profile',iostat=ios,status='old',action='read')
-  do while(ios == 0)
-     read(1,"(a)",iostat=ios) dummystring
-     if(ios == 0) nspec_bd_pnt_acoustic = nspec_bd_pnt_acoustic + 1
-  enddo
-  close(1)
- 
-  !allocate the arrays needed at the first time step 
   if ( it == 1) then
+     nspec_bd_pnt_elastic = 0
+     nspec_bd_pnt_acoustic = 0
+     !count the total boundary points for 
+     open(unit=1,file='./OUTPUT_FILES/bg_record/elastic_pnts_profile',iostat=ios,status='old',action='read')
+     do while(ios == 0)
+        read(1,"(a)",iostat=ios) dummystring
+        if(ios == 0) nspec_bd_pnt_elastic = nspec_bd_pnt_elastic + 1
+     enddo
+     close(1)
+
+     open(unit=1,file='./OUTPUT_FILES/bg_record/acoustic_pnts_profile',iostat=ios,status='old',action='read')
+     do while(ios == 0)
+        read(1,"(a)",iostat=ios) dummystring
+        if(ios == 0) nspec_bd_pnt_acoustic = nspec_bd_pnt_acoustic + 1
+     enddo
+     close(1)
+ 
+     !allocate the arrays needed at the first time step 
      allocate(x_final_bd_pnt_elastic(nspec_bd_pnt_elastic),z_final_bd_pnt_elastic(nspec_bd_pnt_elastic))
      allocate(trac_bd_pnt_elastic(3,nspec_bd_pnt_elastic))
      allocate(vel_bd_pnt_elastic(3,nspec_bd_pnt_elastic))
@@ -42,6 +43,13 @@ subroutine supply_bd_pnt()
      allocate(x_final_bd_pnt_acoustic(nspec_bd_pnt_acoustic),z_final_bd_pnt_acoustic(nspec_bd_pnt_acoustic))
      allocate(grad_pot_bd_pnt_acoustic(2,nspec_bd_pnt_acoustic))
      allocate(pot_dot_bd_pnt_acoustic(nspec_bd_pnt_acoustic))  
+
+     trac_bd_pnt_elastic = 0.0
+     vel_bd_pnt_elastic = 0.0
+     grad_pot_bd_pnt_acoustic = 0.0
+     pot_dot_bd_pnt_acoustic = 0.0
+
+
   endif
 
   !read the coordinate of interpolation points
@@ -64,32 +72,172 @@ subroutine supply_bd_pnt()
   110 format(i5,2(es12.4,2x))!consistent with format in 'locate_recording_point.F90'
  
   !read the stored boundary info
-  f_num=113
-  write(fname,"('./OUTPUT_FILES/bg_record/&
-        &elastic_pnts/nt_',i6.6)")it
-  open(unit=f_num,file=trim(fname),status='old',&
-       action='read',iostat=ios)
-  if( ios /= 0 ) stop 'error reading values at profile points' 
-  
-  do i=1,nspec_bd_pnt_elastic
-     read(f_num,111) trac_bd_pnt_elastic(:,i),vel_bd_pnt_elastic(:,i)
-  enddo  
- 
-  close(f_num)
+  if (it < read_nt1 .or. it > read_nt2 ) return
 
-  write(fname,"('./OUTPUT_FILES/bg_record/&
-        &acoustic_pnts/nt_',i6.6)")it
-  open(unit=f_num,file=trim(fname),status='old',&
-       action='read',iostat=ios)
-  if( ios /= 0 ) stop 'error reading values at profile points' 
-  
-  do i= 1,nspec_bd_pnt_acoustic
-     read(f_num,112) grad_pot_bd_pnt_acoustic(:,i),pot_dot_bd_pnt_acoustic(i)
-  enddo
-  
-  close(f_num)
+  !apply the time interpolation 
+  call time_interplt_supply() 
+
+  !f_num=113
+  !write(fname,"('./OUTPUT_FILES/bg_record/&
+  !      &elastic_pnts/nt_',i6.6)")it
+  !
+  !!formatted reading
+  !!open(unit=f_num,file=trim(fname),status='old',&
+  !!     action='read',iostat=ios)
+
+  !!unformatted reading
+  !open(unit=f_num,file=trim(fname),access='direct',status='old',&
+  !     action='read',iostat=ios,recl=length_unf_1)
+
+  !if( ios /= 0 ) stop 'error reading values at profile points' 
+  !
+  !do i=1,nspec_bd_pnt_elastic
+  !   !read(f_num,111) trac_bd_pnt_elastic(:,i),vel_bd_pnt_elastic(:,i)
+  !   read(f_num,rec=i) trac_bd_pnt_elastic(:,i),vel_bd_pnt_elastic(:,i)
+  !enddo  
+ 
+  !close(f_num)
+
+  !write(fname,"('./OUTPUT_FILES/bg_record/&
+  !      &acoustic_pnts/nt_',i6.6)")it
+  !!formatted reading
+  !!open(unit=f_num,file=trim(fname),status='old',&
+  !!     action='read',iostat=ios)
+
+  !!unformatted reading
+  !open(unit=f_num,file=trim(fname),access='direct',status='old',&
+  !     action='read',iostat=ios,recl=length_unf_2)
+
+  !if( ios /= 0 ) stop 'error reading values at profile points' 
+  !
+  !do i= 1,nspec_bd_pnt_acoustic
+  !   !read(f_num,112) grad_pot_bd_pnt_acoustic(:,i),pot_dot_bd_pnt_acoustic(i)
+  !   read(f_num,rec=i) grad_pot_bd_pnt_acoustic(:,i),pot_dot_bd_pnt_acoustic(i)
+  !enddo
+  !
+  !close(f_num)
   !format need to be consistent with format in 'record_bd_pnt.F90'
-  111 format(6(es12.4,2x)) !112 column
-  112 format(3(es12.4,2x)) !36 column
+  !111 format(6(es12.4,2x)) !112 column
+  !112 format(3(es12.4,2x)) !36 column
 
 end subroutine supply_bd_pnt
+
+subroutine time_interplt_supply()
+
+  use specfem_par, only: it,deltat_read,&
+                         record_nt1,record_nt2, deltat_record,&
+                         nspec_bd_pnt_elastic,nspec_bd_pnt_acoustic,&
+                         trac_bd_pnt_elastic,vel_bd_pnt_elastic,&
+                         grad_pot_bd_pnt_acoustic,pot_dot_bd_pnt_acoustic
+
+  implicit none
+  include "constants.h"
+
+  integer :: nt1_record,nt2_record
+  integer :: i,f_num_1,f_num_2,ios
+  character(len=150) :: fname_1,fname_2
+  integer :: length_unf_1
+  integer :: length_unf_2
+
+  real(kind=CUSTOM_REAL), dimension(3) :: trac_bd_pnt_t1,vel_bd_pnt_t1,trac_bd_pnt_t2,vel_bd_pnt_t2
+  real(kind=CUSTOM_REAL), dimension(2) :: grad_pot_bd_pnt_t1, grad_pot_bd_pnt_t2
+  real(kind=CUSTOM_REAL) :: pot_dot_bd_pnt_t1, pot_dot_bd_pnt_t2 
+  double precision :: diff_deltat
+
+  nt1_record = floor(it * deltat_read / deltat_record)
+  if(nt1_record < record_nt1 ) nt1_record = record_nt1
+  if(nt1_record >=  record_nt2 ) nt1_record = record_nt2 - 1
+  nt2_record = nt1_record + 1
+  !nt2_record = ceiling(it * deltat_read / deltat_record)
+  diff_deltat = 0.5 * (deltat_record - deltat_read)
+
+
+  !!!this is the recording length for unformatted recording
+  !inquire (iolength = length_unf_1) trac_bd_pnt_elastic(:,1),vel_bd_pnt_elastic(:,1)
+  !inquire (iolength = length_unf_2) grad_pot_bd_pnt_acoustic(:,1),pot_dot_bd_pnt_acoustic(1)
+  inquire (iolength = length_unf_1) trac_bd_pnt_t1(:),vel_bd_pnt_t1(:)
+  inquire (iolength = length_unf_2) grad_pot_bd_pnt_t1(:),pot_dot_bd_pnt_t1
+
+  !elstic elements
+  f_num_1=113
+  write(fname_1,"('./OUTPUT_FILES/bg_record/&
+        &elastic_pnts/nt_',i6.6)")nt1_record
+  
+
+  !unformatted reading
+  open(unit=f_num_1,file=trim(fname_1),access='direct',status='old',&
+       action='read',iostat=ios,recl=length_unf_1)
+
+  if( ios /= 0 ) stop 'error reading values at profile points' 
+  
+  f_num_2=114
+  write(fname_2,"('./OUTPUT_FILES/bg_record/&
+        &elastic_pnts/nt_',i6.6)")nt2_record
+
+  !unformatted reading
+  open(unit=f_num_2,file=trim(fname_2),access='direct',status='old',&
+       action='read',iostat=ios,recl=length_unf_1)
+
+  if( ios /= 0 ) stop 'error reading values at profile points' 
+
+
+  do i=1,nspec_bd_pnt_elastic
+     read(f_num_1,rec=i) trac_bd_pnt_t1(:),vel_bd_pnt_t1(:)
+     read(f_num_2,rec=i) trac_bd_pnt_t2(:),vel_bd_pnt_t2(:)
+
+     !!!linear interpolation in time space
+     trac_bd_pnt_elastic(:,i) = (trac_bd_pnt_t2(:) - trac_bd_pnt_t1(:)) * &
+                                (it*deltat_read - nt1_record*deltat_record)/deltat_record + &
+                                trac_bd_pnt_t1(:)
+     !note that velocity is recorded as prediction at half time step
+     vel_bd_pnt_elastic(:,i) = (vel_bd_pnt_t2(:) - vel_bd_pnt_t1(:)) * &
+                               (it*deltat_read - nt1_record*deltat_record + diff_deltat)/deltat_record + &
+                               vel_bd_pnt_t1(:)
+     
+  enddo  
+ 
+  close(f_num_1)
+  close(f_num_2)
+  
+  !acoustic elements
+   
+  write(fname_1,"('./OUTPUT_FILES/bg_record/&
+        &acoustic_pnts/nt_',i6.6)")nt1_record
+
+  !unformatted reading
+  open(unit=f_num_1,file=trim(fname_1),access='direct',status='old',&
+       action='read',iostat=ios,recl=length_unf_2)
+
+  if( ios /= 0 ) stop 'error reading values at profile points' 
+  
+  write(fname_2,"('./OUTPUT_FILES/bg_record/&
+        &acoustic_pnts/nt_',i6.6)")nt2_record
+
+  !unformatted reading
+  open(unit=f_num_2,file=trim(fname_2),access='direct',status='old',&
+       action='read',iostat=ios,recl=length_unf_2)
+
+  if( ios /= 0 ) stop 'error reading values at profile points' 
+
+
+  do i= 1,nspec_bd_pnt_acoustic
+     read(f_num_1,rec=i) grad_pot_bd_pnt_t1(:),pot_dot_bd_pnt_t1
+     read(f_num_2,rec=i) grad_pot_bd_pnt_t2(:),pot_dot_bd_pnt_t2
+
+     grad_pot_bd_pnt_acoustic(:,i) = (grad_pot_bd_pnt_t2(:) - grad_pot_bd_pnt_t1(:)) * &
+                                     (it*deltat_read - nt1_record*deltat_record)/deltat_record + &
+                                     grad_pot_bd_pnt_t1(:)
+
+     pot_dot_bd_pnt_acoustic(i) = (pot_dot_bd_pnt_t2 - pot_dot_bd_pnt_t1) * &
+                                  (it*deltat_read - nt1_record*deltat_record + diff_deltat)/deltat_record + &
+                                  pot_dot_bd_pnt_t1
+
+  enddo
+  
+  close(f_num_1)
+  close(f_num_2)
+
+
+  
+
+end subroutine time_interplt_supply
