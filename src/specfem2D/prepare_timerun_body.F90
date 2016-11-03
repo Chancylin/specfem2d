@@ -999,7 +999,8 @@ integer i,j,ispec,k,iglob,irec,i_source,ispecabs, irecloc
   enddo
 
 !by lcx: set up recording point
-   if ( record_local_bkgd_boundary ) call setup_recording_bd()
+   if ( record_local_bkgd_boundary .or. record_local_boundary_reconst ) call setup_recording_bd()
+   if ( supply_reconst ) call setup_trac_f_sources() 
 ! displacement, velocity, acceleration and inverse of the mass matrix for elastic elements
     if(any_elastic) then
       nglob_elastic = nglob

@@ -688,6 +688,13 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
             duz_dxl_prime = 0.d0
           endif
 
+          !!!by lcx: record moment density point force
+          if ( record_local_boundary_reconst ) then
+             record_bd_elmnt_elastic_reconst_m(ispec,i,j,&
+                   dux_dxl,dux_dzl,duz_dxl,duz_dzl,duy_dxl,duy_dzl)
+          endif
+
+
           ! compute stress tensor (include attenuation or anisotropy if needed)
           if( ATTENUATION_VISCOELASTIC_SOLID ) then
             ! attenuation is implemented following the memory variable formulation of
@@ -1023,6 +1030,12 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
              call record_bd_elmnt_elastic(ispec,i,j,&
                  sigma_xx,sigma_xy,sigma_xz,sigma_zz,sigma_zy)
           endif
+
+         !!!by lcx: store stress tensor here for wavefield reconstruction in following global simulation 
+          if ( record_local_boundary_reconst ) then
+             call record_bd_elmnt_elastic_reconst(ispec,i,j,&
+                 sigma_xx,sigma_xy,sigma_xz,sigma_zz,sigma_zy)
+          endif
  
         enddo  
       enddo  ! end of the loops on the collocation points i,j
@@ -1193,6 +1206,10 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
     endif ! end of test if elastic element
   enddo ! end of loop over all spectral elements
 
+!!!!call the subroutine here to store moment density tensor, which will be used for wavefield reconstruction
+  if ( record_local_boundary_reconst ) then
+     call record_bd_elmnt_elastic_reconst_m()  
+  endif
   !
   !--- Clayton-Engquist condition if elastic
   !

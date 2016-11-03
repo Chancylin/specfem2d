@@ -17,6 +17,10 @@ subroutine export_gll_pnt_bd()
   !recored info:
   !elment_index_in_local_model/ /boundary_type_defined_by_code/ /
   !boundary_type_in_real_model/ /x/ /z/ /nx/ /nz
+  !Otc, 17 2016. Update: add gll_point_index_i gll_point_index_j, which will help when
+  !recording information for wavefield reconstruction
+  !elment_index_in_local_model/ /gll_point_index_i/ /gll_point_index_j/ /boundary_type_defined_by_code/ /
+  !boundary_type_in_real_model/ /x/ /z/ /nx/ /nz
   do ispecabs = 1,nelemabs
 
      ispec = numabs(ispecabs)
@@ -98,7 +102,7 @@ subroutine export_gll_pnt_bd()
                  corner_flag = 'F'
           endif
 
-          write(f_num,113) ispec,elastic_flag,acoustic_flag,corner_flag,&
+          write(f_num,113) ispec,i,j,elastic_flag,acoustic_flag,corner_flag,&
                            'L',geom_side,coord(1,iglob),coord(2,iglob),nx,nz
 
        enddo
@@ -193,7 +197,7 @@ subroutine export_gll_pnt_bd()
                else
                     geom_side='L' 
              endif
-             write(f_num,113) ispec,elastic_flag,acoustic_flag,corner_flag,&
+             write(f_num,113) ispec,i,j,elastic_flag,acoustic_flag,corner_flag,&
                               'B',geom_side,coord(1,iglob),coord(2,iglob),nx,nz
          endif
 
@@ -230,7 +234,7 @@ subroutine export_gll_pnt_bd()
                  else
                       geom_side='L' 
                endif
-               write(f_num,113) ispec,elastic_flag,acoustic_flag,corner_flag,&
+               write(f_num,113) ispec,i,j,elastic_flag,acoustic_flag,corner_flag,&
                                 'T',geom_side,coord(1,iglob),coord(2,iglob),nx,nz
          endif
 
@@ -247,5 +251,5 @@ subroutine export_gll_pnt_bd()
   print *, 'The program will exit here'
   stop
 
-  113 format(i3.3,2x,A1,2x,A1,2x,A1,2x,A1,2x,A1,2x,4(es12.4,2x)) !48 column, make sure the writting format is proper
+  113 format(i3.3,2x,2(i1.1,2x),A1,2x,A1,2x,A1,2x,A1,2x,A1,2x,4(es12.4,2x)) !make sure the writting format is proper
 end subroutine export_gll_pnt_bd

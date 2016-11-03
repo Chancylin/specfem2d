@@ -308,6 +308,8 @@ module specfem_par
   
   double precision, dimension(:,:), allocatable :: hxi_bd_store, hgammar_bd_store
   double precision, dimension(:), allocatable :: xi_bd_pnt,gamma_bd_pnt
+  double precision, dimension(:), allocatable :: bd_pnt_elmnt_num
+  character, dimension(:), allocatable :: side_type
   double precision, dimension(:), allocatable :: bd_pnt_xval,bd_pnt_zval 
   double precision, dimension(:), allocatable :: nx_pnt,nz_pnt,nx_bd_pnt_elastic,nz_bd_pnt_elastic 
   double precision, dimension(:), allocatable :: x_final_bd_pnt, z_final_bd_pnt 
@@ -326,7 +328,19 @@ module specfem_par
   real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: stress_bd_pnt_elastic, vel_bd_pnt_elastic, trac_bd_pnt_elastic
   real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: grad_pot_bd_pnt_acoustic
   real(kind=CUSTOM_REAL), dimension(:), allocatable :: pot_dot_bd_pnt_acoustic
+
+
+  !lcx: parameters for reconstructing wavefield
+  !these two steps both need the points profile provind the info
+  !!!recording part
+  logical :: record_local_boundary_reconst
+  real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: trac_bd_pnt_elastic_reconst, 
   
+  !!!supplying part
+  logical :: supply_reconst
+  
+  double precision, dimension(:), allocatable :: hxis_trac_f,hgammas_trac_f,hpxis_trac_f,hpgammas_trac_f
+  double precision, dimension(:,:), allocatable :: hxis_trac_f_store,hgammas_trac_f_store
   !-------------------------------------------------------------------
 
 

@@ -653,6 +653,9 @@ subroutine iterate_time()
           if( .not. initialfield ) then
             if( SIMULATION_TYPE == 1 ) then
               call compute_add_sources_viscoelastic(accel_elastic,it,i_stage)
+              !lcx: reconstruct wavefield
+              call compute_add_trac_f_viscoelastic()
+              !call compute_add_mnt_f_viscoelastic()
             endif
 
             if( SIMULATION_TYPE == 3 ) then   ! adjoint and backward wavefield
@@ -1363,6 +1366,11 @@ subroutine iterate_time()
    !by lcx: record values of this time step
    if ( record_local_bkgd_boundary ) then
       call write_bd_pnts() 
+   endif
+
+   !by lcx: record the values of this time step, for wavefield reconstruction
+   if ( record_local_boundary_reconst ) then
+      call write_bd_pnts_reconst()
    endif
 
   enddo ! end of the main time loop
