@@ -5,21 +5,27 @@
                       coorg,knods,ngnod,npgeo)
 
   use specfem_par, only: elastic,acoustic,&
-                         npnt,ispec_selected_bd_pnt,nspec_bd_pnt_elastic,nspec_bd_pnt_acoustic,&
-                        nspec_bd_elmt_elastic_pure,nspec_bd_elmt_acoustic_pure,&
-                        ispec_bd_elmt_elastic_pure, ispec_bd_elmt_acoustic_pure,& 
-                        hxi_bd_store,hgammar_bd_store,&
-                        xi_bd_pnt,gamma_bd_pnt,&
-                        bd_pnt_xval,bd_pnt_zval,&
-                        bd_pnt_i,bd_pnt_j,&
-                        nx_bd_pnt_elastic,nz_bd_pnt_elastic,&
-                        nx_pnt,nz_pnt,fname,f_num,&
-                        x_final_bd_pnt, z_final_bd_pnt,&
-                        x_final_bd_pnt_elastic, z_final_bd_pnt_elastic,&
-                        x_final_bd_pnt_acoustic, z_final_bd_pnt_acoustic,&
-                        stress_bd_elastic,vel_bd_elastic,grad_pot_bd_acoustic,pot_dot_bd_acoustic,&
-                        stress_bd_pnt_elastic,trac_bd_pnt_elastic,&
-                        vel_bd_pnt_elastic,grad_pot_bd_pnt_acoustic,pot_dot_bd_pnt_acoustic
+                         record_local_bkgd_boundary,npnt,ispec_selected_bd_pnt,nspec_bd_pnt_elastic,nspec_bd_pnt_acoustic,&
+                         nspec_bd_elmt_elastic_pure,nspec_bd_elmt_acoustic_pure,&
+                         ispec_bd_elmt_elastic_pure, ispec_bd_elmt_acoustic_pure,& 
+                         hxi_bd_store,hgammar_bd_store,&
+                         xi_bd_pnt,gamma_bd_pnt,&
+                         bd_pnt_xval,bd_pnt_zval,&
+                         nx_bd_pnt_elastic,nz_bd_pnt_elastic,&
+                         nx_pnt,nz_pnt,fname,f_num,&
+                         x_final_bd_pnt, z_final_bd_pnt,&
+                         x_final_bd_pnt_elastic, z_final_bd_pnt_elastic,&
+                         x_final_bd_pnt_acoustic, z_final_bd_pnt_acoustic,&
+                         stress_bd_elastic,vel_bd_elastic,grad_pot_bd_acoustic,pot_dot_bd_acoustic,&
+                         stress_bd_pnt_elastic,trac_bd_pnt_elastic,&
+                         vel_bd_pnt_elastic,grad_pot_bd_pnt_acoustic,pot_dot_bd_pnt_acoustic,&
+                         !para for reconst
+                         record_local_boundary_reconst,bd_pnt_elmnt_num,side_type,side_type_elastic,&
+                         ispec_bd_elmt_elastic,ispec_bd_elmt_acoustic,&
+                         side_type_acoustic,ispec_bd_elmt_elastic_i,ispec_bd_elmt_elastic_j, &
+                         ispec_bd_elmt_acoustic_i,ispec_bd_elmt_acoustic_j, &
+                         trac_bd_pnt_elastic_reconst,trac_f,&
+                         m_f_bd_pnt_elastic 
 
   implicit none
   include "constants.h"
@@ -54,14 +60,15 @@
 
   integer  :: k, kk
   !double precision, dimension(:), allocatable :: bd_pnt_xval,bd_pnt_zval 
-  integer, dimension(:), allocatable :: ispec_bd_elmt_elastic,ispec_bd_elmt_acoustic
   integer, dimension(:), allocatable :: temp_bd_elmt_elastic,temp_bd_elmt_acoustic
   !temperary variables for reading
-  integer :: temp_num
-  character(len=1) temp_side, temp_side_1
+  character(len=1) temp_side
   logical :: elastic_flag,acoustic_flag,corner_flag
   double precision :: box_t,box_b,box_l,box_r
  
+ !para for recording the information to reconstruct the wavefield
+  integer, dimension(:), allocatable :: bd_pnt_i,bd_pnt_j
+
   !!!geometry bound. Here we play the trick to locate the point in the exact 
   !!element we want. Otherwise, it could happen that the points at the edges
   !!are located in the neighbound element
@@ -110,7 +117,7 @@
     !note now when dealing with the reconstruting problem, you need the type of side
     !(i.e., L, R, T, B), which should be pre-known from the 'boundary_points' profile
     read(1,113)bd_pnt_elmnt_num(ipnt),bd_pnt_i(ipnt),bd_pnt_j(ipnt), elastic_flag,acoustic_flag, corner_flag,&
-               side_type(ipnt), temp_side_1, bd_pnt_xval(ipnt), &
+               side_type(ipnt), temp_side, bd_pnt_xval(ipnt), &
                bd_pnt_zval(ipnt), nx_pnt(ipnt), nz_pnt(ipnt)
 
     !the following loop is used to locate which element the recording point is in
@@ -344,6 +351,16 @@
   !when recording the information for wavefield reconstruction, we just need
   !the exact recording points provided from 'boundary_points' based on the local model
   !Thus, unnecessary to locate the points again 
+
+     allocate(ispec_bd_elmt_elastic_i(nspec_bd_pnt_elastic))
+     allocate(ispec_bd_elmt_elastic_j(nspec_bd_pnt_elastic))
+     allocate(side_type_elastic(nspec_bd_pnt_elastic))
+
+     allocate(ispec_bd_elmt_acoustic_i(nspec_bd_pnt_acoustic))
+     allocate(ispec_bd_elmt_acoustic_j(nspec_bd_pnt_acoustic))
+     allocate(side_type_acoustic(nspec_bd_pnt_acoustic))
+
+
      i = 1
      j = 1
      do ipnt=1,npnt
@@ -352,6 +369,7 @@
          
          ispec_bd_elmt_elastic_i(i) = bd_pnt_i(ipnt)
          ispec_bd_elmt_elastic_j(i) = bd_pnt_j(ipnt)
+         side_type_elastic(i) = side_type(ipnt)
        !here we also record the coordinate for the point
          nx_bd_pnt_elastic(i) = nx_pnt(ipnt)
          nz_bd_pnt_elastic(i) = nz_pnt(ipnt)
@@ -364,6 +382,7 @@
          ispec_bd_elmt_acoustic(j) = bd_pnt_elmnt_num(ipnt)
          ispec_bd_elmt_acoustic_i(j) = bd_pnt_i(ipnt)
          ispec_bd_elmt_acoustic_j(j) = bd_pnt_j(ipnt)
+         side_type_acoustic(j) = side_type(ipnt)
 
          x_final_bd_pnt_acoustic(j) = bd_pnt_xval(ipnt)
          z_final_bd_pnt_acoustic(j) = bd_pnt_zval(ipnt)
@@ -498,8 +517,10 @@
      if ( nspec_bd_pnt_elastic /= 0 ) then
         !elastic
         allocate(trac_bd_pnt_elastic_reconst(3,nspec_bd_pnt_elastic))
+        allocate(trac_f(3,nspec_bd_pnt_elastic))
         allocate(m_f_bd_pnt_elastic(3,nspec_bd_pnt_elastic))
         trac_bd_pnt_elastic_reconst = 0.0
+        trac_f = 0.0
         m_f_bd_pnt_elastic = 0.0
         !acoustic
         !allocate()
@@ -507,4 +528,8 @@
      endif
   endif
 
+  deallocate(bd_pnt_elmnt_num)
+  deallocate(bd_pnt_i,bd_pnt_j)
+
+  deallocate(bd_pnt_xval,bd_pnt_zval)
   end subroutine locate_recording_point

@@ -255,44 +255,49 @@
  
   f_num=113
   !for elastic 
-  write(fname,"('./OUTPUT_FILES/bg_record/&
-        &elastic_pnts/nt_',i6.6)")it
+  if( nspec_bd_pnt_elastic /= 0 ) then
+    write(fname,"('./OUTPUT_FILES/bg_record/&
+          &elastic_pnts/nt_',i6.6)")it
 
-  !formatted recording
-  !open(unit=f_num,file=trim(fname),status='new',&
-  !     action='write',iostat=ios) 
-  
-  !unformatted recording
-  open(unit=f_num,file=trim(fname),access='direct',status='new',&
-       action='write',iostat=ios,recl=length_unf_1) 
-  if( ios /= 0 ) stop 'error saving values at recording points'
+    !formatted recording
+    !open(unit=f_num,file=trim(fname),status='new',&
+    !     action='write',iostat=ios) 
+    
+    !unformatted recording
+    open(unit=f_num,file=trim(fname),access='direct',status='new',&
+         action='write',iostat=ios,recl=length_unf_1) 
+    if( ios /= 0 ) stop 'error saving values at recording points'
 
-  do k = 1, nspec_bd_pnt_elastic
-     !write(f_num,111) trac_bd_pnt_elastic(:,k),vel_bd_pnt_elastic(:,k)
-     write(f_num,rec=k) trac_bd_pnt_elastic(:,k),vel_bd_pnt_elastic(:,k)
-  enddo
+    do k = 1, nspec_bd_pnt_elastic
+       !write(f_num,111) trac_bd_pnt_elastic(:,k),vel_bd_pnt_elastic(:,k)
+       write(f_num,rec=k) trac_bd_pnt_elastic(:,k),vel_bd_pnt_elastic(:,k)
+    enddo
 
-  close(f_num)
+    close(f_num)
+  endif
   !for acoustic
-  write(fname,"('./OUTPUT_FILES/bg_record/&
-        &acoustic_pnts/nt_',i6.6)")it
-  
-  !formatted recording
-  !open(unit=f_num,file=trim(fname),status='new',&
-  !     action='write',iostat=ios) 
+  if( nspec_bd_pnt_acoustic /= 0 ) then
+    write(fname,"('./OUTPUT_FILES/bg_record/&
+          &acoustic_pnts/nt_',i6.6)")it
+    
+    !formatted recording
+    !open(unit=f_num,file=trim(fname),status='new',&
+    !     action='write',iostat=ios) 
 
-  
-  !unformatted recording
-  open(unit=f_num,file=trim(fname),access='direct',status='new',&
-       action='write',iostat=ios,recl=length_unf_2) 
-  if( ios /= 0 ) stop 'error saving values at recording points'
-  
-  do kk = 1, nspec_bd_pnt_acoustic
-     !write(f_num,112) grad_pot_bd_pnt_acoustic(:,kk),pot_dot_bd_pnt_acoustic(kk)
-     write(f_num,rec=kk) grad_pot_bd_pnt_acoustic(:,kk),pot_dot_bd_pnt_acoustic(kk)
-  enddo
+    
+    !unformatted recording
+    open(unit=f_num,file=trim(fname),access='direct',status='new',&
+         action='write',iostat=ios,recl=length_unf_2) 
+    if( ios /= 0 ) stop 'error saving values at recording points'
+    
+    do kk = 1, nspec_bd_pnt_acoustic
+       !write(f_num,112) grad_pot_bd_pnt_acoustic(:,kk),pot_dot_bd_pnt_acoustic(kk)
+       write(f_num,rec=kk) grad_pot_bd_pnt_acoustic(:,kk),pot_dot_bd_pnt_acoustic(kk)
+    enddo
 
-  close(f_num)
+    close(f_num)
+
+  endif
 
   !111 format(6(es12.4,2x)) !112 column
   !112 format(3(es12.4,2x)) !36 column

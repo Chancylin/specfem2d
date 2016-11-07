@@ -72,7 +72,7 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
                          rmemory_displ_elastic_LDDRK,rmemory_dux_dx_LDDRK,rmemory_dux_dz_LDDRK,rmemory_duz_dx_LDDRK,&
                          ROTATE_PML_ACTIVATE,ROTATE_PML_ANGLE,STACEY_BOUNDARY_CONDITIONS,acoustic,time_stepping_scheme,&
                          !lcx: para
-                         record_local_bkgd_boundary,virtual_ab_bd
+                         record_local_bkgd_boundary,virtual_ab_bd,record_local_boundary_reconst
 
   implicit none
   include "constants.h"
@@ -689,10 +689,12 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
           endif
 
           !!!by lcx: record moment density point force
-          if ( record_local_boundary_reconst ) then
-             record_bd_elmnt_elastic_reconst_m(ispec,i,j,&
-                   dux_dxl,dux_dzl,duz_dxl,duz_dzl,duy_dxl,duy_dzl)
-          endif
+          !we turn this term off for test
+          !if ( record_local_boundary_reconst ) then
+          !   record_bd_elmnt_elastic_reconst_m(ispec,i,j,lambdal_unrelaxed_elastic,&
+          !         mul_unrelaxed_elastic, lambdaplus2mu_unrelaxed_elastic,&
+          !         dux_dxl,dux_dzl,duz_dxl,duz_dzl,duy_dxl,duy_dzl)
+          !endif
 
 
           ! compute stress tensor (include attenuation or anisotropy if needed)
@@ -1033,7 +1035,7 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
 
          !!!by lcx: store stress tensor here for wavefield reconstruction in following global simulation 
           if ( record_local_boundary_reconst ) then
-             call record_bd_elmnt_elastic_reconst(ispec,i,j,&
+             call record_bd_elmnt_elastic_reconst_f(ispec,i,j,&
                  sigma_xx,sigma_xy,sigma_xz,sigma_zz,sigma_zy)
           endif
  
@@ -1207,9 +1209,10 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
   enddo ! end of loop over all spectral elements
 
 !!!!call the subroutine here to store moment density tensor, which will be used for wavefield reconstruction
-  if ( record_local_boundary_reconst ) then
-     call record_bd_elmnt_elastic_reconst_m()  
-  endif
+  !if ( record_local_boundary_reconst ) then
+  !   call record_bd_elmnt_elastic_reconst_m()  
+  !endif
+
   !
   !--- Clayton-Engquist condition if elastic
   !

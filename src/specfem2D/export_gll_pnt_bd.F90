@@ -161,7 +161,7 @@ subroutine export_gll_pnt_bd()
             else
                  corner_flag = 'F'
           endif
-          write(f_num,113) ispec,elastic_flag,acoustic_flag,corner_flag,&
+          write(f_num,113) ispec,i,j,elastic_flag,acoustic_flag,corner_flag,&
                            'R',geom_side,coord(1,iglob),coord(2,iglob),nx,nz
           
        enddo

@@ -1,77 +1,16 @@
 !this subroutine is to construct the wavefield in global model by taking the information provide from local simulation
-subroutine reconst_field_solid()
-!Oct. 24, 2016
-!at the current stage, we suppose the the part golbal model out of the local model
-!share the some inteface with the local model (i.e., same mesh around the interface)
-
-!the traction term
-!---left absorbing boundary
-  if( type_side == 'L' ) then
-    i = 1
-    do j = 1,NGLLZ
-       iglob = ibool(i,j,ispec)
-
-       ! external velocity model
-       if( assign_external_model ) then
-         cpl = vpext(i,j,ispec)
-         csl = vsext(i,j,ispec)
-         rhol = rhoext(i,j,ispec)
-       endif
-
-       rho_vp = rhol*cpl
-       rho_vs = rhol*csl
-
-       xgamma = - xiz(i,j,ispec) * jacobian(i,j,ispec)
-       zgamma = + xix(i,j,ispec) * jacobian(i,j,ispec)
-       jacobian1D = sqrt(xgamma**2 + zgamma**2)
-       nx = - zgamma / jacobian1D
-       nz = + xgamma / jacobian1D
-
-       weight = jacobian1D * wzgll(j)
-
-       call pnt_info_interpl_solid(iglob,veloc_x_store,veloc_y_store,veloc_z_store,&
-                             tx_store,ty_store,tz_store)
-
-       vx = veloc_elastic(1,iglob) - veloc_x_store
-       vy = veloc_elastic(2,iglob) - veloc_y_store
-       vz = veloc_elastic(3,iglob) - veloc_z_store
-
-       vn = nx*vx+nz*vz
-
-       tx = rho_vp*vn*nx+rho_vs*(vx-vn*nx)
-       ty = rho_vs*vy
-       tz = rho_vp*vn*nz+rho_vs*(vz-vn*nz)
- 
-       if( (codeabs_corner(1,ispecabs) .and. j == 1) .or. (codeabs_corner(3,ispecabs) .and. j == NGLLZ) ) then
-       !apply the averaging to deal with the boundary corner: Left-Bottom and Left-Top
-         accel_elastic(1,iglob) = accel_elastic(1,iglob) - 0.5*(tx - tx_store)*weight
-         accel_elastic(2,iglob) = accel_elastic(2,iglob) - 0.5*(ty - ty_store)*weight
-         accel_elastic(3,iglob) = accel_elastic(3,iglob) - 0.5*(tz - tz_store)*weight
- 
-         else
-
-       !!confirm that tx_store should have plus sign as the contribution to the RHS of the equation
-           accel_elastic(1,iglob) = accel_elastic(1,iglob) - (tx - tx_store)*weight
-           accel_elastic(2,iglob) = accel_elastic(2,iglob) - (ty - ty_store)*weight
-           accel_elastic(3,iglob) = accel_elastic(3,iglob) - (tz - tz_store)*weight
-       endif
-
-    enddo
-  endif
-
-
-
-!the moment density term
-
-end subroutine reconst_field_solid
-
+!Note: the basic idea here is to provide the traction force and moment force as the sources to excite
+!the wavefield, i.e., reconstructing.
+!Nov. 4, 2016
+!Since the excitation terms will be treated as the input sources in the global model, the local mesh could
+!be different from the global mesh
 
 subroutine compute_add_trac_f_viscoelastic(accel_elastic,it)
        
-  use specfem_par, only: p_sv,elastic,nglob_elastic,&
+  use specfem_par, only: p_sv,nglob_elastic,&
                          nspec_bd_pnt_elastic,&
                          trac_f,&
-                         ispec_selected_elastic_source,&  !this should be located by a subroutine
+                         ispec_selected_elastic_source_reconst,&  !this should be located by a subroutine
                          hxis_trac_f_store,hgammas_trac_f_store,ibool
   implicit none
   include "constants.h"
@@ -93,7 +32,7 @@ subroutine compute_add_trac_f_viscoelastic(accel_elastic,it)
            do j = 1,NGLLZ
              do i = 1,NGLLX
                !there must be step to locate these force source. write another subroutine
-               iglob = ibool(i,j,ispec_selected_elastic_source(i_f_source))
+               iglob = ibool(i,j,ispec_selected_elastic_source_reconst(i_f_source))
                hlagrange = hxis_trac_f_store(i_f_source,i) &
                            * hgammas_trac_f_store(i_f_source,j)
                accel_elastic(1,iglob) = accel_elastic(1,iglob) & 
@@ -105,7 +44,7 @@ subroutine compute_add_trac_f_viscoelastic(accel_elastic,it)
          else    ! SH (membrane) calculation
            do j = 1,NGLLZ
              do i = 1,NGLLX
-               iglob = ibool(i,j,ispec_selected_elastic_source(i_f_source))
+               iglob = ibool(i,j,ispec_selected_elastic_source_reconst(i_f_source))
                hlagrange = hxis_trac_f_store(i_f_source,i) &
                            * hgammas_trac_f_store(i_f_source,j)
                accel_elastic(2,iglob) = accel_elastic(2,iglob) &
@@ -121,14 +60,15 @@ end subroutine compute_add_trac_f_viscoelastic
 
 subroutine setup_trac_f_sources()
  
-  use specfem_par, only: nspec_bd_pnt_elastic,nspec_bd_pnt_acoustic, &
-                         coord,ibool,nglob,nspec,elastic, &
+  use specfem_par, only: it,nspec_bd_pnt_elastic,nspec_bd_pnt_acoustic, &
+                         coord,ibool,nglob,nspec, &
                          hxis_trac_f,hgammas_trac_f,&
                          hpxis_trac_f,hpgammas_trac_f,hxis_trac_f_store,hgammas_trac_f_store,&
-                         x_final_bd_pnt_elastic,z_final_bd_pnt_elastic,ispec_selected_elastic_source, &
-                         is_proc_trac_f_source,nb_proc_trac_f_source, & !does this really matter?
+                         x_final_bd_pnt_elastic,z_final_bd_pnt_elastic,ispec_selected_elastic_source_reconst, &
+                         x_final_bd_pnt_acoustic,z_final_bd_pnt_acoustic,&
+                         !is_proc_trac_f_source,nb_proc_trac_f_source, & !does this really matter?
                          xigll,zigll,npgeo, &
-                         nproc,myrank,xi_trac_f,gamma_trac_f,coorg,knods,ngnod &
+                         nproc,myrank,coorg,knods,ngnod 
 
   implicit none
  
@@ -137,10 +77,10 @@ subroutine setup_trac_f_sources()
   ! Local variables
   integer :: i,ios,temp_read,temp1_read,temp2_read,f_num
   character(len=150) dummystring
-  integer :: f_num 
-  integer :: i_f_source,ispec
+  integer :: i_f_source
   integer :: iglob_trac_f_source !local or global variable?
-
+  double precision, dimension(:), allocatable :: xi_trac_f,gamma_trac_f
+  integer, dimension(:), allocatable :: is_proc_source,nb_proc_source 
 
   !calculate the total sources number
   if ( it == 1) then
@@ -169,10 +109,11 @@ subroutine setup_trac_f_sources()
   if( nspec_bd_pnt_elastic /= 0 ) then
      open(f_num,file='./OUTPUT_FILES/reconst_record/elastic_pnts_profile',iostat=ios,status='old',action='read')
      do i=1,nspec_bd_pnt_elastic
-        read(f_num,111) temp_read,temp1_read,temp2_read, x_final_bd_pnt_elastic(i), z_final_bd_pnt_elastic(i)
+        read(f_num,111) temp_read,temp1_read,temp2_read, x_final_bd_pnt_elastic(i),z_final_bd_pnt_elastic(i)
      enddo                                                                    
      close(f_num)                                                             
   endif
+
   if( nspec_bd_pnt_acoustic /= 0 )then 
      open(f_num,file='./OUTPUT_FILES/reconst_record/acoustic_pnts_profile',iostat=ios,status='old',action='read')
      do i=1,nspec_bd_pnt_acoustic
@@ -190,6 +131,9 @@ subroutine setup_trac_f_sources()
   allocate(hpgammas_trac_f(NGLLZ))
   allocate(hxis_trac_f_store(nspec_bd_pnt_elastic,NGLLX))
   allocate(hgammas_trac_f_store(nspec_bd_pnt_elastic,NGLLZ))
+  allocate(ispec_selected_elastic_source_reconst(nspec_bd_pnt_elastic))
+  allocate(xi_trac_f(nspec_bd_pnt_elastic),gamma_trac_f(nspec_bd_pnt_elastic))
+  allocate(is_proc_source(nspec_bd_pnt_elastic),nb_proc_source(nspec_bd_pnt_elastic))
 
   print *, 'For wavefield reconstruction: here we locate the traction force sources'
   !note: because here we locate the tranction force source according to their coordinates, following the build-in way locating
@@ -199,12 +143,13 @@ subroutine setup_trac_f_sources()
 
 
      ! collocated force source: here we just take advantange of the available subroutine 'locate_source_force'
-     ! the main purpose here is to calculate ispec_selected_elastic_source,xi_trac_f(i_f_source),
+     ! the main purpose here is to calculate ispec_selected_elastic_source_reconst,xi_trac_f(i_f_source),
      ! gamma_trac_f
-     call locate_source_force(ibool,coord,nspec,nglob,xigll,zigll,x_final_bd_pnt_elastic(i_f_source),z_final_bd_pnt_elastic(i_f_source), &
-         ispec_selected_elastic_source(i_f_source),is_proc_source(i_f_source),nb_proc_source(i_f_source), &
-         nproc,myrank,xi_trac_f(i_f_source),gamma_trac_f(i_f_source),coorg,knods,ngnod,npgeo, &
-         iglob_trac_f_source)
+     call locate_source_force(ibool,coord,nspec,nglob,xigll,zigll,x_final_bd_pnt_elastic(i_f_source),&
+          z_final_bd_pnt_elastic(i_f_source),ispec_selected_elastic_source_reconst(i_f_source),&
+          is_proc_source(i_f_source),nb_proc_source(i_f_source), &
+          nproc,myrank,xi_trac_f(i_f_source),gamma_trac_f(i_f_source),coorg,knods,ngnod,npgeo, &
+          iglob_trac_f_source)
 
    enddo
 
@@ -221,9 +166,9 @@ subroutine setup_trac_f_sources()
 
   enddo
 
+  deallocate(xi_trac_f,gamma_trac_f)
+  deallocate(is_proc_source,nb_proc_source)
+
 end subroutine setup_trac_f_sources
-
-
-
 
 

@@ -4,18 +4,21 @@
 
 !!this subroutine is to record the stress tensor along the local model boundary. 
 !!And It seems we can just keep 'record_bd_elmnt_elastic', but not need a new one.
- subroutine record_bd_elmnt_elastic_reconst(ispec,i,j,&
+ subroutine record_bd_elmnt_elastic_reconst_f(ispec,i,j,&
             sigma_xx,sigma_xy,sigma_xz,sigma_zz,sigma_zy)
 
-   use specfem_par, only: elastic,npnt,ispec_selected_bd_pnt,ispec_selected_bd_pnt_i,ispec_selected_bd_pnt_j,&
-                          trac_bd_pnt_elastic_reconst,nx_bd_pnt_elastic,nz_bd_pnt_elastic,&
-                          it,record_nt1,record_nt2 !control time step for recording
+   use specfem_par, only: ispec_bd_elmt_elastic_i,ispec_bd_elmt_elastic_j,ispec_bd_elmt_elastic,&
+                          trac_bd_pnt_elastic_reconst,trac_f,nx_bd_pnt_elastic,nz_bd_pnt_elastic,&
+                          it,record_nt1,record_nt2,& !control time step for recording
+                          side_type_elastic,nspec_bd_pnt_elastic,wzgll,wxgll,&
+                          xiz,xix,gammaz,gammax,jacobian
 
    implicit none
    include "constants.h"
    real(kind=CUSTOM_REAL), intent(in) :: sigma_xx,sigma_xy,sigma_xz,sigma_zz,sigma_zy
    integer, intent(in) :: ispec,i,j
-   integer :: ipnt,ispec_bd_pnt_elastic   
+   integer :: ispec_bd_pnt_elastic   
+   real(kind=CUSTOM_REAL) :: weight,xxi,zxi,xgamma,zgamma,jacobian1D
 
    if (it < record_nt1 .or. it > record_nt2 ) return
 
@@ -48,7 +51,7 @@
 
              trac_f(:,ispec_bd_pnt_elastic) = trac_bd_pnt_elastic_reconst(:,ispec_bd_pnt_elastic)*weight
 
-           else if( side_type_elastic(ispec_bd_pnt_elastic) == 'R' ) !Rigth
+           else if( side_type_elastic(ispec_bd_pnt_elastic) == 'R' ) then !Rigth
 
              xgamma = - xiz(i,j,ispec) * jacobian(i,j,ispec)
              zgamma = + xix(i,j,ispec) * jacobian(i,j,ispec)
@@ -57,7 +60,7 @@
 
              trac_f(:,ispec_bd_pnt_elastic) = trac_bd_pnt_elastic_reconst(:,ispec_bd_pnt_elastic)*weight
              
-           else if( side_type_elastic(ispec_bd_pnt_elastic) == 'B' ) !Bottom
+           else if( side_type_elastic(ispec_bd_pnt_elastic) == 'B' ) then !Bottom
 
              xxi = + gammaz(i,j,ispec) * jacobian(i,j,ispec)
              zxi = - gammax(i,j,ispec) * jacobian(i,j,ispec)
@@ -66,7 +69,7 @@
 
              trac_f(:,ispec_bd_pnt_elastic) = trac_bd_pnt_elastic_reconst(:,ispec_bd_pnt_elastic)*weight
 
-           else if( side_type_elastic(ispec_bd_pnt_elastic) == 'T' ) !Top
+           else if( side_type_elastic(ispec_bd_pnt_elastic) == 'T' ) then !Top
 
              xxi = + gammaz(i,j,ispec) * jacobian(i,j,ispec)
              zxi = - gammax(i,j,ispec) * jacobian(i,j,ispec)
@@ -87,21 +90,26 @@
 
    enddo loop1 
 
- end subroutine record_bd_elmnt_elastic_reconst
+ end subroutine record_bd_elmnt_elastic_reconst_f
 
 
- subroutine record_bd_elmnt_elastic_reconst_m(ispec,i,j,&
+ subroutine record_bd_elmnt_elastic_reconst_m(ispec,i,j,lambdal_unrelaxed_elastic,&
+                                              mul_unrelaxed_elastic, lambdaplus2mu_unrelaxed_elastic,&
                                               dux_dxl,dux_dzl,duz_dxl,duz_dzl,duy_dxl,duy_dzl)
 
    use specfem_par, only: it,& !original para
-                          ispec_selected_bd_pnt, ispec_selected_bd_pnt_i, ispec_selected_bd_pnt_j,&
-                          record_nt1,record_nt2 !control time step for recording
+                          record_nt1,record_nt2,& !control time step for recording
+                          nx_bd_pnt_elastic,nz_bd_pnt_elastic,nspec_bd_pnt_elastic,&
+                          ispec_bd_elmt_elastic, ispec_bd_elmt_elastic_i, ispec_bd_elmt_elastic_j,&
+                          m_f_bd_pnt_elastic
 
    implicit none
    include "constants.h"
 
    integer, intent(in) :: ispec,i,j
    real(kind=CUSTOM_REAL), intent(in) :: dux_dxl,duy_dxl,duz_dxl,dux_dzl,duy_dzl,duz_dzl
+   real(kind=CUSTOM_REAL), intent(in) :: mul_unrelaxed_elastic,lambdal_unrelaxed_elastic, &
+                             lambdaplus2mu_unrelaxed_elastic
    !integer :: k   
    integer :: ispec_bd_pnt_elastic
 
@@ -112,12 +120,11 @@
    loop1:do ispec_bd_pnt_elastic = 1, nspec_bd_pnt_elastic
       
       !locate the corresponding recording point
-         ispec_bd_pnt_elastic = ispec_bd_pnt_elastic + 1
          !do k = 1,nspec_bd_elmt_elastic_pure
          ! I think it will be an economic way to read the i,j of the recording pointfrom file 'boundary_points'
          !ispec = ispec_selected_bd_pnt(ipnt)
-         !i_pnt = ispec_selected_bd_pnt_i(ipnt)
-         !j_pnt = ispec_selected_bd_pnt_j(ipnt)
+         !i_pnt = ispec_bd_elmt_elastic_i(ipnt)
+         !j_pnt = ispec_bd_elmt_elastic_j(ipnt)
          !iglob = ibool(i_pnt,j_pnt,ispec)
          
       !point is not the corresponding recording point. search the next one 
@@ -198,17 +205,20 @@
          !+ displ_elastic(3,iglob)*nz_bd_pnt_elastic(ipnt)*lambdaplus2mu_unrelaxed_elastic
          !!m_zx(ipnt) = m_xz(ipnt)
 
-         m_f_bd_pnt_elastic(1,ispec_bd_pnt_elastic) = - (dux_dxl*nx_bd_pnt_elastic(ispec_bd_pnt_elastic)*lambdaplus2mu_unrelaxed_elastic &
+         m_f_bd_pnt_elastic(1,ispec_bd_pnt_elastic) = &
+            - (dux_dxl*nx_bd_pnt_elastic(ispec_bd_pnt_elastic)*lambdaplus2mu_unrelaxed_elastic &
             + duz_dxl*nz_bd_pnt_elastic(ispec_bd_pnt_elastic)*lambdal_unrelaxed_elastic &
             + dux_dzl*nz_bd_pnt_elastic(ispec_bd_pnt_elastic)*mul_unrelaxed_elastic &
             + duz_dzl*nx_bd_pnt_elastic(ispec_bd_pnt_elastic)*mul_unrelaxed_elastic)
          
-         m_f_bd_pnt_elastic(3,ispec_bd_pnt_elastic) = - (duz_dzl*nz_bd_pnt_elastic(ispec_bd_pnt_elastic)*lambdaplus2mu_unrelaxed_elastic & 
+         m_f_bd_pnt_elastic(3,ispec_bd_pnt_elastic) = &
+            - (duz_dzl*nz_bd_pnt_elastic(ispec_bd_pnt_elastic)*lambdaplus2mu_unrelaxed_elastic & 
             + dux_dzl*nx_bd_pnt_elastic(ispec_bd_pnt_elastic)*lambdal_unrelaxed_elastic &
             + dux_dxl*nz_bd_pnt_elastic(ispec_bd_pnt_elastic)*mul_unrelaxed_elastic &
             + duz_dxl*nx_bd_pnt_elastic(ispec_bd_pnt_elastic)*mul_unrelaxed_elastic)
 
-         m_f_bd_pnt_elastic(2,ispec_bd_pnt_elastic) = - (duy_dxl*nx_bd_pnt_elastic(ispec_bd_pnt_elastic)*mul_unrelaxed_elastic &
+         m_f_bd_pnt_elastic(2,ispec_bd_pnt_elastic) = &
+            - (duy_dxl*nx_bd_pnt_elastic(ispec_bd_pnt_elastic)*mul_unrelaxed_elastic &
             + duy_dzl*nz_bd_pnt_elastic(ispec_bd_pnt_elastic)*mul_unrelaxed_elastic)
 
         
@@ -224,10 +234,11 @@
 
  subroutine write_bd_pnts_reconst()
 
-  use specfem_par, only: elastic,it,& !original para
-                        npnt,ispec_selected_bd_pnt,fname,f_num,&
-                        trac_f,&!m_f_bd_pnt_elastic,&
-                        record_nt1,record_nt2 !control time step for recording
+  use specfem_par, only: it,& !original para
+                         fname,f_num,&
+                         nspec_bd_pnt_elastic,&
+                         trac_f,&!m_f_bd_pnt_elastic,&
+                         record_nt1,record_nt2 !control time step for recording
  
  
   implicit none
@@ -256,12 +267,13 @@
     if( ios /= 0 ) stop 'error saving values at recording points'
 
     do k = 1, nspec_bd_pnt_elastic
-       write(f_num,rec=k) trac_f(:,k),m_f_bd_pnt_elastic(:,k)
+       write(f_num,rec=k) trac_f(:,k)!,m_f_bd_pnt_elastic(:,k)
     enddo
 
     close(f_num)
   
   endif 
 
+  !for acoustic
 
  end subroutine write_bd_pnts_reconst

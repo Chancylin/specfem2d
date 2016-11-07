@@ -265,13 +265,12 @@ end subroutine time_interplt_supply
 
 subroutine supply_pnt_reconst()
 
-  use specfem_par, only: it,deltat_read,read_nt1,read_nt2,deltat_record,& !original para
-                         nspec_bd_pnt_elastic,nspec_bd_pnt_acoustic,&
-                         x_final_bd_pnt_elastic,z_final_bd_pnt_elastic,&
-                         trac_f,&
-                         x_final_bd_pnt_acoustic,z_final_bd_pnt_acoustic,&
+  use specfem_par, only: it,read_nt1,read_nt2 !original para
+                         !nspec_bd_pnt_elastic,nspec_bd_pnt_acoustic,&
+                         !x_final_bd_pnt_elastic,z_final_bd_pnt_elastic,&
+                         !trac_f,&
+                         !x_final_bd_pnt_acoustic,z_final_bd_pnt_acoustic
                         !grad_pot_bd_pnt_acoustic,pot_dot_bd_pnt_acoustic,&
-                         f_num!,fname
                          
 
   implicit none
@@ -285,9 +284,14 @@ subroutine supply_pnt_reconst()
 
 end subroutine supply_pnt_reconst
 
+
+
 subroutine time_interplt_supply_reconst()
 
-  use specfem_par, only:
+  use specfem_par, only: it,deltat_read,&
+                         record_nt1,record_nt2, deltat_record,&
+                         nspec_bd_pnt_elastic,&!nspec_bd_pnt_acoustic,
+                         trac_f
 
   implicit none
   include "constants.h"
@@ -296,7 +300,7 @@ subroutine time_interplt_supply_reconst()
   integer :: i,f_num_1,f_num_2,ios
   character(len=150) :: fname_1,fname_2
   integer :: length_unf_1
-  integer :: length_unf_2
+  !integer :: length_unf_2
 
   
   real(kind=CUSTOM_REAL), dimension(3) :: trac_f_t1,trac_f_t2

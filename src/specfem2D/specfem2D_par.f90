@@ -334,11 +334,15 @@ module specfem_par
   !these two steps both need the points profile provind the info
   !!!recording part
   logical :: record_local_boundary_reconst
-  real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: trac_bd_pnt_elastic_reconst, 
-  
+  character, dimension(:), allocatable :: side_type_elastic, side_type_acoustic
+  integer, dimension(:), allocatable :: ispec_bd_elmt_elastic,ispec_bd_elmt_acoustic
+  integer, dimension(:), allocatable :: ispec_bd_elmt_elastic_i,ispec_bd_elmt_elastic_j
+  integer, dimension(:), allocatable :: ispec_bd_elmt_acoustic_i,ispec_bd_elmt_acoustic_j
+  real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: trac_bd_pnt_elastic_reconst
+  real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: trac_f,m_f_bd_pnt_elastic 
   !!!supplying part
   logical :: supply_reconst
-  
+  integer, dimension(:), allocatable :: ispec_selected_elastic_source_reconst 
   double precision, dimension(:), allocatable :: hxis_trac_f,hgammas_trac_f,hpxis_trac_f,hpgammas_trac_f
   double precision, dimension(:,:), allocatable :: hxis_trac_f_store,hgammas_trac_f_store
   !-------------------------------------------------------------------
