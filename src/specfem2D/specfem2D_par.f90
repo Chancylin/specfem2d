@@ -308,7 +308,7 @@ module specfem_par
   
   double precision, dimension(:,:), allocatable :: hxi_bd_store, hgammar_bd_store
   double precision, dimension(:), allocatable :: xi_bd_pnt,gamma_bd_pnt
-  double precision, dimension(:), allocatable :: bd_pnt_elmnt_num
+  integer, dimension(:), allocatable :: bd_pnt_elmnt_num
   character, dimension(:), allocatable :: side_type
   double precision, dimension(:), allocatable :: bd_pnt_xval,bd_pnt_zval 
   double precision, dimension(:), allocatable :: nx_pnt,nz_pnt,nx_bd_pnt_elastic,nz_bd_pnt_elastic 
@@ -332,6 +332,8 @@ module specfem_par
 
   !lcx: parameters for reconstructing wavefield
   !these two steps both need the points profile provind the info
+  integer :: record_nt1_reconst,record_nt2_reconst,read_nt1_reconst,read_nt2_reconst
+  double precision :: deltat_record_reconst, deltat_read_reconst
   !!!recording part
   logical :: record_local_boundary_reconst
   character, dimension(:), allocatable :: side_type_elastic, side_type_acoustic

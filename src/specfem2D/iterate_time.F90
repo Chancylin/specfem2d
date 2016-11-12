@@ -654,8 +654,10 @@ subroutine iterate_time()
             if( SIMULATION_TYPE == 1 ) then
               call compute_add_sources_viscoelastic(accel_elastic,it,i_stage)
               !lcx: reconstruct wavefield
-              call compute_add_trac_f_viscoelastic()
-              !call compute_add_mnt_f_viscoelastic()
+              if( supply_reconst ) then
+                call compute_add_trac_f_viscoelastic(accel_elastic,it)
+                !call compute_add_mnt_f_viscoelastic()
+              endif
             endif
 
             if( SIMULATION_TYPE == 3 ) then   ! adjoint and backward wavefield

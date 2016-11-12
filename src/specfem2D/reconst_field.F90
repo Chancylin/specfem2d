@@ -11,7 +11,9 @@ subroutine compute_add_trac_f_viscoelastic(accel_elastic,it)
                          nspec_bd_pnt_elastic,&
                          trac_f,&
                          ispec_selected_elastic_source_reconst,&  !this should be located by a subroutine
-                         hxis_trac_f_store,hgammas_trac_f_store,ibool
+                         hxis_trac_f_store,hgammas_trac_f_store,ibool,&
+                         read_nt1_reconst,read_nt2_reconst
+ 
   implicit none
   include "constants.h"
   
@@ -20,8 +22,10 @@ subroutine compute_add_trac_f_viscoelastic(accel_elastic,it)
   integer :: i_f_source,i,j,iglob
   double precision :: hlagrange 
 
+  if (it < read_nt1_reconst .or. it > read_nt2_reconst ) return
   !there must be a subroutine to assign the trac_f for the time step 'it'
   !the time interpolation may be applied
+  call supply_pnt_reconst()
   if( nspec_bd_pnt_elastic /= 0 ) then
 
 
@@ -60,8 +64,9 @@ end subroutine compute_add_trac_f_viscoelastic
 
 subroutine setup_trac_f_sources()
  
-  use specfem_par, only: it,nspec_bd_pnt_elastic,nspec_bd_pnt_acoustic, &
+  use specfem_par, only: nspec_bd_pnt_elastic,nspec_bd_pnt_acoustic, &
                          coord,ibool,nglob,nspec, &
+                         trac_f,m_f_bd_pnt_elastic,&
                          hxis_trac_f,hgammas_trac_f,&
                          hpxis_trac_f,hpgammas_trac_f,hxis_trac_f_store,hgammas_trac_f_store,&
                          x_final_bd_pnt_elastic,z_final_bd_pnt_elastic,ispec_selected_elastic_source_reconst, &
@@ -83,25 +88,30 @@ subroutine setup_trac_f_sources()
   integer, dimension(:), allocatable :: is_proc_source,nb_proc_source 
 
   !calculate the total sources number
-  if ( it == 1) then
    nspec_bd_pnt_elastic = 0
    nspec_bd_pnt_acoustic = 0
    !count the total boundary points for 
    open(unit=1,file='./OUTPUT_FILES/reconst_record/elastic_pnts_profile',iostat=ios,status='old',action='read')
+   if( ios /= 0 ) stop 'error reading elastic points profile'
    do while(ios == 0)
       read(1,"(a)",iostat=ios) dummystring
       if(ios == 0) nspec_bd_pnt_elastic = nspec_bd_pnt_elastic + 1
    enddo 
+   print *,"number of recording points in elastic region: ", nspec_bd_pnt_elastic
    close(1)
 
    open(unit=1,file='./OUTPUT_FILES/reconst_record/acoustic_pnts_profile',iostat=ios,status='old',action='read')
+   if( ios /= 0 ) stop 'error reading acoustic points profile'
    do while(ios == 0)
       read(1,"(a)",iostat=ios) dummystring
       if(ios == 0) nspec_bd_pnt_acoustic = nspec_bd_pnt_acoustic + 1
    enddo
    close(1)
 
-   endif
+   allocate(x_final_bd_pnt_elastic(nspec_bd_pnt_elastic),z_final_bd_pnt_elastic(nspec_bd_pnt_elastic))
+   allocate(x_final_bd_pnt_acoustic(nspec_bd_pnt_acoustic),z_final_bd_pnt_acoustic(nspec_bd_pnt_acoustic))
+   allocate(trac_f(3,nspec_bd_pnt_elastic))
+   allocate(m_f_bd_pnt_elastic(3,nspec_bd_pnt_elastic))
 
   !read the coordinates of the source points. The coordinate will be the key information
   f_num = 111                                                                 
@@ -123,7 +133,7 @@ subroutine setup_trac_f_sources()
   endif
   
   !consistent with format in 'locate_recording_point.F90'
-  111 format(i5,i1,i1,2(es12.4,2x))!
+  111 format(i5,2x,i1,2x,i1,2x,2(es12.4,2x))
 
   allocate(hxis_trac_f(NGLLX))
   allocate(hgammas_trac_f(NGLLZ))

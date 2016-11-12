@@ -265,7 +265,7 @@ end subroutine time_interplt_supply
 
 subroutine supply_pnt_reconst()
 
-  use specfem_par, only: it,read_nt1,read_nt2 !original para
+  !use specfem_par, only: it,read_nt1_reconst,read_nt2 !original para
                          !nspec_bd_pnt_elastic,nspec_bd_pnt_acoustic,&
                          !x_final_bd_pnt_elastic,z_final_bd_pnt_elastic,&
                          !trac_f,&
@@ -277,7 +277,7 @@ subroutine supply_pnt_reconst()
   include "constants.h"
  
   !read the stored boundary info
-  if (it < read_nt1 .or. it > read_nt2 ) return
+  !if (it < read_nt1_reconst .or. it > read_nt2_reconst ) return
 
   !apply the time interpolation 
   call time_interplt_supply_reconst() 
@@ -288,15 +288,15 @@ end subroutine supply_pnt_reconst
 
 subroutine time_interplt_supply_reconst()
 
-  use specfem_par, only: it,deltat_read,&
-                         record_nt1,record_nt2, deltat_record,&
+  use specfem_par, only: it,deltat_read_reconst,&
+                         record_nt1_reconst,record_nt2_reconst, deltat_record_reconst,&
                          nspec_bd_pnt_elastic,&!nspec_bd_pnt_acoustic,
                          trac_f
 
   implicit none
   include "constants.h"
 
-  integer :: nt1_record,nt2_record
+  integer :: nt1_record_reconst,nt2_record_reconst
   integer :: i,f_num_1,f_num_2,ios
   character(len=150) :: fname_1,fname_2
   integer :: length_unf_1
@@ -308,14 +308,12 @@ subroutine time_interplt_supply_reconst()
    
   !real(kind=CUSTOM_REAL), dimension(2) :: grad_pot_bd_pnt_t1, grad_pot_bd_pnt_t2
   !real(kind=CUSTOM_REAL) :: pot_dot_bd_pnt_t1, pot_dot_bd_pnt_t2 
-  double precision :: diff_deltat
 
-  nt1_record = floor(it * deltat_read / deltat_record)
-  if(nt1_record < record_nt1 ) nt1_record = record_nt1
-  if(nt1_record >=  record_nt2 ) nt1_record = record_nt2 - 1
-  nt2_record = nt1_record + 1
-  !nt2_record = ceiling(it * deltat_read / deltat_record)
-  diff_deltat = 0.5 * (deltat_record - deltat_read)
+  nt1_record_reconst = floor(it * deltat_read_reconst / deltat_record_reconst)
+  if(nt1_record_reconst < record_nt1_reconst ) nt1_record_reconst = record_nt1_reconst
+  if(nt1_record_reconst >=  record_nt2_reconst ) nt1_record_reconst = record_nt2_reconst - 1
+  nt2_record_reconst = nt1_record_reconst + 1
+  !nt2_record_reconst = ceiling(it * deltat_read_reconst / deltat_record_reconst)
 
   if( nspec_bd_pnt_elastic /= 0 ) then
 
@@ -325,7 +323,7 @@ subroutine time_interplt_supply_reconst()
     !elstic elements
     f_num_1=113
     write(fname_1,"('./OUTPUT_FILES/reconst_record/&
-          &elastic_pnts/nt_',i6.6)")nt1_record
+          &elastic_pnts/nt_',i6.6)")nt1_record_reconst
     
 
     !unformatted reading
@@ -336,7 +334,7 @@ subroutine time_interplt_supply_reconst()
     
     f_num_2=114
     write(fname_2,"('./OUTPUT_FILES/reconst_record/&
-          &elastic_pnts/nt_',i6.6)")nt2_record
+          &elastic_pnts/nt_',i6.6)")nt2_record_reconst
 
     !unformatted reading
     open(unit=f_num_2,file=trim(fname_2),access='direct',status='old',&
@@ -351,7 +349,7 @@ subroutine time_interplt_supply_reconst()
 
        !!!linear interpolation in time space
        trac_f(:,i) = (trac_f_t2(:) - trac_f_t1(:)) * &
-                                  (it*deltat_read - nt1_record*deltat_record)/deltat_record + &
+                                  (it*deltat_read_reconst - nt1_record_reconst*deltat_record_reconst)/deltat_record_reconst + &
                                   trac_f_t1(:)
        
     enddo  

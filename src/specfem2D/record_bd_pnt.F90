@@ -249,13 +249,13 @@
                              nz_bd_pnt_elastic(:)*stress_bd_pnt_elastic(5,:)
 
 
-  !!!this is the recording length for unformatted recording
-  inquire (iolength = length_unf_1) trac_bd_pnt_elastic(:,1),vel_bd_pnt_elastic(:,1)
-  inquire (iolength = length_unf_2) grad_pot_bd_pnt_acoustic(:,1),pot_dot_bd_pnt_acoustic(1)
  
   f_num=113
   !for elastic 
   if( nspec_bd_pnt_elastic /= 0 ) then
+    !!!this is the recording length for unformatted recording
+    inquire (iolength = length_unf_1) trac_bd_pnt_elastic(:,1),vel_bd_pnt_elastic(:,1)
+
     write(fname,"('./OUTPUT_FILES/bg_record/&
           &elastic_pnts/nt_',i6.6)")it
 
@@ -277,6 +277,8 @@
   endif
   !for acoustic
   if( nspec_bd_pnt_acoustic /= 0 ) then
+
+    inquire (iolength = length_unf_2) grad_pot_bd_pnt_acoustic(:,1),pot_dot_bd_pnt_acoustic(1)
     write(fname,"('./OUTPUT_FILES/bg_record/&
           &acoustic_pnts/nt_',i6.6)")it
     

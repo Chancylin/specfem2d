@@ -322,6 +322,11 @@
      !test
      print *,'total pure elastic elments are ', nspec_bd_elmt_elastic_pure
 
+     !here k = nspec_bd_elmt_elastic_pure, kk = nspec_bd_elmt_acoustic_pure
+     allocate(ispec_bd_elmt_elastic_pure(k))
+     ispec_bd_elmt_elastic_pure(1:k) = temp_bd_elmt_elastic(1:k)
+     deallocate(temp_bd_elmt_elastic)
+
   endif
 
   if ( nspec_bd_pnt_acoustic /= 0 ) then
@@ -344,8 +349,13 @@
      !test
      print *,'total pure acoustic elments are ', nspec_bd_elmt_acoustic_pure
 
+     allocate(ispec_bd_elmt_acoustic_pure(kk))
+     ispec_bd_elmt_acoustic_pure(1:kk) = temp_bd_elmt_acoustic(1:kk)
+     deallocate(temp_bd_elmt_acoustic)
+
   endif
 
+  !deallocate(ispec_bd_elmt_elastic,ispec_bd_elmt_acoustic)!this will be used in 'record_local_boundary_reconst'
 
   if( record_local_boundary_reconst )then
   !when recording the information for wavefield reconstruction, we just need
@@ -460,20 +470,13 @@
   endif
 
   110 format(i5,2(es12.4,2x))!you may need to adjust the format depending on the precision
-  111 format(i5,i1,i1,2(es12.4,2x))!you may need to adjust the format depending on the precision
+  111 format(i5,2x,i1,2x,i1,2x,2(es12.4,2x))!you may need to adjust the format depending on the precision
 
   deallocate(x_final_bd_pnt_elastic,z_final_bd_pnt_elastic)
   deallocate(x_final_bd_pnt_acoustic,z_final_bd_pnt_acoustic)
 
-  !here k = nspec_bd_elmt_elastic_pure, kk = nspec_bd_elmt_acoustic_pure
-  allocate(ispec_bd_elmt_elastic_pure(k))
-  ispec_bd_elmt_elastic_pure(1:k) = temp_bd_elmt_elastic(1:k)
   
-  allocate(ispec_bd_elmt_acoustic_pure(kk))
-  ispec_bd_elmt_acoustic_pure(1:kk) = temp_bd_elmt_acoustic(1:kk)
 
-  deallocate(temp_bd_elmt_elastic,temp_bd_elmt_acoustic)
-  !deallocate(ispec_bd_elmt_elastic,ispec_bd_elmt_acoustic)!this will be used in 'record_local_boundary_reconst'
 
   if ( record_local_bkgd_boundary ) then
      !allocate array to store info for those elements in which the recording_bd_pnt locates

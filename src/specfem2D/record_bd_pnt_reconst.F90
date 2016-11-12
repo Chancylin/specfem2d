@@ -9,7 +9,7 @@
 
    use specfem_par, only: ispec_bd_elmt_elastic_i,ispec_bd_elmt_elastic_j,ispec_bd_elmt_elastic,&
                           trac_bd_pnt_elastic_reconst,trac_f,nx_bd_pnt_elastic,nz_bd_pnt_elastic,&
-                          it,record_nt1,record_nt2,& !control time step for recording
+                          it,record_nt1_reconst,record_nt2_reconst,& !control time step for recording
                           side_type_elastic,nspec_bd_pnt_elastic,wzgll,wxgll,&
                           xiz,xix,gammaz,gammax,jacobian
 
@@ -20,7 +20,7 @@
    integer :: ispec_bd_pnt_elastic   
    real(kind=CUSTOM_REAL) :: weight,xxi,zxi,xgamma,zgamma,jacobian1D
 
-   if (it < record_nt1 .or. it > record_nt2 ) return
+   if (it < record_nt1_reconst .or. it > record_nt2_reconst ) return
 
    ispec_bd_pnt_elastic = 0 
 
@@ -98,7 +98,7 @@
                                               dux_dxl,dux_dzl,duz_dxl,duz_dzl,duy_dxl,duy_dzl)
 
    use specfem_par, only: it,& !original para
-                          record_nt1,record_nt2,& !control time step for recording
+                          record_nt1_reconst,record_nt2_reconst,& !control time step for recording
                           nx_bd_pnt_elastic,nz_bd_pnt_elastic,nspec_bd_pnt_elastic,&
                           ispec_bd_elmt_elastic, ispec_bd_elmt_elastic_i, ispec_bd_elmt_elastic_j,&
                           m_f_bd_pnt_elastic
@@ -113,7 +113,7 @@
    !integer :: k   
    integer :: ispec_bd_pnt_elastic
 
-   if (it < record_nt1 .or. it > record_nt2 ) return
+   if (it < record_nt1_reconst .or. it > record_nt2_reconst ) return
    
    ispec_bd_pnt_elastic = 0
 
@@ -238,7 +238,7 @@
                          fname,f_num,&
                          nspec_bd_pnt_elastic,&
                          trac_f,&!m_f_bd_pnt_elastic,&
-                         record_nt1,record_nt2 !control time step for recording
+                         record_nt1_reconst,record_nt2_reconst !control time step for recording
  
  
   implicit none
@@ -249,7 +249,7 @@
   integer :: length_unf_1
   !integer :: length_unf_2
 
-  if (it < record_nt1 .or. it > record_nt2 ) return
+  if (it < record_nt1_reconst .or. it > record_nt2_reconst ) return
 
   !inquire (iolength = length_unf_2) grad_pot_bd_pnt_acoustic(:,1),pot_dot_bd_pnt_acoustic(1)
 
