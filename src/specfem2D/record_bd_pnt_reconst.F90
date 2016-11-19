@@ -51,7 +51,7 @@
 
              trac_f(:,ispec_bd_pnt_elastic) = trac_bd_pnt_elastic_reconst(:,ispec_bd_pnt_elastic)*weight
 
-           else if( side_type_elastic(ispec_bd_pnt_elastic) == 'R' ) then !Rigth
+           else if( side_type_elastic(ispec_bd_pnt_elastic) == 'R' ) then !Right
 
              xgamma = - xiz(i,j,ispec) * jacobian(i,j,ispec)
              zgamma = + xix(i,j,ispec) * jacobian(i,j,ispec)
@@ -93,45 +93,119 @@
  end subroutine record_bd_elmnt_elastic_reconst_f
 
 
- subroutine record_bd_elmnt_elastic_reconst_m(ispec,i,j,lambdal_unrelaxed_elastic,&
-                                              mul_unrelaxed_elastic, lambdaplus2mu_unrelaxed_elastic,&
-                                              dux_dxl,dux_dzl,duz_dxl,duz_dzl,duy_dxl,duy_dzl)
+ subroutine record_bd_elmnt_elastic_reconst_m(ispec,ispecabs,displ_elastic,&
+                           lambdaplus2mu_unrelaxed_elastic,lambdal_unrelaxed_elastic,mul_unrelaxed_elastic)
 
    use specfem_par, only: it,& !original para
                           record_nt1_reconst,record_nt2_reconst,& !control time step for recording
-                          nx_bd_pnt_elastic,nz_bd_pnt_elastic,nspec_bd_pnt_elastic,&
-                          ispec_bd_elmt_elastic, ispec_bd_elmt_elastic_i, ispec_bd_elmt_elastic_j,&
-                          m_f_bd_pnt_elastic
+                          ispec_bd_elmt_elastic_pure_edge,ibool,&
+                          nspec_bd_elmt_elastic_pure_edge,codeabs,&
+                          xix,xiz,gammax,gammaz,jacobian,&
+                          m_xx,m_xz,m_zz,m_zx,nglob
 
    implicit none
    include "constants.h"
 
-   integer, intent(in) :: ispec,i,j
-   real(kind=CUSTOM_REAL), intent(in) :: dux_dxl,duy_dxl,duz_dxl,dux_dzl,duy_dzl,duz_dzl
+   integer, intent(in) :: ispec,ispecabs
+   real(kind=CUSTOM_REAL), dimension(3,nglob) :: displ_elastic 
+   !!!do we need the external velocity model to calculate he lame paramteters?
    real(kind=CUSTOM_REAL), intent(in) :: mul_unrelaxed_elastic,lambdal_unrelaxed_elastic, &
                              lambdaplus2mu_unrelaxed_elastic
-   !integer :: k   
-   integer :: ispec_bd_pnt_elastic
+   real(kind=CUSTOM_REAL) :: nx,nz,jacobian1D,xxi,zxi,xgamma,zgamma
+   integer :: ispec_bd_edge_elastic
+
+   integer :: i,j,iglob
 
    if (it < record_nt1_reconst .or. it > record_nt2_reconst ) return
    
-   ispec_bd_pnt_elastic = 0
-
-   loop1:do ispec_bd_pnt_elastic = 1, nspec_bd_pnt_elastic
-      
-      !locate the corresponding recording point
-         !do k = 1,nspec_bd_elmt_elastic_pure
-         ! I think it will be an economic way to read the i,j of the recording pointfrom file 'boundary_points'
-         !ispec = ispec_selected_bd_pnt(ipnt)
-         !i_pnt = ispec_bd_elmt_elastic_i(ipnt)
-         !j_pnt = ispec_bd_elmt_elastic_j(ipnt)
-         !iglob = ibool(i_pnt,j_pnt,ispec)
+   !print *,'ispec = ', ispec
+   !print *,lambdaplus2mu_unrelaxed_elastic,lambdal_unrelaxed_elastic,mul_unrelaxed_elastic
+   !stop
+   loop1:do ispec_bd_edge_elastic = 1, nspec_bd_elmt_elastic_pure_edge
          
-      !point is not the corresponding recording point. search the next one 
+         !!!!locate which element in ispec_bd_elmt_elastic_pure_edge(:) will be recorded
+         !!!!note that here we use codeabs() to check the typeside
+         if ( ispec_bd_elmt_elastic_pure_edge(ispec_bd_edge_elastic) == ispec ) then
+            !!left absorbing boundary
+            if( codeabs(IEDGE4,ispecabs) ) then
+              i = 1
+              do j = 1,NGLLZ
+                 iglob = ibool(i,j,ispec)
+                 xgamma = - xiz(i,j,ispec) * jacobian(i,j,ispec)
+                 zgamma = + xix(i,j,ispec) * jacobian(i,j,ispec)
+                 jacobian1D = sqrt(xgamma**2 + zgamma**2)
+                 nx = - zgamma / jacobian1D
+                 nz = + xgamma / jacobian1D
 
-         if ( ispec_bd_elmt_elastic(ispec_bd_pnt_elastic) == ispec .and. ispec_bd_elmt_elastic_i(ispec_bd_pnt_elastic) == i &
-            .and. ispec_bd_elmt_elastic_j(ispec_bd_pnt_elastic) == j ) then
+                 m_xx(ispec_bd_edge_elastic,j) = displ_elastic(1,iglob)*nx &
+                      *lambdaplus2mu_unrelaxed_elastic + displ_elastic(3,iglob)*nz*lambdal_unrelaxed_elastic
+                 m_xz(ispec_bd_edge_elastic,j) = displ_elastic(1,iglob)*nz &
+                      *mul_unrelaxed_elastic + displ_elastic(3,iglob)*nx* mul_unrelaxed_elastic 
+                 m_zz(ispec_bd_edge_elastic,j) = displ_elastic(1,iglob)*nx &
+                      *lambdal_unrelaxed_elastic + displ_elastic(3,iglob)*nz*lambdaplus2mu_unrelaxed_elastic 
+                 m_zx(ispec_bd_edge_elastic,j) = m_xz(ispec_bd_edge_elastic,j) 
+              enddo
+            endif
+            !!right absorbing boundary
+            if( codeabs(IEDGE2,ispecabs) ) then
+              i = NGLLX
+              do j = 1,NGLLZ
+                 iglob = ibool(i,j,ispec)
+                 xgamma = - xiz(i,j,ispec) * jacobian(i,j,ispec)
+                 zgamma = + xix(i,j,ispec) * jacobian(i,j,ispec)
+                 jacobian1D = sqrt(xgamma**2 + zgamma**2)
+                 nx = + zgamma / jacobian1D
+                 nz = - xgamma / jacobian1D
 
+                 m_xx(ispec_bd_edge_elastic,j) = displ_elastic(1,iglob)*nx &
+                      *lambdaplus2mu_unrelaxed_elastic + displ_elastic(3,iglob)*nz*lambdal_unrelaxed_elastic
+                 m_xz(ispec_bd_edge_elastic,j) = displ_elastic(1,iglob)*nz &
+                      *mul_unrelaxed_elastic + displ_elastic(3,iglob)*nx* mul_unrelaxed_elastic 
+                 m_zz(ispec_bd_edge_elastic,j) = displ_elastic(1,iglob)*nx &
+                      *lambdal_unrelaxed_elastic + displ_elastic(3,iglob)*nz*lambdaplus2mu_unrelaxed_elastic 
+                 m_zx(ispec_bd_edge_elastic,j) = m_xz(ispec_bd_edge_elastic,j) 
+              enddo
+            endif
+            !!bottom absorbing boundary
+            if( codeabs(IEDGE1,ispecabs) ) then
+              j = 1
+              do i = 1,NGLLX
+                 iglob = ibool(i,j,ispec)
+                 xxi = + gammaz(i,j,ispec) * jacobian(i,j,ispec)
+                 zxi = - gammax(i,j,ispec) * jacobian(i,j,ispec)
+                 jacobian1D = sqrt(xxi**2 + zxi**2)
+                 nx = + zxi / jacobian1D
+                 nz = - xxi / jacobian1D
+
+                 m_xx(ispec_bd_edge_elastic,i) = displ_elastic(1,iglob)*nx &
+                      *lambdaplus2mu_unrelaxed_elastic + displ_elastic(3,iglob)*nz*lambdal_unrelaxed_elastic
+                 m_xz(ispec_bd_edge_elastic,i) = displ_elastic(1,iglob)*nz &
+                      *mul_unrelaxed_elastic + displ_elastic(3,iglob)*nx* mul_unrelaxed_elastic 
+                 m_zz(ispec_bd_edge_elastic,i) = displ_elastic(1,iglob)*nx &
+                      *lambdal_unrelaxed_elastic + displ_elastic(3,iglob)*nz*lambdaplus2mu_unrelaxed_elastic 
+                 m_zx(ispec_bd_edge_elastic,i) = m_xz(ispec_bd_edge_elastic,i) 
+              enddo
+            endif
+            !!top absorbing boundary
+            if( codeabs(IEDGE3,ispecabs) ) then
+              j = NGLLZ
+              do i = 1,NGLLX
+                 iglob = ibool(i,j,ispec)
+                 xxi = + gammaz(i,j,ispec) * jacobian(i,j,ispec)
+                 zxi = - gammax(i,j,ispec) * jacobian(i,j,ispec)
+                 jacobian1D = sqrt(xxi**2 + zxi**2)
+                 nx = - zxi / jacobian1D
+                 nz = + xxi / jacobian1D
+
+                 m_xx(ispec_bd_edge_elastic,i) = displ_elastic(1,iglob)*nx &
+                      *lambdaplus2mu_unrelaxed_elastic + displ_elastic(3,iglob)*nz*lambdal_unrelaxed_elastic
+                 m_xz(ispec_bd_edge_elastic,i) = displ_elastic(1,iglob)*nz &
+                      *mul_unrelaxed_elastic + displ_elastic(3,iglob)*nx* mul_unrelaxed_elastic 
+                 m_zz(ispec_bd_edge_elastic,i) = displ_elastic(1,iglob)*nx &
+                      *lambdal_unrelaxed_elastic + displ_elastic(3,iglob)*nz*lambdaplus2mu_unrelaxed_elastic 
+                 m_zx(ispec_bd_edge_elastic,i) = m_xz(ispec_bd_edge_elastic,i) 
+              enddo
+            endif
         ! ! get unrelaxed elastic parameters of current spectral element
         ! lambdal_unrelaxed_elastic = poroelastcoef(1,1,kmato(ispec))
         ! mul_unrelaxed_elastic = poroelastcoef(2,1,kmato(ispec))
@@ -205,21 +279,21 @@
          !+ displ_elastic(3,iglob)*nz_bd_pnt_elastic(ipnt)*lambdaplus2mu_unrelaxed_elastic
          !!m_zx(ipnt) = m_xz(ipnt)
 
-         m_f_bd_pnt_elastic(1,ispec_bd_pnt_elastic) = &
-            - (dux_dxl*nx_bd_pnt_elastic(ispec_bd_pnt_elastic)*lambdaplus2mu_unrelaxed_elastic &
-            + duz_dxl*nz_bd_pnt_elastic(ispec_bd_pnt_elastic)*lambdal_unrelaxed_elastic &
-            + dux_dzl*nz_bd_pnt_elastic(ispec_bd_pnt_elastic)*mul_unrelaxed_elastic &
-            + duz_dzl*nx_bd_pnt_elastic(ispec_bd_pnt_elastic)*mul_unrelaxed_elastic)
-         
-         m_f_bd_pnt_elastic(3,ispec_bd_pnt_elastic) = &
-            - (duz_dzl*nz_bd_pnt_elastic(ispec_bd_pnt_elastic)*lambdaplus2mu_unrelaxed_elastic & 
-            + dux_dzl*nx_bd_pnt_elastic(ispec_bd_pnt_elastic)*lambdal_unrelaxed_elastic &
-            + dux_dxl*nz_bd_pnt_elastic(ispec_bd_pnt_elastic)*mul_unrelaxed_elastic &
-            + duz_dxl*nx_bd_pnt_elastic(ispec_bd_pnt_elastic)*mul_unrelaxed_elastic)
+         !m_f_bd_pnt_elastic(1,ispec_bd_pnt_elastic) = &
+         !   - (dux_dxl*nx_bd_pnt_elastic(ispec_bd_pnt_elastic)*lambdaplus2mu_unrelaxed_elastic &
+         !   + duz_dxl*nz_bd_pnt_elastic(ispec_bd_pnt_elastic)*lambdal_unrelaxed_elastic &
+         !   + dux_dzl*nz_bd_pnt_elastic(ispec_bd_pnt_elastic)*mul_unrelaxed_elastic &
+         !   + duz_dzl*nx_bd_pnt_elastic(ispec_bd_pnt_elastic)*mul_unrelaxed_elastic)
+         !
+         !m_f_bd_pnt_elastic(3,ispec_bd_pnt_elastic) = &
+         !   - (duz_dzl*nz_bd_pnt_elastic(ispec_bd_pnt_elastic)*lambdaplus2mu_unrelaxed_elastic & 
+         !   + dux_dzl*nx_bd_pnt_elastic(ispec_bd_pnt_elastic)*lambdal_unrelaxed_elastic &
+         !   + dux_dxl*nz_bd_pnt_elastic(ispec_bd_pnt_elastic)*mul_unrelaxed_elastic &
+         !   + duz_dxl*nx_bd_pnt_elastic(ispec_bd_pnt_elastic)*mul_unrelaxed_elastic)
 
-         m_f_bd_pnt_elastic(2,ispec_bd_pnt_elastic) = &
-            - (duy_dxl*nx_bd_pnt_elastic(ispec_bd_pnt_elastic)*mul_unrelaxed_elastic &
-            + duy_dzl*nz_bd_pnt_elastic(ispec_bd_pnt_elastic)*mul_unrelaxed_elastic)
+         !m_f_bd_pnt_elastic(2,ispec_bd_pnt_elastic) = &
+         !   - (duy_dxl*nx_bd_pnt_elastic(ispec_bd_pnt_elastic)*mul_unrelaxed_elastic &
+         !   + duy_dzl*nz_bd_pnt_elastic(ispec_bd_pnt_elastic)*mul_unrelaxed_elastic)
 
         
          exit loop1
@@ -231,13 +305,208 @@
 
  end subroutine record_bd_elmnt_elastic_reconst_m
 
+ subroutine calculate_bd_elastic_reconst_m_f()
+
+   use specfem_par, only: it,xix,xiz,gammax,gammaz,jacobian,wxgll,wzgll,&
+                          ispec_bd_elmt_elastic,ispec_bd_elmt_elastic_i,ispec_bd_elmt_elastic_j,&
+                          nspec_bd_pnt_elastic,side_type_elastic,&
+                          ispec_bd_elmt_elastic_pure_edge,nspec_bd_elmt_elastic_pure_edge, & 
+                          ispec_bd_elmt_elastic_pure_side,&
+                          hprime_zz,hprime_xx,&
+                          m_xx,m_xz,m_zz,m_f
+   implicit none
+   include "constants.h"
+   
+   double precision, dimension(NGLLX) :: G11,G13,G31,G33
+   integer :: i,j,k,ispec_selected_m_f,ispec_bd_edge_elastic
+   double precision :: xixd,xizd,gammaxd,gammazd !for G_ik calculation
+   real(kind=CUSTOM_REAL) :: jacobian1D,weight,xxi,zxi,xgamma,zgamma !for integeral weight calculation
+
+   if( nspec_bd_pnt_elastic /= 0 ) then
+     do k = 1, nspec_bd_pnt_elastic
+
+   loop1: do ispec_bd_edge_elastic = 1, nspec_bd_elmt_elastic_pure_edge  
+        if ( ispec_bd_elmt_elastic(k) == ispec_bd_elmt_elastic_pure_edge(ispec_bd_edge_elastic) &
+           .and. side_type_elastic(k) == ispec_bd_elmt_elastic_pure_side(ispec_bd_edge_elastic) ) then
+
+              ispec_selected_m_f = ispec_bd_elmt_elastic(k)
+
+           if(it == 1) print *,'ispec = ', ispec_selected_m_f, '  side type: ', side_type_elastic(k)
+
+           if( side_type_elastic(k) == 'L') then
+              m_f(k,1) = 0.0
+              m_f(k,3) = 0.0
+              !!calculate the G_ik for each GLL point along the edge
+              do j = 1,NGLLZ
+                xixd    = xix(1,j,ispec_selected_m_f)
+                xizd    = xiz(1,j,ispec_selected_m_f)
+                gammaxd = gammax(1,j,ispec_selected_m_f)
+                gammazd = gammaz(1,j,ispec_selected_m_f)
+  
+                !they are G11(1,j) indeed
+                G11(j) = m_xx(ispec_bd_edge_elastic,j)*xixd+m_xz(ispec_bd_edge_elastic,j)*xizd 
+                G13(j) = m_xx(ispec_bd_edge_elastic,j)*gammaxd+m_xz(ispec_bd_edge_elastic,j)*gammazd
+                G31(j) = m_xz(ispec_bd_edge_elastic,j)*xixd+m_zz(ispec_bd_edge_elastic,j)*xizd
+                G33(j) = m_xz(ispec_bd_edge_elastic,j)*gammaxd+m_zz(ispec_bd_edge_elastic,j)*gammazd
+              enddo
+             i =1
+             do j = 1,NGLLZ
+                xgamma = - xiz(i,j,ispec_selected_m_f) * jacobian(i,j,ispec_selected_m_f)
+                zgamma = + xix(i,j,ispec_selected_m_f) * jacobian(i,j,ispec_selected_m_f)
+                jacobian1D = sqrt(xgamma**2 + zgamma**2)
+                weight = jacobian1D * wzgll(j)
+                !hprime_zz(j,i) is the derivative of ith Lagrange interpolant at jth GLL point
+                m_f(k,1) = m_f(k,1) + weight*G11(j)*hprime_zz(j,ispec_bd_elmt_elastic_j(k))
+                m_f(k,3) = m_f(k,3) + weight*G31(j)*hprime_zz(j,ispec_bd_elmt_elastic_j(k))
+                
+             enddo
+
+             j = ispec_bd_elmt_elastic_j(k)
+             xgamma = - xiz(i,j,ispec_selected_m_f) * jacobian(i,j,ispec_selected_m_f)
+             zgamma = + xix(i,j,ispec_selected_m_f) * jacobian(i,j,ispec_selected_m_f)
+             jacobian1D = sqrt(xgamma**2 + zgamma**2)
+             weight = jacobian1D * wzgll(j)
+             m_f(k,1) = m_f(k,1) + weight*G13(j)*hprime_xx(i,ispec_bd_elmt_elastic_i(k))
+             m_f(k,3) = m_f(k,3) + weight*G33(j)*hprime_xx(i,ispec_bd_elmt_elastic_i(k))
+             !m_f(k,1) =  
+             !m_f(k,3) = 
+             !m_f(k,2) = 
+           
+             exit loop1 
+           endif !left
+
+           if( side_type_elastic(k) == 'R' ) then
+              m_f(k,1) = 0.0
+              m_f(k,3) = 0.0
+              !!calculate the G_ik for each GLL point along the edge
+              i = NGLLX
+
+              do j = 1,NGLLZ
+                xixd    = xix(i,j,ispec_selected_m_f)
+                xizd    = xiz(i,j,ispec_selected_m_f)
+                gammaxd = gammax(i,j,ispec_selected_m_f)
+                gammazd = gammaz(i,j,ispec_selected_m_f)
+  
+                !they are G11(NGLLX,j) indeed
+                G11(j) = m_xx(ispec_bd_edge_elastic,j)*xixd+m_xz(ispec_bd_edge_elastic,j)*xizd 
+                G13(j) = m_xx(ispec_bd_edge_elastic,j)*gammaxd+m_xz(ispec_bd_edge_elastic,j)*gammazd
+                G31(j) = m_xz(ispec_bd_edge_elastic,j)*xixd+m_zz(ispec_bd_edge_elastic,j)*xizd
+                G33(j) = m_xz(ispec_bd_edge_elastic,j)*gammaxd+m_zz(ispec_bd_edge_elastic,j)*gammazd
+              enddo
+
+              do j = 1,NGLLZ
+                 xgamma = - xiz(i,j,ispec_selected_m_f) * jacobian(i,j,ispec_selected_m_f)
+                 zgamma = + xix(i,j,ispec_selected_m_f) * jacobian(i,j,ispec_selected_m_f)
+                 jacobian1D = sqrt(xgamma**2 + zgamma**2)
+                 weight = jacobian1D * wzgll(j)
+                 !hprime_zz(j,i) is the derivative of ith Lagrange interpolant at jth GLL point
+                 m_f(k,1) = m_f(k,1) + weight*G11(j)*hprime_zz(j,ispec_bd_elmt_elastic_j(k))
+                 m_f(k,3) = m_f(k,3) + weight*G31(j)*hprime_zz(j,ispec_bd_elmt_elastic_j(k))
+                 
+              enddo
+
+              j = ispec_bd_elmt_elastic_j(k)
+              xgamma = - xiz(i,j,ispec_selected_m_f) * jacobian(i,j,ispec_selected_m_f)
+              zgamma = + xix(i,j,ispec_selected_m_f) * jacobian(i,j,ispec_selected_m_f)
+              jacobian1D = sqrt(xgamma**2 + zgamma**2)
+              weight = jacobian1D * wzgll(j)
+              m_f(k,1) = m_f(k,1) + weight*G13(j)*hprime_xx(i,ispec_bd_elmt_elastic_i(k))
+              m_f(k,3) = m_f(k,3) + weight*G33(j)*hprime_xx(i,ispec_bd_elmt_elastic_i(k))
+           
+              exit loop1 
+            endif !'right'
+          
+            if( side_type_elastic(k) == 'B' ) then
+              m_f(k,1) = 0.0
+              m_f(k,3) = 0.0
+              j = 1
+              do i = 1,NGLLX
+                 xixd    = xix(i,j,ispec_selected_m_f)
+                 xizd    = xiz(i,j,ispec_selected_m_f)
+                 gammaxd = gammax(i,j,ispec_selected_m_f)
+                 gammazd = gammaz(i,j,ispec_selected_m_f)
+  
+                 !they are G11(i,1) indeed
+                 G11(i) = m_xx(ispec_bd_edge_elastic,i)*xixd+m_xz(ispec_bd_edge_elastic,i)*xizd 
+                 G13(i) = m_xx(ispec_bd_edge_elastic,i)*gammaxd+m_xz(ispec_bd_edge_elastic,i)*gammazd
+                 G31(i) = m_xz(ispec_bd_edge_elastic,i)*xixd+m_zz(ispec_bd_edge_elastic,i)*xizd
+                 G33(i) = m_xz(ispec_bd_edge_elastic,i)*gammaxd+m_zz(ispec_bd_edge_elastic,i)*gammazd
+              enddo
+
+              do i = 1,NGLLX
+                 xxi = + gammaz(i,j,ispec_selected_m_f) * jacobian(i,j,ispec_selected_m_f)
+                 zxi = - gammax(i,j,ispec_selected_m_f) * jacobian(i,j,ispec_selected_m_f)
+                 jacobian1D = sqrt(xxi**2 + zxi**2)
+                 weight = jacobian1D * wxgll(i)
+                 
+                 m_f(k,1) = m_f(k,1) + weight*G11(i)*hprime_xx(i,ispec_bd_elmt_elastic_i(k))
+                 m_f(k,3) = m_f(k,3) + weight*G31(i)*hprime_xx(i,ispec_bd_elmt_elastic_i(k))
+              enddo
+              i = ispec_bd_elmt_elastic_i(k)
+              xxi = + gammaz(i,j,ispec_selected_m_f) * jacobian(i,j,ispec_selected_m_f)
+              zxi = - gammax(i,j,ispec_selected_m_f) * jacobian(i,j,ispec_selected_m_f)
+              jacobian1D = sqrt(xxi**2 + zxi**2)
+              weight = jacobian1D * wxgll(i)
+              
+              m_f(k,1) = m_f(k,1) + weight*G13(i)*hprime_zz(j,ispec_bd_elmt_elastic_j(k))
+              m_f(k,3) = m_f(k,3) + weight*G33(i)*hprime_zz(j,ispec_bd_elmt_elastic_j(k))
+           
+              exit loop1 
+            endif ! bottom
+
+           if( side_type_elastic(k) == 'T' ) then
+              m_f(k,1) = 0.0
+              m_f(k,3) = 0.0
+              j = NGLLZ
+              do i = 1,NGLLX
+                 xixd    = xix(i,j,ispec_selected_m_f)
+                 xizd    = xiz(i,j,ispec_selected_m_f)
+                 gammaxd = gammax(i,j,ispec_selected_m_f)
+                 gammazd = gammaz(i,j,ispec_selected_m_f)
+  
+                 !they are G11(i,NGLLZ) indeed
+                 G11(i) = m_xx(ispec_bd_edge_elastic,i)*xixd+m_xz(ispec_bd_edge_elastic,i)*xizd 
+                 G13(i) = m_xx(ispec_bd_edge_elastic,i)*gammaxd+m_xz(ispec_bd_edge_elastic,i)*gammazd
+                 G31(i) = m_xz(ispec_bd_edge_elastic,i)*xixd+m_zz(ispec_bd_edge_elastic,i)*xizd
+                 G33(i) = m_xz(ispec_bd_edge_elastic,i)*gammaxd+m_zz(ispec_bd_edge_elastic,i)*gammazd
+              enddo
+
+              do i = 1,NGLLX
+                 xxi = + gammaz(i,j,ispec_selected_m_f) * jacobian(i,j,ispec_selected_m_f)
+                 zxi = - gammax(i,j,ispec_selected_m_f) * jacobian(i,j,ispec_selected_m_f)
+                 jacobian1D = sqrt(xxi**2 + zxi**2)
+                 weight = jacobian1D * wxgll(i)
+                 
+                 m_f(k,1) = m_f(k,1) + weight*G11(i)*hprime_xx(i,ispec_bd_elmt_elastic_i(k))
+                 m_f(k,3) = m_f(k,3) + weight*G31(i)*hprime_xx(i,ispec_bd_elmt_elastic_i(k))
+              enddo
+
+              i = ispec_bd_elmt_elastic_i(k)
+              xxi = + gammaz(i,j,ispec_selected_m_f) * jacobian(i,j,ispec_selected_m_f)
+              zxi = - gammax(i,j,ispec_selected_m_f) * jacobian(i,j,ispec_selected_m_f)
+              jacobian1D = sqrt(xxi**2 + zxi**2)
+              weight = jacobian1D * wxgll(i)
+              
+              m_f(k,1) = m_f(k,1) + weight*G13(i)*hprime_zz(j,ispec_bd_elmt_elastic_j(k))
+              m_f(k,3) = m_f(k,3) + weight*G33(i)*hprime_zz(j,ispec_bd_elmt_elastic_j(k))
+           
+              exit loop1 
+           endif !top
+
+        endif !the ispec_bd_edge_elastic is being located
+
+        enddo loop1 !!!locate ispec_bd_edge_elastic to provide the corresponding moment density tensor
+
+     enddo  !!!end the loop for all recording points
+   endif
+ end subroutine calculate_bd_elastic_reconst_m_f
 
  subroutine write_bd_pnts_reconst()
 
   use specfem_par, only: it,& !original para
                          fname,f_num,&
                          nspec_bd_pnt_elastic,&
-                         trac_f,&!m_f_bd_pnt_elastic,&
+                         trac_f,m_f, &
                          record_nt1_reconst,record_nt2_reconst !control time step for recording
  
  
@@ -255,8 +524,10 @@
 
   !for elastic 
   if( nspec_bd_pnt_elastic /= 0 )then
+    !calculate moment density tensor point sources
+    call calculate_bd_elastic_reconst_m_f()
     !!!this is the recording length for unformatted recording
-    inquire (iolength = length_unf_1) trac_f(:,1)!,m_f_bd_pnt_elastic(:,1)
+    inquire (iolength = length_unf_1) trac_f(:,1),m_f(1,:)
     f_num=113
     write(fname,"('./OUTPUT_FILES/reconst_record/&
           &elastic_pnts/nt_',i6.6)")it
@@ -267,7 +538,7 @@
     if( ios /= 0 ) stop 'error saving values at recording points'
 
     do k = 1, nspec_bd_pnt_elastic
-       write(f_num,rec=k) trac_f(:,k)!,m_f_bd_pnt_elastic(:,k)
+       write(f_num,rec=k) trac_f(:,k),m_f(k,:)
     enddo
 
     close(f_num)

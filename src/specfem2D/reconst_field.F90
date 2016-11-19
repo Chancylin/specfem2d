@@ -9,7 +9,7 @@ subroutine compute_add_trac_f_viscoelastic(accel_elastic,it)
        
   use specfem_par, only: p_sv,nglob_elastic,&
                          nspec_bd_pnt_elastic,&
-                         trac_f,&
+                         trac_f, m_f,&
                          ispec_selected_elastic_source_reconst,&  !this should be located by a subroutine
                          hxis_trac_f_store,hgammas_trac_f_store,ibool,&
                          read_nt1_reconst,read_nt2_reconst
@@ -21,7 +21,9 @@ subroutine compute_add_trac_f_viscoelastic(accel_elastic,it)
   integer :: it
   integer :: i_f_source,i,j,iglob
   double precision :: hlagrange 
+  logical :: switch
 
+  switch = .FALSE.
   if (it < read_nt1_reconst .or. it > read_nt2_reconst ) return
   !there must be a subroutine to assign the trac_f for the time step 'it'
   !the time interpolation may be applied
@@ -33,6 +35,7 @@ subroutine compute_add_trac_f_viscoelastic(accel_elastic,it)
 
          if( p_sv ) then ! P-SV calculation
 
+           !traction force point sources
            do j = 1,NGLLZ
              do i = 1,NGLLX
                !there must be step to locate these force source. write another subroutine
@@ -40,9 +43,9 @@ subroutine compute_add_trac_f_viscoelastic(accel_elastic,it)
                hlagrange = hxis_trac_f_store(i_f_source,i) &
                            * hgammas_trac_f_store(i_f_source,j)
                accel_elastic(1,iglob) = accel_elastic(1,iglob) & 
-                                        + trac_f(1,i_f_source)*hlagrange
+                                        - trac_f(1,i_f_source)*hlagrange
                accel_elastic(3,iglob) = accel_elastic(3,iglob) &
-                                        + trac_f(3,i_f_source)*hlagrange
+                                        - trac_f(3,i_f_source)*hlagrange
              enddo
            enddo
          else    ! SH (membrane) calculation
@@ -52,12 +55,32 @@ subroutine compute_add_trac_f_viscoelastic(accel_elastic,it)
                hlagrange = hxis_trac_f_store(i_f_source,i) &
                            * hgammas_trac_f_store(i_f_source,j)
                accel_elastic(2,iglob) = accel_elastic(2,iglob) &
-                                        + trac_f(2,i_f_source)*hlagrange
+                                        - trac_f(2,i_f_source)*hlagrange
              enddo
            enddo
 
          endif
 
+        if( switch ) then
+
+         if( p_sv ) then !P-SV calculation
+           do j = 1,NGLLZ
+              do i = 1,NGLLX
+                 !the moment density tensor point sources are coinsiding with the traction point sources
+                 iglob = ibool(i,j,ispec_selected_elastic_source_reconst(i_f_source))
+                 hlagrange = hxis_trac_f_store(i_f_source,i) &
+                           * hgammas_trac_f_store(i_f_source,j)
+                 accel_elastic(1,iglob) = accel_elastic(1,iglob) &
+                                          + m_f(i_f_source,1)*hlagrange
+                 accel_elastic(3,iglob) = accel_elastic(3,iglob) &
+                                          + m_f(i_f_source,3)*hlagrange
+              enddo
+           enddo
+         else 
+           stop 'SH case not supported for moment density tensor so far'  
+         endif
+
+        endif
   enddo
   endif
 end subroutine compute_add_trac_f_viscoelastic
@@ -66,7 +89,7 @@ subroutine setup_trac_f_sources()
  
   use specfem_par, only: nspec_bd_pnt_elastic,nspec_bd_pnt_acoustic, &
                          coord,ibool,nglob,nspec, &
-                         trac_f,m_f_bd_pnt_elastic,&
+                         trac_f,m_f,&
                          hxis_trac_f,hgammas_trac_f,&
                          hpxis_trac_f,hpgammas_trac_f,hxis_trac_f_store,hgammas_trac_f_store,&
                          x_final_bd_pnt_elastic,z_final_bd_pnt_elastic,ispec_selected_elastic_source_reconst, &
@@ -111,7 +134,7 @@ subroutine setup_trac_f_sources()
    allocate(x_final_bd_pnt_elastic(nspec_bd_pnt_elastic),z_final_bd_pnt_elastic(nspec_bd_pnt_elastic))
    allocate(x_final_bd_pnt_acoustic(nspec_bd_pnt_acoustic),z_final_bd_pnt_acoustic(nspec_bd_pnt_acoustic))
    allocate(trac_f(3,nspec_bd_pnt_elastic))
-   allocate(m_f_bd_pnt_elastic(3,nspec_bd_pnt_elastic))
+   allocate(m_f(nspec_bd_pnt_elastic,3))
 
   !read the coordinates of the source points. The coordinate will be the key information
   f_num = 111                                                                 

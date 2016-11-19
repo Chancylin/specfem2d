@@ -291,7 +291,7 @@ subroutine time_interplt_supply_reconst()
   use specfem_par, only: it,deltat_read_reconst,&
                          record_nt1_reconst,record_nt2_reconst, deltat_record_reconst,&
                          nspec_bd_pnt_elastic,&!nspec_bd_pnt_acoustic,
-                         trac_f
+                         trac_f,m_f
 
   implicit none
   include "constants.h"
@@ -304,6 +304,7 @@ subroutine time_interplt_supply_reconst()
 
   
   real(kind=CUSTOM_REAL), dimension(3) :: trac_f_t1,trac_f_t2
+  real(kind=CUSTOM_REAL), dimension(3) :: m_f_t1,m_f_t2
   !real(kind=CUSTOM_REAL), dimension(3) :: trac_bd_pnt_t1,vel_bd_pnt_t1,trac_bd_pnt_t2,vel_bd_pnt_t2
    
   !real(kind=CUSTOM_REAL), dimension(2) :: grad_pot_bd_pnt_t1, grad_pot_bd_pnt_t2
@@ -318,7 +319,7 @@ subroutine time_interplt_supply_reconst()
   if( nspec_bd_pnt_elastic /= 0 ) then
 
     !you may change the iolength once you take the moment density tensor into account
-    inquire (iolength = length_unf_1) trac_f_t1(:)
+    inquire (iolength = length_unf_1) trac_f_t1(:),m_f_t1(:)
 
     !elstic elements
     f_num_1=113
@@ -344,13 +345,16 @@ subroutine time_interplt_supply_reconst()
 
 
     do i=1,nspec_bd_pnt_elastic
-       read(f_num_1,rec=i) trac_f_t1(:)
-       read(f_num_2,rec=i) trac_f_t2(:)
+       read(f_num_1,rec=i) trac_f_t1(:),m_f_t1(:)
+       read(f_num_2,rec=i) trac_f_t2(:),m_f_t2(:)
 
        !!!linear interpolation in time space
        trac_f(:,i) = (trac_f_t2(:) - trac_f_t1(:)) * &
                                   (it*deltat_read_reconst - nt1_record_reconst*deltat_record_reconst)/deltat_record_reconst + &
                                   trac_f_t1(:)
+       m_f(i,:) = (m_f_t2(:) - m_f_t1(:)) * &
+                                  (it*deltat_read_reconst - nt1_record_reconst*deltat_record_reconst)/deltat_record_reconst + &
+                                  m_f_t1(:)
        
     enddo  
  

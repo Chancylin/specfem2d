@@ -340,8 +340,12 @@ module specfem_par
   integer, dimension(:), allocatable :: ispec_bd_elmt_elastic,ispec_bd_elmt_acoustic
   integer, dimension(:), allocatable :: ispec_bd_elmt_elastic_i,ispec_bd_elmt_elastic_j
   integer, dimension(:), allocatable :: ispec_bd_elmt_acoustic_i,ispec_bd_elmt_acoustic_j
+  integer, dimension(:), allocatable :: ispec_bd_elmt_elastic_pure_edge, ispec_bd_elmt_acoustic_pure_edge
+  character, dimension(:), allocatable :: ispec_bd_elmt_elastic_pure_side, ispec_bd_elmt_acoustic_pure_side
+  integer :: nspec_bd_elmt_elastic_pure_edge,nspec_bd_elmt_acoustic_pure_edge
   real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: trac_bd_pnt_elastic_reconst
-  real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: trac_f,m_f_bd_pnt_elastic 
+  real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: trac_f,m_f 
+  real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: m_xx,m_xz,m_zz,m_zx
   !!!supplying part
   logical :: supply_reconst
   integer, dimension(:), allocatable :: ispec_selected_elastic_source_reconst 
