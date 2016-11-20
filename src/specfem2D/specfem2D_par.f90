@@ -345,12 +345,14 @@ module specfem_par
   integer :: nspec_bd_elmt_elastic_pure_edge,nspec_bd_elmt_acoustic_pure_edge
   real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: trac_bd_pnt_elastic_reconst
   real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: trac_f,m_f 
-  real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: m_xx,m_xz,m_zz,m_zx
+  real(kind=CUSTOM_REAL), dimension(:), allocatable :: m_xx,m_xz,m_zz,m_zx
+  real(kind=CUSTOM_REAL), dimension(:), allocatable :: m_xx_reconst,m_xz_reconst,m_zz_reconst,m_zx_reconst 
   !!!supplying part
   logical :: supply_reconst
   integer, dimension(:), allocatable :: ispec_selected_elastic_source_reconst 
   double precision, dimension(:), allocatable :: hxis_trac_f,hgammas_trac_f,hpxis_trac_f,hpgammas_trac_f
   double precision, dimension(:,:), allocatable :: hxis_trac_f_store,hgammas_trac_f_store
+  double precision, dimension(:,:), allocatable :: hpxis_trac_f_store,hpgammas_trac_f_store
   !-------------------------------------------------------------------
 
 

@@ -1037,6 +1037,9 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
           if ( record_local_boundary_reconst ) then
              call record_bd_elmnt_elastic_reconst_f(ispec,i,j,&
                  sigma_xx,sigma_xy,sigma_xz,sigma_zz,sigma_zy)
+
+             call record_bd_elmnt_elastic_reconst_m(ispec,i,j,displ_elastic(:,ibool(i,j,ispec)),&
+                 lambdaplus2mu_unrelaxed_elastic,lambdal_unrelaxed_elastic,mul_unrelaxed_elastic)
           endif
  
         enddo  
@@ -1612,10 +1615,10 @@ subroutine compute_forces_viscoelastic(accel_elastic,veloc_elastic,displ_elastic
              call absorb_scatter_field_solid(ispec,ispecabs,cpl,csl,rhol,accel_elastic,veloc_elastic)
              !!while suppling the background info to propagate the wavefield in the local model, we also
              !!want to store the m_ij for each gll points along the boundary 
-             if( record_local_boundary_reconst ) then
-               call record_bd_elmnt_elastic_reconst_m(ispec,ispecabs,displ_elastic,&
-                    lambdaplus2mu_unrelaxed_elastic,lambdal_unrelaxed_elastic,mul_unrelaxed_elastic)
-             endif
+             !if( record_local_boundary_reconst ) then
+             !  call record_bd_elmnt_elastic_reconst_m(ispec,ispecabs,displ_elastic,&
+             !       lambdaplus2mu_unrelaxed_elastic,lambdal_unrelaxed_elastic,mul_unrelaxed_elastic)
+             !endif
        endif! if for virtual boundary
    
       enddo

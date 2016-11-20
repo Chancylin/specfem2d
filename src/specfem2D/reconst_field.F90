@@ -9,9 +9,11 @@ subroutine compute_add_trac_f_viscoelastic(accel_elastic,it)
        
   use specfem_par, only: p_sv,nglob_elastic,&
                          nspec_bd_pnt_elastic,&
-                         trac_f, m_f,&
+                         trac_f, m_xx,m_xz,m_zz,&
                          ispec_selected_elastic_source_reconst,&  !this should be located by a subroutine
                          hxis_trac_f_store,hgammas_trac_f_store,ibool,&
+                         hpxis_trac_f_store,hpgammas_trac_f_store, &
+                         xix,xiz,gammax,gammaz, &
                          read_nt1_reconst,read_nt2_reconst
  
   implicit none
@@ -19,15 +21,19 @@ subroutine compute_add_trac_f_viscoelastic(accel_elastic,it)
   
   real(kind=CUSTOM_REAL), dimension(3,nglob_elastic) :: accel_elastic
   integer :: it
-  integer :: i_f_source,i,j,iglob
+  integer :: i_f_source,i,j,iglob, a,b,k,iv,ir
   double precision :: hlagrange 
+  double precision :: xixd,xizd,gammaxd,gammazd
+  double precision, dimension(NGLLX,NGLLZ) :: G_11,G_13,G_31,G_33
+  double precision, dimension(2,NGLLX,NGLLZ) :: mid_temp
   logical :: switch
-
-  switch = .FALSE.
+  
+  switch = .TRUE.
   if (it < read_nt1_reconst .or. it > read_nt2_reconst ) return
   !there must be a subroutine to assign the trac_f for the time step 'it'
   !the time interpolation may be applied
   call supply_pnt_reconst()
+
   if( nspec_bd_pnt_elastic /= 0 ) then
 
 
@@ -64,24 +70,70 @@ subroutine compute_add_trac_f_viscoelastic(accel_elastic,it)
         if( switch ) then
 
          if( p_sv ) then !P-SV calculation
-           do j = 1,NGLLZ
+           !calcualte G_ik
+           do k = 1,NGLLZ
               do i = 1,NGLLX
+          
+                 xixd    = xix(i,k,ispec_selected_elastic_source_reconst(i_f_source))
+                 xizd    = xiz(i,k,ispec_selected_elastic_source_reconst(i_f_source))
+                 gammaxd = gammax(i,k,ispec_selected_elastic_source_reconst(i_f_source))
+                 gammazd = gammaz(i,k,ispec_selected_elastic_source_reconst(i_f_source))
+
+                 G_11(i,k) = m_xx(i_f_source)*xixd  + m_xz(i_f_source)*xizd
+                 G_13(i,k) = m_xx(i_f_source)*gammaxd  + m_xz(i_f_source)*gammazd
+                 G_31(i,k) = m_xz(i_f_source)*xixd  + m_zz(i_f_source)*xizd
+                 G_33(i,k) = m_xz(i_f_source)*gammaxd  + m_zz(i_f_source)*gammazd
+             enddo
+         enddo
+
+         do a = 1,NGLLX
+            do b = 1,NGLLZ
+               mid_temp(:,a,b) = ZERO
+
+               do iv=1,NGLLZ
+                  do ir=1,NGLLX
+
+                     mid_temp(1,a,b) = mid_temp(1,a,b) + hxis_trac_f_store(i_f_source,ir) &
+                                       *hgammas_trac_f_store(i_f_source,iv) &
+                                       *( G_11(ir,iv)*hpxis_trac_f_store(i_f_source,a) &
+                                         *hgammas_trac_f_store(i_f_source,b) &
+                                        + G_13(ir,iv)*hxis_trac_f_store(i_f_source,a) &
+                                         *hpgammas_trac_f_store(i_f_source,b))
+
+                     mid_temp(2,a,b) = mid_temp(2,a,b) + hxis_trac_f_store(i_f_source,ir) &
+                                       *hgammas_trac_f_store(i_f_source,iv) &
+                                       *( G_31(ir,iv)*hpxis_trac_f_store(i_f_source,a) &
+                                         *hgammas_trac_f_store(i_f_source,b) &
+                                        + G_33(ir,iv)*hxis_trac_f_store(i_f_source,a) &
+                                         *hpgammas_trac_f_store(i_f_source,b))
+
+                  enddo
+               enddo
+               
+            enddo
+         enddo
+
+        do i = 1,NGLLX
+           do j = 1,NGLLZ
                  !the moment density tensor point sources are coinsiding with the traction point sources
                  iglob = ibool(i,j,ispec_selected_elastic_source_reconst(i_f_source))
-                 hlagrange = hxis_trac_f_store(i_f_source,i) &
-                           * hgammas_trac_f_store(i_f_source,j)
+
                  accel_elastic(1,iglob) = accel_elastic(1,iglob) &
-                                          + m_f(i_f_source,1)*hlagrange
+                                          + mid_temp(1,i,j) 
                  accel_elastic(3,iglob) = accel_elastic(3,iglob) &
-                                          + m_f(i_f_source,3)*hlagrange
-              enddo
+                                          + mid_temp(2,i,j) 
            enddo
+       enddo
+
          else 
            stop 'SH case not supported for moment density tensor so far'  
+
          endif
 
-        endif
-  enddo
+        endif!whether to add the moment tensor term
+
+    enddo
+
   endif
 end subroutine compute_add_trac_f_viscoelastic
 
@@ -89,9 +141,9 @@ subroutine setup_trac_f_sources()
  
   use specfem_par, only: nspec_bd_pnt_elastic,nspec_bd_pnt_acoustic, &
                          coord,ibool,nglob,nspec, &
-                         trac_f,m_f,&
-                         hxis_trac_f,hgammas_trac_f,&
-                         hpxis_trac_f,hpgammas_trac_f,hxis_trac_f_store,hgammas_trac_f_store,&
+                         trac_f, m_xx,m_xz,m_zz, &
+                         hxis_trac_f,hgammas_trac_f,hxis_trac_f_store,hgammas_trac_f_store,&
+                         hpxis_trac_f,hpgammas_trac_f,hpxis_trac_f_store,hpgammas_trac_f_store,&
                          x_final_bd_pnt_elastic,z_final_bd_pnt_elastic,ispec_selected_elastic_source_reconst, &
                          x_final_bd_pnt_acoustic,z_final_bd_pnt_acoustic,&
                          !is_proc_trac_f_source,nb_proc_trac_f_source, & !does this really matter?
@@ -134,7 +186,8 @@ subroutine setup_trac_f_sources()
    allocate(x_final_bd_pnt_elastic(nspec_bd_pnt_elastic),z_final_bd_pnt_elastic(nspec_bd_pnt_elastic))
    allocate(x_final_bd_pnt_acoustic(nspec_bd_pnt_acoustic),z_final_bd_pnt_acoustic(nspec_bd_pnt_acoustic))
    allocate(trac_f(3,nspec_bd_pnt_elastic))
-   allocate(m_f(nspec_bd_pnt_elastic,3))
+   !allocate(m_f(nspec_bd_pnt_elastic,3))
+   allocate(m_xx(nspec_bd_pnt_elastic),m_xz(nspec_bd_pnt_elastic),m_zz(nspec_bd_pnt_elastic))
 
   !read the coordinates of the source points. The coordinate will be the key information
   f_num = 111                                                                 
@@ -164,6 +217,8 @@ subroutine setup_trac_f_sources()
   allocate(hpgammas_trac_f(NGLLZ))
   allocate(hxis_trac_f_store(nspec_bd_pnt_elastic,NGLLX))
   allocate(hgammas_trac_f_store(nspec_bd_pnt_elastic,NGLLZ))
+  allocate(hpxis_trac_f_store(nspec_bd_pnt_elastic,NGLLX))
+  allocate(hpgammas_trac_f_store(nspec_bd_pnt_elastic,NGLLZ))
   allocate(ispec_selected_elastic_source_reconst(nspec_bd_pnt_elastic))
   allocate(xi_trac_f(nspec_bd_pnt_elastic),gamma_trac_f(nspec_bd_pnt_elastic))
   allocate(is_proc_source(nspec_bd_pnt_elastic),nb_proc_source(nspec_bd_pnt_elastic))
@@ -196,7 +251,9 @@ subroutine setup_trac_f_sources()
 
       hxis_trac_f_store(i_f_source,:) = hxis_trac_f(:)
       hgammas_trac_f_store(i_f_source,:) = hgammas_trac_f(:)
-
+      
+      hpxis_trac_f_store(i_f_source,:) = hpxis_trac_f(:)
+      hpgammas_trac_f_store(i_f_source,:) = hpgammas_trac_f(:)
   enddo
 
   deallocate(xi_trac_f,gamma_trac_f)

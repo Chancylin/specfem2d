@@ -24,11 +24,11 @@
                          ispec_bd_elmt_elastic,ispec_bd_elmt_acoustic,&
                          side_type_acoustic,ispec_bd_elmt_elastic_i,ispec_bd_elmt_elastic_j, &
                          ispec_bd_elmt_acoustic_i,ispec_bd_elmt_acoustic_j, &
-                         ispec_bd_elmt_elastic_pure_edge, ispec_bd_elmt_acoustic_pure_edge,&
-                         ispec_bd_elmt_elastic_pure_side, ispec_bd_elmt_acoustic_pure_side,&
-                         nspec_bd_elmt_elastic_pure_edge,nspec_bd_elmt_acoustic_pure_edge,&
+                         !ispec_bd_elmt_elastic_pure_edge, ispec_bd_elmt_acoustic_pure_edge,&
+                         !ispec_bd_elmt_elastic_pure_side, ispec_bd_elmt_acoustic_pure_side,&
+                         !nspec_bd_elmt_elastic_pure_edge,nspec_bd_elmt_acoustic_pure_edge,&
                          trac_bd_pnt_elastic_reconst,trac_f,&
-                         m_xx,m_xz,m_zz,m_zx,m_f 
+                         m_xx,m_xz,m_zz,m_zx,m_xx_reconst,m_xz_reconst,m_zz_reconst,m_zx_reconst 
 
   implicit none
   include "constants.h"
@@ -64,7 +64,7 @@
   integer  :: k, kk
   !double precision, dimension(:), allocatable :: bd_pnt_xval,bd_pnt_zval 
   integer, dimension(:), allocatable :: temp_bd_elmt_elastic,temp_bd_elmt_acoustic
-  character, dimension(:), allocatable :: temp_bd_elmt_elastic_side, temp_bd_elmt_acoustic_side
+  !character, dimension(:), allocatable :: temp_bd_elmt_elastic_side, temp_bd_elmt_acoustic_side
   !temperary variables for reading
   character(len=1) temp_side
   logical :: elastic_flag,acoustic_flag,corner_flag
@@ -445,95 +445,95 @@
        endif
      enddo
 
-
-  !!we need to sort out what element edges we will operate. 
-  !!m11, m13, m31, m33. All of them will be array(nelement_edge_recording,5)
-  !!e.g., m11
-  !!for top edge: m11^i5
-  !!for bottom edge: m11^i1
-  !!for left edge: m11^1j
-  !!for right edge: m11^5j
-  !!the reason of this step is particularly due to the corner elements which hold two possible edges
- 
-     if ( nspec_bd_pnt_elastic /= 0 ) then
-
-        allocate(temp_bd_elmt_elastic(nspec_bd_pnt_elastic))
-        allocate(temp_bd_elmt_elastic_side(nspec_bd_pnt_elastic))
-        temp_bd_elmt_elastic(1) = ispec_bd_elmt_elastic(1)
-        temp_bd_elmt_elastic_side(1) = side_type_elastic(1) 
-        !delete duplicate
-        k=1
-        loop3: do i=2,nspec_bd_pnt_elastic
-          do j=1,k
-             if ( ispec_bd_elmt_elastic(i) == temp_bd_elmt_elastic(j) &
-                  .and. side_type_elastic(i) == temp_bd_elmt_elastic_side(j) ) then
-                cycle loop3
-             endif
-          enddo
-            k = k + 1
-            temp_bd_elmt_elastic(k) = ispec_bd_elmt_elastic(i)
-            temp_bd_elmt_elastic_side(k) = side_type_elastic(i)
-            !print *,k,' th pure elastic,','global index as ',temp_bd_elmt_elastic(k)
-        enddo loop3
-        nspec_bd_elmt_elastic_pure_edge = k
-        !test
-        print *,'total pure elastic elments (edge) are ', nspec_bd_elmt_elastic_pure_edge
-
-        allocate(ispec_bd_elmt_elastic_pure_edge(k))
-        allocate(ispec_bd_elmt_elastic_pure_side(k))
-        ispec_bd_elmt_elastic_pure_edge(1:k) = temp_bd_elmt_elastic(1:k)
-        ispec_bd_elmt_elastic_pure_side(1:k) = temp_bd_elmt_elastic_side(1:k)
-        deallocate(temp_bd_elmt_elastic)
-        deallocate(temp_bd_elmt_elastic_side)
-
-       if( .TRUE. ) then
-          open(117,file='./OUTPUT_FILES/reconst_record/pure_elastic_elments_edge',status='unknown',&
-               action='write',iostat=ios) 
-          if( ios /= 0 ) stop 'error saving elastic point profile'
-          write(117,*) nspec_bd_pnt_elastic 
-          write(117,*) nspec_bd_elmt_elastic_pure_edge
-          do kk = 1, nspec_bd_elmt_elastic_pure_edge
-             write(117,117) ispec_bd_elmt_elastic_pure_edge(kk), ispec_bd_elmt_elastic_pure_side(kk) 
-          enddo 
-
-          close(117)
-       endif
-  117  format(i5,2x,A1)
-     endif
-  
-
-     if ( nspec_bd_pnt_acoustic /= 0 ) then
-
-        allocate(temp_bd_elmt_acoustic(nspec_bd_pnt_acoustic))
-        allocate(temp_bd_elmt_acoustic_side(nspec_bd_pnt_acoustic))
-        temp_bd_elmt_acoustic(1) = ispec_bd_elmt_acoustic(1)
-        temp_bd_elmt_acoustic_side(1) = side_type_acoustic(1) 
-        !delete duplicate
-        k=1
-        loop4: do i=2,nspec_bd_pnt_acoustic
-          do j=1,k
-             if ( ispec_bd_elmt_acoustic(i) == temp_bd_elmt_acoustic(j) &
-                  .and. side_type_acoustic(i) == temp_bd_elmt_acoustic_side(j) ) then
-                cycle loop4
-             endif
-          enddo
-            k = k + 1
-            temp_bd_elmt_acoustic(k) = ispec_bd_elmt_acoustic(i)
-            temp_bd_elmt_acoustic_side(k) = side_type_acoustic(i)
-        enddo loop4
-        nspec_bd_elmt_acoustic_pure_edge = k
-        !test
-        print *,'total pure acoustic elments (edge) are ', nspec_bd_elmt_acoustic_pure_edge
-
-        allocate(ispec_bd_elmt_acoustic_pure_edge(k))
-        allocate(ispec_bd_elmt_acoustic_pure_side(k))
-        ispec_bd_elmt_acoustic_pure_edge(1:k) = temp_bd_elmt_acoustic(1:k)
-        ispec_bd_elmt_acoustic_pure_side(1:k) = temp_bd_elmt_acoustic_side(1:k)
-        deallocate(temp_bd_elmt_acoustic)
-        deallocate(temp_bd_elmt_acoustic_side)
-
-     endif
-
+!
+!  !!we need to sort out what element edges we will operate. 
+!  !!m11, m13, m31, m33. All of them will be array(nelement_edge_recording,5)
+!  !!e.g., m11
+!  !!for top edge: m11^i5
+!  !!for bottom edge: m11^i1
+!  !!for left edge: m11^1j
+!  !!for right edge: m11^5j
+!  !!the reason of this step is particularly due to the corner elements which hold two possible edges
+! 
+!     if ( nspec_bd_pnt_elastic /= 0 ) then
+!
+!        allocate(temp_bd_elmt_elastic(nspec_bd_pnt_elastic))
+!        allocate(temp_bd_elmt_elastic_side(nspec_bd_pnt_elastic))
+!        temp_bd_elmt_elastic(1) = ispec_bd_elmt_elastic(1)
+!        temp_bd_elmt_elastic_side(1) = side_type_elastic(1) 
+!        !delete duplicate
+!        k=1
+!        loop3: do i=2,nspec_bd_pnt_elastic
+!          do j=1,k
+!             if ( ispec_bd_elmt_elastic(i) == temp_bd_elmt_elastic(j) &
+!                  .and. side_type_elastic(i) == temp_bd_elmt_elastic_side(j) ) then
+!                cycle loop3
+!             endif
+!          enddo
+!            k = k + 1
+!            temp_bd_elmt_elastic(k) = ispec_bd_elmt_elastic(i)
+!            temp_bd_elmt_elastic_side(k) = side_type_elastic(i)
+!            !print *,k,' th pure elastic,','global index as ',temp_bd_elmt_elastic(k)
+!        enddo loop3
+!        nspec_bd_elmt_elastic_pure_edge = k
+!        !test
+!        print *,'total pure elastic elments (edge) are ', nspec_bd_elmt_elastic_pure_edge
+!
+!        allocate(ispec_bd_elmt_elastic_pure_edge(k))
+!        allocate(ispec_bd_elmt_elastic_pure_side(k))
+!        ispec_bd_elmt_elastic_pure_edge(1:k) = temp_bd_elmt_elastic(1:k)
+!        ispec_bd_elmt_elastic_pure_side(1:k) = temp_bd_elmt_elastic_side(1:k)
+!        deallocate(temp_bd_elmt_elastic)
+!        deallocate(temp_bd_elmt_elastic_side)
+!
+!       if( .TRUE. ) then
+!          open(117,file='./OUTPUT_FILES/reconst_record/pure_elastic_elments_edge',status='unknown',&
+!               action='write',iostat=ios) 
+!          if( ios /= 0 ) stop 'error saving elastic point profile'
+!          write(117,*) nspec_bd_pnt_elastic 
+!          write(117,*) nspec_bd_elmt_elastic_pure_edge
+!          do kk = 1, nspec_bd_elmt_elastic_pure_edge
+!             write(117,117) ispec_bd_elmt_elastic_pure_edge(kk), ispec_bd_elmt_elastic_pure_side(kk) 
+!          enddo 
+!
+!          close(117)
+!       endif
+!  117  format(i5,2x,A1)
+!     endif
+!  
+!
+!     if ( nspec_bd_pnt_acoustic /= 0 ) then
+!
+!        allocate(temp_bd_elmt_acoustic(nspec_bd_pnt_acoustic))
+!        allocate(temp_bd_elmt_acoustic_side(nspec_bd_pnt_acoustic))
+!        temp_bd_elmt_acoustic(1) = ispec_bd_elmt_acoustic(1)
+!        temp_bd_elmt_acoustic_side(1) = side_type_acoustic(1) 
+!        !delete duplicate
+!        k=1
+!        loop4: do i=2,nspec_bd_pnt_acoustic
+!          do j=1,k
+!             if ( ispec_bd_elmt_acoustic(i) == temp_bd_elmt_acoustic(j) &
+!                  .and. side_type_acoustic(i) == temp_bd_elmt_acoustic_side(j) ) then
+!                cycle loop4
+!             endif
+!          enddo
+!            k = k + 1
+!            temp_bd_elmt_acoustic(k) = ispec_bd_elmt_acoustic(i)
+!            temp_bd_elmt_acoustic_side(k) = side_type_acoustic(i)
+!        enddo loop4
+!        nspec_bd_elmt_acoustic_pure_edge = k
+!        !test
+!        print *,'total pure acoustic elments (edge) are ', nspec_bd_elmt_acoustic_pure_edge
+!
+!        allocate(ispec_bd_elmt_acoustic_pure_edge(k))
+!        allocate(ispec_bd_elmt_acoustic_pure_side(k))
+!        ispec_bd_elmt_acoustic_pure_edge(1:k) = temp_bd_elmt_acoustic(1:k)
+!        ispec_bd_elmt_acoustic_pure_side(1:k) = temp_bd_elmt_acoustic_side(1:k)
+!        deallocate(temp_bd_elmt_acoustic)
+!        deallocate(temp_bd_elmt_acoustic_side)
+!
+!     endif
+!
   endif
 
   !here we just export the coordinate of the recording point by separating them 
@@ -619,14 +619,19 @@
         !elastic
         allocate(trac_bd_pnt_elastic_reconst(3,nspec_bd_pnt_elastic))
         allocate(trac_f(3,nspec_bd_pnt_elastic))
-        allocate(m_f(nspec_bd_pnt_elastic,3))
-        allocate(m_xx(nspec_bd_elmt_elastic_pure_edge,NGLLZ))
-        allocate(m_xz(nspec_bd_elmt_elastic_pure_edge,NGLLZ))
-        allocate(m_zz(nspec_bd_elmt_elastic_pure_edge,NGLLZ))
-        allocate(m_zx(nspec_bd_elmt_elastic_pure_edge,NGLLZ))
+        !allocate(m_f(nspec_bd_pnt_elastic,3))
+        allocate(m_xx(nspec_bd_pnt_elastic))
+        allocate(m_xz(nspec_bd_pnt_elastic))
+        allocate(m_zz(nspec_bd_pnt_elastic))
+        allocate(m_zx(nspec_bd_pnt_elastic))
+        allocate(m_xx_reconst(nspec_bd_pnt_elastic))
+        allocate(m_xz_reconst(nspec_bd_pnt_elastic))
+        allocate(m_zz_reconst(nspec_bd_pnt_elastic))
+        allocate(m_zx_reconst(nspec_bd_pnt_elastic))
+
         trac_bd_pnt_elastic_reconst = 0.0
         trac_f = 0.0
-        m_f = 0.0
+        !m_f = 0.0
         !acoustic
         !allocate()
         !allocate()
