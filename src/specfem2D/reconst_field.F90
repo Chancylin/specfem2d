@@ -26,9 +26,10 @@ subroutine compute_add_trac_f_viscoelastic(accel_elastic,it)
   double precision :: xixd,xizd,gammaxd,gammazd
   double precision, dimension(NGLLX,NGLLZ) :: G_11,G_13,G_31,G_33
   double precision, dimension(2,NGLLX,NGLLZ) :: mid_temp
-  logical :: switch
+  !logical :: switch1,switch2
   
-  switch = .TRUE.
+  !switch1 = .TRUE.
+  !switch2 = .FALSE.
   if (it < read_nt1_reconst .or. it > read_nt2_reconst ) return
   !there must be a subroutine to assign the trac_f for the time step 'it'
   !the time interpolation may be applied
@@ -38,6 +39,8 @@ subroutine compute_add_trac_f_viscoelastic(accel_elastic,it)
 
 
       do i_f_source=1,nspec_bd_pnt_elastic
+ 
+         !if ( switch1 ) then
 
          if( p_sv ) then ! P-SV calculation
 
@@ -66,8 +69,8 @@ subroutine compute_add_trac_f_viscoelastic(accel_elastic,it)
            enddo
 
          endif
-
-        if( switch ) then
+         !endif !switch for this term
+        !if( switch2 ) then
 
          if( p_sv ) then !P-SV calculation
            !calcualte G_ik
@@ -130,7 +133,7 @@ subroutine compute_add_trac_f_viscoelastic(accel_elastic,it)
 
          endif
 
-        endif!whether to add the moment tensor term
+        !endif!whether to add the moment tensor term
 
     enddo
 
