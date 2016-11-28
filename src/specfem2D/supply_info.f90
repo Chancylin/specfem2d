@@ -290,8 +290,9 @@ subroutine time_interplt_supply_reconst()
 
   use specfem_par, only: it,deltat_read_reconst,&
                          record_nt1_reconst,record_nt2_reconst, deltat_record_reconst,&
-                         nspec_bd_pnt_elastic,&!nspec_bd_pnt_acoustic,
-                         trac_f,m_xx,m_xz,m_zz
+                         nspec_bd_pnt_elastic,nspec_bd_pnt_acoustic, &
+                         trac_f,m_xx,m_xz,m_zz,&
+                         Grad_pot,Pot_x,Pot_z
 
   implicit none
   include "constants.h"
@@ -300,14 +301,15 @@ subroutine time_interplt_supply_reconst()
   integer :: i,f_num_1,f_num_2,ios
   character(len=150) :: fname_1,fname_2
   integer :: length_unf_1
-  !integer :: length_unf_2
+  integer :: length_unf_2
 
   
   real(kind=CUSTOM_REAL), dimension(3) :: trac_f_t1,trac_f_t2
   real(kind=CUSTOM_REAL) :: m_xx_t1,m_xz_t1,m_zz_t1
   real(kind=CUSTOM_REAL) :: m_xx_t2,m_xz_t2,m_zz_t2
+  real(kind=CUSTOM_REAL) :: Grad_pot_t1,Pot_x_t1,Pot_z_t1 
+  real(kind=CUSTOM_REAL) :: Grad_pot_t2,Pot_x_t2,Pot_z_t2 
   !real(kind=CUSTOM_REAL), dimension(3) :: trac_bd_pnt_t1,vel_bd_pnt_t1,trac_bd_pnt_t2,vel_bd_pnt_t2
-   
   !real(kind=CUSTOM_REAL), dimension(2) :: grad_pot_bd_pnt_t1, grad_pot_bd_pnt_t2
   !real(kind=CUSTOM_REAL) :: pot_dot_bd_pnt_t1, pot_dot_bd_pnt_t2 
 
@@ -349,7 +351,7 @@ subroutine time_interplt_supply_reconst()
        read(f_num_1,rec=i) trac_f_t1(:),m_xx_t1,m_xz_t1,m_zz_t1
        read(f_num_2,rec=i) trac_f_t2(:),m_xx_t2,m_xz_t2,m_zz_t2
 
-       !!!linear interpolation in time space
+       !!!linear interpolation in time domain
        trac_f(:,i) = (trac_f_t2(:) - trac_f_t1(:)) * &
                                   (it*deltat_read_reconst - nt1_record_reconst*deltat_record_reconst)/deltat_record_reconst + &
                                   trac_f_t1(:)
@@ -369,6 +371,56 @@ subroutine time_interplt_supply_reconst()
     close(f_num_2)
 
   endif  
+
+  if( nspec_bd_pnt_acoustic /= 0 )then
+
+    inquire (iolength = length_unf_2) Grad_pot_t1,Pot_x_t1,Pot_z_t1 
+    
+    f_num_1=113
+    write(fname_1,"('./OUTPUT_FILES/reconst_record/&
+          &acoustic_pnts/nt_',i6.6)")nt1_record_reconst
+    
+
+    !unformatted reading
+    open(unit=f_num_1,file=trim(fname_1),access='direct',status='old',&
+         action='read',iostat=ios,recl=length_unf_2)
+
+    if( ios /= 0 ) stop 'error reading values at profile points' 
+    
+    f_num_2=114
+    write(fname_2,"('./OUTPUT_FILES/reconst_record/&
+          &acoustic_pnts/nt_',i6.6)")nt2_record_reconst
+
+    !unformatted reading
+    open(unit=f_num_2,file=trim(fname_2),access='direct',status='old',&
+         action='read',iostat=ios,recl=length_unf_2)
+
+    if( ios /= 0 ) stop 'error reading values at profile points' 
+
+    do i=1,nspec_bd_pnt_acoustic
+
+       read(f_num_1,rec=i) Grad_pot_t1,Pot_x_t1,Pot_z_t1
+       read(f_num_2,rec=i) Grad_pot_t2,Pot_x_t2,Pot_z_t2
+       
+       !!linear interpolation in time domain
+       
+       Grad_pot(i) = (Grad_pot_t2 - Grad_pot_t1) * &
+                                  (it*deltat_read_reconst - nt1_record_reconst*deltat_record_reconst)/deltat_record_reconst + &
+                                  Grad_pot_t1
+       Pot_x(i) = (Pot_x_t2 - Pot_x_t1) * &
+                                  (it*deltat_read_reconst - nt1_record_reconst*deltat_record_reconst)/deltat_record_reconst + &
+                                  Pot_x_t1
+       Pot_z(i) = (Pot_z_t2 - Pot_z_t1) * &
+                                  (it*deltat_read_reconst - nt1_record_reconst*deltat_record_reconst)/deltat_record_reconst + &
+                                  Pot_z_t1
+
+    enddo
+
+    close(f_num_1)
+    close(f_num_2)
+
+  endif
+
 
 end subroutine time_interplt_supply_reconst
 

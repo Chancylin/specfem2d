@@ -12,6 +12,7 @@
                          xi_bd_pnt,gamma_bd_pnt,&
                          bd_pnt_xval,bd_pnt_zval,&
                          nx_bd_pnt_elastic,nz_bd_pnt_elastic,&
+                         nx_bd_pnt_acoustic,nz_bd_pnt_acoustic,&
                          nx_pnt,nz_pnt,fname,f_num,&
                          x_final_bd_pnt, z_final_bd_pnt,&
                          x_final_bd_pnt_elastic, z_final_bd_pnt_elastic,&
@@ -28,7 +29,8 @@
                          !ispec_bd_elmt_elastic_pure_side, ispec_bd_elmt_acoustic_pure_side,&
                          !nspec_bd_elmt_elastic_pure_edge,nspec_bd_elmt_acoustic_pure_edge,&
                          trac_bd_pnt_elastic_reconst,trac_f,&
-                         m_xx,m_xz,m_zz,m_zx,m_xx_reconst,m_xz_reconst,m_zz_reconst,m_zx_reconst 
+                         m_xx,m_xz,m_zz,m_zx,m_xx_reconst,m_xz_reconst,m_zz_reconst,m_zx_reconst,&
+                         Grad_pot,grad_pot_x_reconst,grad_pot_z_reconst,Pot_x,Pot_z 
 
   implicit none
   include "constants.h"
@@ -263,6 +265,7 @@
   allocate(x_final_bd_pnt_acoustic(nspec_bd_pnt_acoustic),z_final_bd_pnt_acoustic(nspec_bd_pnt_acoustic))
 
   allocate(nx_bd_pnt_elastic(nspec_bd_pnt_elastic),nz_bd_pnt_elastic(nspec_bd_pnt_elastic))
+  allocate(nx_bd_pnt_acoustic(nspec_bd_pnt_acoustic),nz_bd_pnt_acoustic(nspec_bd_pnt_acoustic))
 
   if ( record_local_bkgd_boundary ) then
      
@@ -290,6 +293,8 @@
           if(acoustic(ispec_selected_bd_pnt(ipnt)))then
             ispec_bd_elmt_acoustic(j) = ispec_selected_bd_pnt(ipnt)
 
+            nx_bd_pnt_acoustic(j) = nx_pnt(ipnt)
+            nz_bd_pnt_acoustic(j) = nz_pnt(ipnt)
             x_final_bd_pnt_acoustic(j) = x_final_bd_pnt(ipnt)
             z_final_bd_pnt_acoustic(j) = z_final_bd_pnt(ipnt)
 
@@ -360,7 +365,7 @@
 
      endif
      
-      deallocate(ispec_bd_elmt_elastic,ispec_bd_elmt_acoustic)!this will be used in 'record_local_boundary_reconst'
+      !deallocate(ispec_bd_elmt_elastic,ispec_bd_elmt_acoustic)!this will be used in 'record_local_boundary_reconst'
   endif
 
   if ( record_local_bkgd_boundary ) then
@@ -438,6 +443,8 @@
          ispec_bd_elmt_acoustic_j(j) = bd_pnt_j(ipnt)
          side_type_acoustic(j) = side_type(ipnt)
 
+         nx_bd_pnt_acoustic(j) = nx_pnt(ipnt)
+         nz_bd_pnt_acoustic(j) = nz_pnt(ipnt)
          x_final_bd_pnt_acoustic(j) = bd_pnt_xval(ipnt)
          z_final_bd_pnt_acoustic(j) = bd_pnt_zval(ipnt)
 
@@ -536,6 +543,7 @@
 !
   endif
 
+
   !here we just export the coordinate of the recording point by separating them 
   !into elastic/acoustic
   if( record_local_bkgd_boundary ) then
@@ -563,6 +571,10 @@
        if( ios /= 0 ) stop 'error saving acoustic point profile' 
 
        do i=1,nspec_bd_pnt_acoustic
+          !print *,'i = ',i
+          !print *,ispec_bd_elmt_acoustic(i)
+          !print *,x_final_bd_pnt_acoustic(i)
+          !print *,z_final_bd_pnt_acoustic(i)
           write(f_num,110) ispec_bd_elmt_acoustic(i), x_final_bd_pnt_acoustic(i), z_final_bd_pnt_acoustic(i)
        enddo
        close(f_num)
@@ -632,10 +644,15 @@
         trac_bd_pnt_elastic_reconst = 0.0
         trac_f = 0.0
         !m_f = 0.0
-        !acoustic
-        !allocate()
-        !allocate()
      endif
+
+     if( nspec_bd_pnt_acoustic /= 0 ) then
+        !acoustic
+        allocate(Grad_pot(nspec_bd_pnt_acoustic))
+        allocate(grad_pot_x_reconst(nspec_bd_pnt_acoustic),grad_pot_z_reconst(nspec_bd_pnt_acoustic))
+        allocate(Pot_x(nspec_bd_pnt_acoustic),Pot_z(nspec_bd_pnt_acoustic))
+     endif
+
   endif
 
   deallocate(bd_pnt_elmnt_num)

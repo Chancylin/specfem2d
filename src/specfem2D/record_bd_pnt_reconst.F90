@@ -596,12 +596,177 @@
 !   endif
 ! end subroutine calculate_bd_elastic_reconst_m_f
 !-------------------------------------------------------------------------
+
+ subroutine record_bd_elmnt_acoustic_reconst_Grad_pot(ispec,i,j,&
+            dux_dxl,dux_dzl)
+
+   use specfem_par, only: ispec_bd_elmt_acoustic_i,ispec_bd_elmt_acoustic_j,ispec_bd_elmt_acoustic,&
+                          grad_pot_x_reconst,grad_pot_z_reconst,Grad_pot,&
+                          nx_bd_pnt_acoustic,nz_bd_pnt_acoustic, &
+                          it,record_nt1_reconst,record_nt2_reconst,&
+                          side_type_acoustic,nspec_bd_pnt_acoustic,wzgll,wxgll,&
+                          xiz,xix,gammaz,gammax,jacobian
+
+   implicit none
+   include "constants.h"
+
+
+   real(kind=CUSTOM_REAL), intent(in) :: dux_dxl,dux_dzl
+   integer, intent(in) :: ispec,i,j
+   integer :: ispec_bd_pnt_acoustic   
+   real(kind=CUSTOM_REAL) :: weight,xxi,zxi,xgamma,zgamma,jacobian1D
+   
+   if (it < record_nt1_reconst .or. it > record_nt2_reconst ) return
+
+   
+  loop1:do ispec_bd_pnt_acoustic = 1, nspec_bd_pnt_acoustic
+
+      !locate the corresponding recording point
+       if ( ispec_bd_elmt_acoustic(ispec_bd_pnt_acoustic) == ispec .and. ispec_bd_elmt_acoustic_i(ispec_bd_pnt_acoustic) == i &
+            .and. ispec_bd_elmt_acoustic_j(ispec_bd_pnt_acoustic) == j ) then
+       
+         grad_pot_x_reconst(ispec_bd_pnt_acoustic) = dux_dxl
+         grad_pot_z_reconst(ispec_bd_pnt_acoustic) = dux_dzl
+
+        ! Grad_pot(ispec_bd_pnt_acoustic) = grad_pot_x_reconst(ispec_bd_pnt_acoustic)&
+        !         *nx_bd_pnt_acoustic(ispec_bd_pnt_acoustic)&
+        !         + grad_pot_z_reconst(ispec_bd_pnt_acoustic) &
+        !         *nz_bd_pnt_acoustic(ispec_bd_pnt_acoustic)
+
+         Grad_pot(ispec_bd_pnt_acoustic) = dux_dxl &
+                 *nx_bd_pnt_acoustic(ispec_bd_pnt_acoustic)&
+                 + dux_dzl&
+                 *nz_bd_pnt_acoustic(ispec_bd_pnt_acoustic)
+
+         if( side_type_acoustic(ispec_bd_pnt_acoustic) == 'L' )then
+
+             xgamma = - xiz(i,j,ispec) * jacobian(i,j,ispec)
+             zgamma = + xix(i,j,ispec) * jacobian(i,j,ispec)
+             jacobian1D = sqrt(xgamma**2 + zgamma**2)
+             weight = jacobian1D * wzgll(j)
+
+             Grad_pot(ispec_bd_pnt_acoustic) = Grad_pot(ispec_bd_pnt_acoustic)*weight
+
+         else if( side_type_acoustic(ispec_bd_pnt_acoustic) == 'R' ) then
+             xgamma = - xiz(i,j,ispec) * jacobian(i,j,ispec)
+             zgamma = + xix(i,j,ispec) * jacobian(i,j,ispec)
+             jacobian1D = sqrt(xgamma**2 + zgamma**2)
+             weight = jacobian1D * wzgll(j)
+
+             Grad_pot(ispec_bd_pnt_acoustic) = Grad_pot(ispec_bd_pnt_acoustic)*weight
+
+         else if( side_type_acoustic(ispec_bd_pnt_acoustic) == 'B' ) then
+             xxi = + gammaz(i,j,ispec) * jacobian(i,j,ispec)
+             zxi = - gammax(i,j,ispec) * jacobian(i,j,ispec)
+             jacobian1D = sqrt(xxi**2 + zxi**2)
+             weight = jacobian1D * wxgll(i)
+
+             Grad_pot(ispec_bd_pnt_acoustic) = Grad_pot(ispec_bd_pnt_acoustic)*weight
+
+         else if( side_type_acoustic(ispec_bd_pnt_acoustic) == 'T' ) then
+             xxi = + gammaz(i,j,ispec) * jacobian(i,j,ispec)
+             zxi = - gammax(i,j,ispec) * jacobian(i,j,ispec)
+             jacobian1D = sqrt(xxi**2 + zxi**2)
+             weight = jacobian1D * wxgll(i)
+
+             Grad_pot(ispec_bd_pnt_acoustic) = Grad_pot(ispec_bd_pnt_acoustic)*weight
+
+         else
+
+             stop 'type of side is unknown'
+         endif
+         exit loop1
+
+       endif
+
+   enddo loop1
+
+ end subroutine record_bd_elmnt_acoustic_reconst_Grad_pot
+
+ subroutine record_bd_elmnt_acoustic_reconst_Pot(ispec,i,j,potential_acoustic)
+ 
+   use specfem_par, only: ispec_bd_elmt_acoustic_i,ispec_bd_elmt_acoustic_j,ispec_bd_elmt_acoustic,&
+                          Pot_x,Pot_z,&
+                          nx_bd_pnt_acoustic,nz_bd_pnt_acoustic, &
+                          it,record_nt1_reconst,record_nt2_reconst,&
+                          side_type_acoustic,nspec_bd_pnt_acoustic,wzgll,wxgll,&
+                          xiz,xix,gammaz,gammax,jacobian
+
+   implicit none
+   include "constants.h"
+
+
+   real(kind=CUSTOM_REAL), intent(in) :: potential_acoustic
+   real(kind=CUSTOM_REAL) :: pot_x_temp,pot_z_temp
+   integer, intent(in) :: ispec,i,j
+   integer :: ispec_bd_pnt_acoustic   
+   real(kind=CUSTOM_REAL) :: weight,xxi,zxi,xgamma,zgamma,jacobian1D
+
+   if (it < record_nt1_reconst .or. it > record_nt2_reconst ) return
+   loop1:do ispec_bd_pnt_acoustic = 1, nspec_bd_pnt_acoustic
+
+      if ( ispec_bd_elmt_acoustic(ispec_bd_pnt_acoustic) == ispec .and. ispec_bd_elmt_acoustic_i(ispec_bd_pnt_acoustic) == i &
+            .and. ispec_bd_elmt_acoustic_j(ispec_bd_pnt_acoustic) == j ) then
+
+         pot_x_temp = potential_acoustic*nx_bd_pnt_acoustic(ispec_bd_pnt_acoustic)
+
+         pot_z_temp = potential_acoustic*nz_bd_pnt_acoustic(ispec_bd_pnt_acoustic)   
+      
+         if( side_type_acoustic(ispec_bd_pnt_acoustic) == 'L' )then
+
+             xgamma = - xiz(i,j,ispec) * jacobian(i,j,ispec)
+             zgamma = + xix(i,j,ispec) * jacobian(i,j,ispec)
+             jacobian1D = sqrt(xgamma**2 + zgamma**2)
+             weight = jacobian1D * wzgll(j)
+
+             Pot_x(ispec_bd_pnt_acoustic) = pot_x_temp*weight
+             Pot_z(ispec_bd_pnt_acoustic) = pot_z_temp*weight
+
+         else if( side_type_acoustic(ispec_bd_pnt_acoustic) == 'R' ) then
+             xgamma = - xiz(i,j,ispec) * jacobian(i,j,ispec)
+             zgamma = + xix(i,j,ispec) * jacobian(i,j,ispec)
+             jacobian1D = sqrt(xgamma**2 + zgamma**2)
+             weight = jacobian1D * wzgll(j)
+
+             Pot_x(ispec_bd_pnt_acoustic) = pot_x_temp*weight
+             Pot_z(ispec_bd_pnt_acoustic) = pot_z_temp*weight
+
+         else if( side_type_acoustic(ispec_bd_pnt_acoustic) == 'B' ) then
+             xxi = + gammaz(i,j,ispec) * jacobian(i,j,ispec)
+             zxi = - gammax(i,j,ispec) * jacobian(i,j,ispec)
+             jacobian1D = sqrt(xxi**2 + zxi**2)
+             weight = jacobian1D * wxgll(i)
+
+             Pot_x(ispec_bd_pnt_acoustic) = pot_x_temp*weight
+             Pot_z(ispec_bd_pnt_acoustic) = pot_z_temp*weight
+
+         else if( side_type_acoustic(ispec_bd_pnt_acoustic) == 'T' ) then
+             xxi = + gammaz(i,j,ispec) * jacobian(i,j,ispec)
+             zxi = - gammax(i,j,ispec) * jacobian(i,j,ispec)
+             jacobian1D = sqrt(xxi**2 + zxi**2)
+             weight = jacobian1D * wxgll(i)
+
+             Pot_x(ispec_bd_pnt_acoustic) = pot_x_temp*weight
+             Pot_z(ispec_bd_pnt_acoustic) = pot_z_temp*weight
+
+         else
+
+             stop 'type of side is unknown'
+         endif
+         exit loop1
+     endif 
+
+   enddo loop1
+ end subroutine record_bd_elmnt_acoustic_reconst_Pot
+
+
  subroutine write_bd_pnts_reconst()
 
   use specfem_par, only: it,& !original para
                          fname,f_num,&
-                         nspec_bd_pnt_elastic,&
+                         nspec_bd_pnt_elastic,nspec_bd_pnt_acoustic,&
                          trac_f,m_xx,m_xz,m_zz, &
+                         Grad_pot,Pot_x,Pot_z, &
                          record_nt1_reconst,record_nt2_reconst !control time step for recording
  
  
@@ -611,7 +776,7 @@
   integer :: k
   integer :: ios
   integer :: length_unf_1
-  !integer :: length_unf_2
+  integer :: length_unf_2
 
   if (it < record_nt1_reconst .or. it > record_nt2_reconst ) return
 
@@ -641,5 +806,26 @@
   endif 
 
   !for acoustic
+  if( nspec_bd_pnt_acoustic /= 0 )then
+    inquire (iolength = length_unf_2) Grad_pot(1),Pot_x(1),Pot_z(1)
+
+    f_num=114
+    write(fname,"('./OUTPUT_FILES/reconst_record/&
+          &acoustic_pnts/nt_',i6.6)")it
+
+    !unformatted recording
+    open(unit=f_num,file=trim(fname),access='direct',status='new',&
+         action='write',iostat=ios,recl=length_unf_2) 
+
+
+    if( ios /= 0 ) stop 'error saving values at recording points'
+
+    do k = 1, nspec_bd_pnt_acoustic
+       write(f_num,rec=k) Grad_pot(k),Pot_x(k),Pot_z(k) 
+    enddo
+
+    close(f_num)
+
+  endif
 
  end subroutine write_bd_pnts_reconst

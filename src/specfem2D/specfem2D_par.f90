@@ -312,6 +312,7 @@ module specfem_par
   character, dimension(:), allocatable :: side_type
   double precision, dimension(:), allocatable :: bd_pnt_xval,bd_pnt_zval 
   double precision, dimension(:), allocatable :: nx_pnt,nz_pnt,nx_bd_pnt_elastic,nz_bd_pnt_elastic 
+  double precision, dimension(:), allocatable :: nx_bd_pnt_acoustic,nz_bd_pnt_acoustic
   double precision, dimension(:), allocatable :: x_final_bd_pnt, z_final_bd_pnt 
   double precision, dimension(:), allocatable :: x_final_bd_pnt_elastic, z_final_bd_pnt_elastic
   double precision, dimension(:), allocatable :: x_final_bd_pnt_acoustic, z_final_bd_pnt_acoustic
@@ -347,12 +348,20 @@ module specfem_par
   real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: trac_f,m_f 
   real(kind=CUSTOM_REAL), dimension(:), allocatable :: m_xx,m_xz,m_zz,m_zx
   real(kind=CUSTOM_REAL), dimension(:), allocatable :: m_xx_reconst,m_xz_reconst,m_zz_reconst,m_zx_reconst 
+  !!acoustic
+  real(kind=CUSTOM_REAL), dimension(:), allocatable :: grad_pot_x_reconst,grad_pot_z_reconst
+  real(kind=CUSTOM_REAL), dimension(:), allocatable :: Grad_pot,Pot_x,Pot_z
   !!!supplying part
   logical :: supply_reconst
-  integer, dimension(:), allocatable :: ispec_selected_elastic_source_reconst 
+  integer, dimension(:), allocatable :: ispec_selected_elastic_source_reconst,ispec_selected_acoustic_source_reconst 
   double precision, dimension(:), allocatable :: hxis_trac_f,hgammas_trac_f,hpxis_trac_f,hpgammas_trac_f
   double precision, dimension(:,:), allocatable :: hxis_trac_f_store,hgammas_trac_f_store
   double precision, dimension(:,:), allocatable :: hpxis_trac_f_store,hpgammas_trac_f_store
+  !!acoustic
+  double precision, dimension(:), allocatable :: hxis_pot_f,hgammas_pot_f,hpxis_pot_f,hpgammas_pot_f
+  double precision, dimension(:,:), allocatable :: hxis_pot_f_store,hgammas_pot_f_store
+  double precision, dimension(:,:), allocatable :: hpxis_pot_f_store,hpgammas_pot_f_store
+  
   !-------------------------------------------------------------------
 
 

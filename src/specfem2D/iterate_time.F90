@@ -233,6 +233,10 @@ subroutine iterate_time()
       if ( supply_local_bkgd_boundary ) then
          call supply_bd_pnt()
       endif
+      !by lcx: here we read the store boundary info to reconstruct the wavefield in the global model
+      if( supply_reconst ) then
+        call supply_pnt_reconst()
+      endif
 
 ! *********************************************************
 ! ************* main solver for the acoustic elements
@@ -307,6 +311,11 @@ subroutine iterate_time()
           if( .not. initialfield ) then
             if( SIMULATION_TYPE == 1 ) then
               call compute_add_sources_acoustic(potential_dot_dot_acoustic,it,i_stage)
+              !lcx: reconstruct wavefield
+              if( supply_reconst ) then
+                call compute_add_pot_f_acoustic(potential_dot_dot_acoustic,it)
+              endif
+
             endif
 
             if( SIMULATION_TYPE == 3 ) then   ! adjoint and backward wavefield
@@ -656,7 +665,6 @@ subroutine iterate_time()
               !lcx: reconstruct wavefield
               if( supply_reconst ) then
                 call compute_add_trac_f_viscoelastic(accel_elastic,it)
-                !call compute_add_mnt_f_viscoelastic()
               endif
             endif
 

@@ -225,34 +225,36 @@
 
   enddo
   
-  !print *,'npnt = ', npnt
-  !print *,'ispec_bd_pnt_elastic = ',ispec_bd_pnt_elastic
-  !print *,'ispec_bd_pnt_acoustic = ',ispec_bd_pnt_acoustic
-
-  !store valuse at recording points at every time step
-  !we firstly compute the traction for those recording points
-  !one tricky things here is the normal vector. Since the normal vectors we have
-  !store in the local model is outer_pointing, for traction exerted on local boundary 
-  !elements, I suppose we should transfer to the opposite direction
-  !trac_x
-  !print *,'size of trac_bd_pnt_elastic(1,:) is ',shape(trac_bd_pnt_elastic(1,:))
-  !print *,'size of nx_bd_pnt_elastic(:) is ', shape(nx_bd_pnt_elastic(:))
-  !print *,'size of stress_bd_pnt_elastic(1,:) is ', shape(stress_bd_pnt_elastic(1,:))
-  !stop 
-  trac_bd_pnt_elastic(1,:) = nx_bd_pnt_elastic(:)*stress_bd_pnt_elastic(1,:) + &
-                             nz_bd_pnt_elastic(:)*stress_bd_pnt_elastic(3,:)
-  !trac_z
-  trac_bd_pnt_elastic(3,:) = nx_bd_pnt_elastic(:)*stress_bd_pnt_elastic(3,:) + &
-                             nz_bd_pnt_elastic(:)*stress_bd_pnt_elastic(4,:)
-  !trac_y
-  trac_bd_pnt_elastic(2,:) = nx_bd_pnt_elastic(:)*stress_bd_pnt_elastic(2,:) + &
-                             nz_bd_pnt_elastic(:)*stress_bd_pnt_elastic(5,:)
-
 
  
-  f_num=113
   !for elastic 
   if( nspec_bd_pnt_elastic /= 0 ) then
+
+    !print *,'npnt = ', npnt
+    !print *,'ispec_bd_pnt_elastic = ',ispec_bd_pnt_elastic
+    !print *,'ispec_bd_pnt_acoustic = ',ispec_bd_pnt_acoustic
+
+    !store valuse at recording points at every time step
+    !we firstly compute the traction for those recording points
+    !one tricky things here is the normal vector. Since the normal vectors we have
+    !store in the local model is outer_pointing, for traction exerted on local boundary 
+    !elements, I suppose we should transfer to the opposite direction
+    !trac_x
+    !print *,'size of trac_bd_pnt_elastic(1,:) is ',shape(trac_bd_pnt_elastic(1,:))
+    !print *,'size of nx_bd_pnt_elastic(:) is ', shape(nx_bd_pnt_elastic(:))
+    !print *,'size of stress_bd_pnt_elastic(1,:) is ', shape(stress_bd_pnt_elastic(1,:))
+    !stop 
+    trac_bd_pnt_elastic(1,:) = nx_bd_pnt_elastic(:)*stress_bd_pnt_elastic(1,:) + &
+                               nz_bd_pnt_elastic(:)*stress_bd_pnt_elastic(3,:)
+    !trac_z
+    trac_bd_pnt_elastic(3,:) = nx_bd_pnt_elastic(:)*stress_bd_pnt_elastic(3,:) + &
+                               nz_bd_pnt_elastic(:)*stress_bd_pnt_elastic(4,:)
+    !trac_y
+    trac_bd_pnt_elastic(2,:) = nx_bd_pnt_elastic(:)*stress_bd_pnt_elastic(2,:) + &
+                               nz_bd_pnt_elastic(:)*stress_bd_pnt_elastic(5,:)
+
+    f_num=113
+
     !!!this is the recording length for unformatted recording
     inquire (iolength = length_unf_1) trac_bd_pnt_elastic(:,1),vel_bd_pnt_elastic(:,1)
 
