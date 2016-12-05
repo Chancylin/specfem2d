@@ -251,5 +251,5 @@ subroutine export_gll_pnt_bd()
   print *, 'The program will exit here'
   stop
 
-  113 format(i3.3,2x,2(i1.1,2x),A1,2x,A1,2x,A1,2x,A1,2x,A1,2x,4(es12.4,2x)) !make sure the writting format is proper
+  113 format(i5.5,2x,2(i1.1,2x),A1,2x,A1,2x,A1,2x,A1,2x,A1,2x,4(es12.4,2x)) !make sure the writting format is proper
 end subroutine export_gll_pnt_bd

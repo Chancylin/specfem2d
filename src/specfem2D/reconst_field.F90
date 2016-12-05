@@ -266,6 +266,10 @@ subroutine setup_trac_f_sources()
   integer :: iglob_trac_f_source !local or global variable?
   double precision, dimension(:), allocatable :: xi_trac_f,gamma_trac_f
   integer, dimension(:), allocatable :: is_proc_source,nb_proc_source 
+  logical :: elastic_flag,acoustic_flag
+   
+  elastic_flag=.TRUE.
+  acoustic_flag=.FALSE.
 
   !calculate the total sources number
    nspec_bd_pnt_elastic = 0
@@ -326,7 +330,8 @@ subroutine setup_trac_f_sources()
         ! collocated force source: here we just take advantange of the available subroutine 'locate_source_force'
         ! the main purpose here is to calculate ispec_selected_elastic_source_reconst,xi_trac_f(i_f_source),
         ! gamma_trac_f
-        call locate_source_force(ibool,coord,nspec,nglob,xigll,zigll,x_final_bd_pnt_elastic(i_f_source),&
+        call locate_virtual_source(elastic_flag,acoustic_flag,ibool,coord,nspec,nglob,xigll,zigll,&
+              x_final_bd_pnt_elastic(i_f_source),&
              z_final_bd_pnt_elastic(i_f_source),ispec_selected_elastic_source_reconst(i_f_source),&
              is_proc_source(i_f_source),nb_proc_source(i_f_source), &
              nproc,myrank,xi_trac_f(i_f_source),gamma_trac_f(i_f_source),coorg,knods,ngnod,npgeo, &
@@ -357,7 +362,7 @@ subroutine setup_trac_f_sources()
 end subroutine setup_trac_f_sources
 
 
-subroutine setup_pot_f_sources
+subroutine setup_pot_f_sources()
 
   use specfem_par, only: nspec_bd_pnt_acoustic, &
                          coord,ibool,nglob,nspec, &
@@ -380,6 +385,10 @@ subroutine setup_pot_f_sources
   double precision, dimension(:), allocatable :: xi_pot_f,gamma_pot_f
   integer, dimension(:), allocatable :: is_proc_source,nb_proc_source 
 
+  logical :: elastic_flag,acoustic_flag
+   
+  elastic_flag=.FALSE.
+  acoustic_flag=.TRUE.
 
    nspec_bd_pnt_acoustic = 0
    open(unit=1,file='./OUTPUT_FILES/reconst_record/acoustic_pnts_profile',iostat=ios,status='old',action='read')
@@ -425,7 +434,8 @@ subroutine setup_pot_f_sources
   
       do i_pot_source=1,nspec_bd_pnt_acoustic
 
-        call locate_source_force(ibool,coord,nspec,nglob,xigll,zigll,x_final_bd_pnt_acoustic(i_pot_source),&
+        call locate_virtual_source(elastic_flag,acoustic_flag,ibool,coord,nspec,nglob,xigll,zigll,&
+             x_final_bd_pnt_acoustic(i_pot_source),&
              z_final_bd_pnt_acoustic(i_pot_source),ispec_selected_acoustic_source_reconst(i_pot_source),&
              is_proc_source(i_pot_source),nb_proc_source(i_pot_source), &
              nproc,myrank,xi_pot_f(i_pot_source),gamma_pot_f(i_pot_source),coorg,knods,ngnod,npgeo, &

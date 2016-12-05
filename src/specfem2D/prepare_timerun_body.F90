@@ -1001,7 +1001,9 @@ integer i,j,ispec,k,iglob,irec,i_source,ispecabs, irecloc
 !by lcx: set up recording point
    if ( record_local_bkgd_boundary .or. record_local_boundary_reconst ) call setup_recording_bd()
    if ( supply_reconst ) then
+      print *,'this is for elastic virtual sources'
       call setup_trac_f_sources() 
+      print *,'this is for acoustic virtual sources'
       call setup_pot_f_sources()
    endif
 ! displacement, velocity, acceleration and inverse of the mass matrix for elastic elements

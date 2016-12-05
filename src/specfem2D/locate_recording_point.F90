@@ -109,7 +109,7 @@
   nspec_bd_pnt_elastic = 0
   nspec_bd_pnt_acoustic = 0
 
-  113 format(i3.3,2x,2(i1.1,2x),L1,2x,L1,2x,L1,2x,A1,2x,A1,2x,4(es12.4,2x))
+  113 format(i5.5,2x,2(i1.1,2x),L1,2x,L1,2x,L1,2x,A1,2x,A1,2x,4(es12.4,2x))
   open(unit=1,file='DATA/boundary_points',status='old',action='read')
   !loop over all points
   ! loop only on points inside the element

@@ -119,6 +119,7 @@ specfem2D_OBJECTS = \
 	$O/locate_recording_point.spec.o \
 	$O/locate_source_force.spec.o \
 	$O/locate_source_moment_tensor.spec.o \
+	$O/locate_virtual_source.spec.o \
 	$O/netlib_specfun_erf.spec.o \
 	$O/noise_tomography.spec.o \
 	$O/paco_beyond_critical.spec.o \
@@ -359,6 +360,7 @@ $O/iterate_time.spec.o: $O/specfem2D_par.spec.o
 $O/iterate_time_undoatt.spec.o: $O/specfem2D_par.spec.o
 $O/locate_receivers.spec.o: $O/specfem2D_par.spec.o
 $O/locate_recording_point.spec.o: $O/specfem2D_par.spec.o
+$O/locate_virtual_source.spec.o: $O/specfem2D_par.spec.o
 $O/noise_tomography.spec.o: $O/specfem2D_par.spec.o
 $O/paco_beyond_critical.spec.o: $O/specfem2D_par.spec.o
 $O/plot_gll.spec.o: $O/specfem2D_par.spec.o
