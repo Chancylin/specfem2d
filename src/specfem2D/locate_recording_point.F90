@@ -233,19 +233,25 @@
 
   close(1)
  
-  !!this is a test by lcx: the check could be useful
-  !!to check the the final coordinates located by global mesher are
-  !!consistent with the import one.
-  !fname = './OUTPUT_FILES/bg_record/final_pnts_profile'
-  !open(unit=111,file=trim(fname),status='new',&
-  !     action='write',iostat=ios)
-  !if( ios /= 0 ) stop 'error saving acoustic point profile' 
-  !
-  !do ipnt=1,npnt
-  !   write(111,110) ispec_selected_bd_pnt(ipnt),x_final_bd_pnt(ipnt),z_final_bd_pnt(ipnt)
-  !enddo
-  !close(111)
-  !stop
+  !this is a test by lcx: the check could be useful
+  !to check the the final coordinates located by global mesher are
+  !consistent with the imported one (i.e., boundary of the local mesh).
+  !now this could be used to deal with the special case: 
+  !1. when the local mesh has the exact interfacing boundary with the global mesh;
+  !2. insteading of treating the GLL points of the boundary of the local mesh
+  !as the virtual sources, we will supply the local wavefield excitation exactly
+  !to the corresponding GLL points in the global mesh. The motivation of doing this
+  !is to eliminate the blurring edge effect during the global wavefield reconstruction.
+  fname = './OUTPUT_FILES/bg_record/final_pnts_profile'
+  open(unit=111,file=trim(fname),status='new',&
+       action='write',iostat=ios)
+  if( ios /= 0 ) stop 'error saving acoustic point profile' 
+  
+  do ipnt=1,npnt
+     write(111,110) ispec_selected_bd_pnt(ipnt),x_final_bd_pnt(ipnt),z_final_bd_pnt(ipnt)
+  enddo
+  close(111)
+  stop
   
   !define and store lagrange interpolators at all the boundary recording points
   do ipnt=1,npnt
