@@ -14,7 +14,7 @@ subroutine supply_bd_pnt()
   implicit none
   include "constants.h"
 
-  integer :: i,ios,temp_read                         
+  integer :: i,ios,temp_read_spec,temp_read_i,temp_read_j                         
   character(len=150) dummystring
 
   if ( it == 1) then
@@ -67,7 +67,8 @@ subroutine supply_bd_pnt()
      if( nspec_bd_pnt_elastic /= 0 )then
        open(f_num,file='./OUTPUT_FILES/bg_record/elastic_pnts_profile',iostat=ios,status='old',action='read')
        do i=1,nspec_bd_pnt_elastic
-          read(f_num,110) temp_read, x_final_bd_pnt_elastic(i), z_final_bd_pnt_elastic(i)
+          read(f_num,111) temp_read_spec,temp_read_i,temp_read_j,&
+                          x_final_bd_pnt_elastic(i), z_final_bd_pnt_elastic(i)
        enddo
        close(f_num)
      endif
@@ -75,15 +76,16 @@ subroutine supply_bd_pnt()
      if( nspec_bd_pnt_acoustic /= 0 )then
        open(f_num,file='./OUTPUT_FILES/bg_record/acoustic_pnts_profile',iostat=ios,status='old',action='read')
        do i=1,nspec_bd_pnt_acoustic
-          read(f_num,110) temp_read, x_final_bd_pnt_acoustic(i), z_final_bd_pnt_acoustic(i)
+          read(f_num,111) temp_read_spec,temp_read_i,temp_read_j,&
+                          x_final_bd_pnt_acoustic(i), z_final_bd_pnt_acoustic(i)
        enddo
        close(f_num)
      endif 
 
   endif
 
-  110 format(i5,2(es12.4,2x))!consistent with format in 'locate_recording_point.F90'
- 
+  !110 format(i5,2(es12.4,2x))!consistent with format in 'locate_recording_point.F90'
+  111 format(i5,2x,i1,2x,i1,2x,2(es12.4,2x))!consistent with format in 'locate_recording_point.F90' 
   !read the stored boundary info
   if (it < read_nt1 .or. it > read_nt2 ) return
 

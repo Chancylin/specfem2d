@@ -303,6 +303,9 @@ module specfem_par
   double precision :: deltat_record, deltat_read
   integer :: npnt,nspec_bd_pnt_elastic, nspec_bd_pnt_acoustic
   integer, dimension(:), allocatable :: ispec_selected_bd_pnt
+  !integer, dimension(:), allocatable :: bd_pnt_i_bg, bd_pnt_j_bg
+  integer, dimension(:), allocatable :: bd_pnt_i_bg_elastic, bd_pnt_j_bg_elastic
+  integer, dimension(:), allocatable :: bd_pnt_i_bg_acoustic, bd_pnt_j_bg_acoustic
   integer :: nspec_bd_elmt_elastic_pure, nspec_bd_elmt_acoustic_pure
   integer, dimension(:), allocatable :: ispec_bd_elmt_elastic_pure, ispec_bd_elmt_acoustic_pure
   
@@ -353,14 +356,14 @@ module specfem_par
   real(kind=CUSTOM_REAL), dimension(:), allocatable :: Grad_pot,Pot_x,Pot_z
   !!!supplying part
   logical :: supply_reconst
-  integer, dimension(:), allocatable :: ispec_selected_elastic_source_reconst,ispec_selected_acoustic_source_reconst 
-  double precision, dimension(:), allocatable :: hxis_trac_f,hgammas_trac_f,hpxis_trac_f,hpgammas_trac_f
-  double precision, dimension(:,:), allocatable :: hxis_trac_f_store,hgammas_trac_f_store
-  double precision, dimension(:,:), allocatable :: hpxis_trac_f_store,hpgammas_trac_f_store
-  !!acoustic
-  double precision, dimension(:), allocatable :: hxis_pot_f,hgammas_pot_f,hpxis_pot_f,hpgammas_pot_f
-  double precision, dimension(:,:), allocatable :: hxis_pot_f_store,hgammas_pot_f_store
-  double precision, dimension(:,:), allocatable :: hpxis_pot_f_store,hpgammas_pot_f_store
+  !integer, dimension(:), allocatable :: ispec_selected_elastic_source_reconst,ispec_selected_acoustic_source_reconst 
+  !double precision, dimension(:), allocatable :: hxis_trac_f,hgammas_trac_f,hpxis_trac_f,hpgammas_trac_f
+  !double precision, dimension(:,:), allocatable :: hxis_trac_f_store,hgammas_trac_f_store
+  !double precision, dimension(:,:), allocatable :: hpxis_trac_f_store,hpgammas_trac_f_store
+  !!!acoustic
+  !double precision, dimension(:), allocatable :: hxis_pot_f,hgammas_pot_f,hpxis_pot_f,hpgammas_pot_f
+  !double precision, dimension(:,:), allocatable :: hxis_pot_f_store,hgammas_pot_f_store
+  !double precision, dimension(:,:), allocatable :: hpxis_pot_f_store,hpgammas_pot_f_store
   
   !-------------------------------------------------------------------
 

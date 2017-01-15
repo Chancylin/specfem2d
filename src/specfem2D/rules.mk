@@ -139,7 +139,7 @@ specfem2D_OBJECTS = \
 	$O/read_external_model.spec.o \
 	$O/read_para_hybird.spec.o \
 	$O/recompute_jacobian.spec.o \
-	$O/reconst_field.spec.o \
+	$O/reconst_field_bd.spec.o \
 	$O/record_bd_pnt.spec.o \
 	$O/record_bd_pnt_reconst.spec.o \
 	$O/save_adjoint_kernels.spec.o \
@@ -379,7 +379,7 @@ $O/read_databases.spec.o: $O/specfem2D_par.spec.o
 $O/read_external_model.spec.o: $O/specfem2D_par.spec.o
 $O/read_para_hybird.spec.o: $O/specfem2D_par.spec.o
 $O/recompute_jacobian.spec.o: $O/specfem2D_par.spec.o
-$O/reconst_field.spec.o: $O/specfem2D_par.spec.o
+$O/reconst_field_bd.spec.o: $O/specfem2D_par.spec.o
 $O/record_bd_pnt.spec.o: $O/specfem2D_par.spec.o
 $O/record_bd_pnt_reconst.spec.o: $O/specfem2D_par.spec.o
 $O/save_adjoint_kernels.spec.o: $O/specfem2D_par.spec.o

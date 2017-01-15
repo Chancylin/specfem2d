@@ -313,7 +313,8 @@ subroutine iterate_time()
               call compute_add_sources_acoustic(potential_dot_dot_acoustic,it,i_stage)
               !lcx: reconstruct wavefield
               if( supply_reconst ) then
-                call compute_add_pot_f_acoustic(potential_dot_dot_acoustic,it)
+                !call compute_add_pot_f_acoustic(potential_dot_dot_acoustic,it)
+                call compute_add_pot_f_acoustic_bd(potential_dot_dot_acoustic,it)
               endif
 
             endif
@@ -664,7 +665,8 @@ subroutine iterate_time()
               call compute_add_sources_viscoelastic(accel_elastic,it,i_stage)
               !lcx: reconstruct wavefield
               if( supply_reconst ) then
-                call compute_add_trac_f_viscoelastic(accel_elastic,it)
+                !call compute_add_trac_f_viscoelastic(accel_elastic,it)
+                call compute_add_trac_f_viscoelastic_bd(accel_elastic,it)
               endif
             endif
 
