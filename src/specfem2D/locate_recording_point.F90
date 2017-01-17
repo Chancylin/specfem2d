@@ -84,10 +84,10 @@
   !!!geometry bound. Here we play the trick to locate the point in the exact 
   !!element we want. Otherwise, it could happen that the points at the edges
   !!are located in the neighbound element
-  box_t = 10000.0
-  box_b = -10000.0
-  box_l = -63989.8
-  box_r = -43989.8
+  box_t = 5000.0
+  box_b = -5000.0
+  box_l = -5000.0
+  box_r = 5000.0
   !!!
 
   !figure out the number of recording point firstly
@@ -145,9 +145,9 @@
       !!out of the loca region.
       !!but somehow this is unnecessary, considering the traction and velocity should be
       !!continuous in the media which does not have sudden change of property
-       !iglob = ibool(2,2,ispec)
-       !if((dble(coord(1,iglob)) > box_l) .and. (dble(coord(1,iglob)) < box_r) &
-       ! .and. dble(coord(2,iglob)) > box_b .and. dble(coord(2,iglob)) < box_t )then
+       iglob = ibool(2,2,ispec)
+       if((dble(coord(1,iglob)) > box_l) .and. (dble(coord(1,iglob)) < box_r) &
+         .and. dble(coord(2,iglob)) > box_b .and. dble(coord(2,iglob)) < box_t )then
       !!!!!!!!!!!!!!
          do j=2,NGLLZ-1
            do i=2,NGLLX-1
@@ -171,7 +171,7 @@
            enddo
          enddo
 
-       ! endif!geometry check 
+        endif!geometry check 
 
       endif !check if the elastic/acoustic flag is correct
 
@@ -254,6 +254,7 @@
     allocate(bd_pnt_i_bg(npnt),bd_pnt_j_bg(npnt)) !this is the i,j index in global model
 
     do ipnt=1,npnt
+       distmin_squared = HUGEVAL
        ispec = ispec_selected_bd_pnt(ipnt)
 
        do j=1,NGLLZ

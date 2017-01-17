@@ -19,49 +19,55 @@ subroutine compute_add_trac_f_viscoelastic_bd(accel_elastic,it)
   real(kind=CUSTOM_REAL), dimension(3,nglob_elastic) :: accel_elastic
   integer :: it
   integer :: i_f_source,i,k,iglob
+  integer :: a,b
+  integer :: delta_func
   double precision :: xixd,xizd,gammaxd,gammazd
   double precision :: G_11,G_13,G_31,G_33
   double precision :: mid_temp_1,mid_temp_2
-  !logical :: switch1,switch2
+  logical :: switch1,switch2
   
-  !switch1 = .TRUE.
-  !switch2 = .FALSE.
+  integer :: ios,f_num  
+
+  switch1 = .TRUE.
+  switch2 = .TRUE.
   if (it < read_nt1_reconst .or. it > read_nt2_reconst ) return
   !there must be a subroutine to assign the trac_f for the time step 'it'
   !the time interpolation may be applied
   !call supply_pnt_reconst()
 
   if( nspec_bd_pnt_elastic /= 0 ) then
-
+         
+      if( it == 1)then
+        f_num = 117
+        open(unit=f_num,file='./OUTPUT_FILES/elastic_excitation_info',status='new',&
+             action='write',iostat=ios)
+        if( ios /= 0 ) stop 'error saving elastic point profile'
+      endif
 
       do i_f_source=1,nspec_bd_pnt_elastic
  
-         !if ( switch1 ) then
+         iglob = ibool(bd_pnt_i_bg_elastic(i_f_source), bd_pnt_j_bg_elastic(i_f_source),&
+                 ispec_bd_elmt_elastic(i_f_source))
+
+         if ( switch1 ) then
 
          if( p_sv ) then ! P-SV calculation
 
            !supply the traction force to the corresponding GLL points
 
-           iglob = ibool(bd_pnt_i_bg_elastic(i_f_source), bd_pnt_j_bg_elastic(i_f_source),&
-                   ispec_bd_elmt_elastic(i_f_source))
-
            accel_elastic(1,iglob) = accel_elastic(1,iglob) - trac_f(1,i_f_source)
            accel_elastic(3,iglob) = accel_elastic(3,iglob) - trac_f(3,i_f_source) 
          else    ! SH (membrane) calculation
 
-           iglob = ibool(bd_pnt_i_bg_elastic(i_f_source), bd_pnt_j_bg_elastic(i_f_source),&
-                   ispec_bd_elmt_elastic(i_f_source))
-
            accel_elastic(2,iglob) = accel_elastic(2,iglob) - trac_f(2,i_f_source)
 
          endif
-         !endif !switch for this term
-        !if( switch2 ) then
+         endif !switch for this term
+
+        if( switch2 ) then
 
          if( p_sv ) then !P-SV calculation
         !the procedure for moment tensor here should be checked carefully
-           iglob = ibool(bd_pnt_i_bg_elastic(i_f_source), bd_pnt_j_bg_elastic(i_f_source),&
-                   ispec_bd_elmt_elastic(i_f_source))
 
            !calcualte G_ik at the GLL point, which is just the excitation point
           
@@ -79,33 +85,49 @@ subroutine compute_add_trac_f_viscoelastic_bd(accel_elastic,it)
            G_33 = m_xz(i_f_source)*gammaxd  + m_zz(i_f_source)*gammazd
 
 
-           mid_temp_1 =  G_11*hprime_xx(i,i) &
-                       + G_13*hprime_zz(k,k) 
 
-           mid_temp_2 =  G_31*hprime_xx(i,i) & 
-                       + G_33*hprime_zz(k,k) 
+           do a = 1,NGLLX
+              do b = 1,NGLLZ
 
+              mid_temp_1 =  G_11*hprime_xx(i,a)*delta_func(k,b) &
+                          + G_13*hprime_zz(k,b)*delta_func(i,a) 
 
-           accel_elastic(1,iglob) = accel_elastic(1,iglob) &
-                                    + mid_temp_1
-           accel_elastic(3,iglob) = accel_elastic(3,iglob) &
-                                    + mid_temp_2 
+              mid_temp_2 =  G_31*hprime_xx(i,a)*delta_func(k,b) & 
+                          + G_33*hprime_zz(k,b)*delta_func(i,a) 
+
+              iglob = ibool(a,b,ispec_bd_elmt_elastic(i_f_source))
+
+              accel_elastic(1,iglob) = accel_elastic(1,iglob) &
+                                       + mid_temp_1
+              accel_elastic(3,iglob) = accel_elastic(3,iglob) &
+                                       + mid_temp_2 
 !!!!note: I guess the idea here is: we already calculate the effective discrete moment tensor point sources
-!!!!in the local simulation. Here every discrete moment tensor point sources concides with one of GLL points,
-!!!!thus we can follow Komatitsch & Tropmp, 1999 (A11) to code. Alternative approach is to consider is as 
+!!!!in the local simulation. Here every discrete moment tensor point source concides with one of GLL points,
+!!!!thus we can follow Komatitsch & Tromp, 1999 (A11) to code. Alternative approach is to consider is as 
 !!!!finite fault plane and then follow (A12)
+
+               enddo
+           enddo
 
          else 
            stop 'SH case not supported for moment density tensor so far'  
 
          endif
 
-        !endif!whether to add the moment tensor term
-
+        endif!whether to add the moment tensor term
+         
+         if( it == 1 )then
+         write(f_num,113) ispec_bd_elmt_elastic(i_f_source), &
+                          bd_pnt_i_bg_elastic(i_f_source), bd_pnt_j_bg_elastic(i_f_source)
+         endif
     enddo
+         if( it == 1 )then
+           close(f_num)
+           !stop 'obtain the excitation location in the mesh'
+         endif
 
   endif
-
+  113 format(i5,2x,i1,2x,i1)
 end subroutine compute_add_trac_f_viscoelastic_bd
 
 subroutine compute_add_pot_f_acoustic_bd(potential_dot_dot_acoustic,it)
@@ -133,6 +155,7 @@ subroutine compute_add_pot_f_acoustic_bd(potential_dot_dot_acoustic,it)
 
   if( nspec_bd_pnt_acoustic /= 0 ) then
 
+    stop 'acoustic element detected!'
     do i_pot_source = 1, nspec_bd_pnt_acoustic
        
        if( p_sv ) then
@@ -196,8 +219,9 @@ subroutine locate_virtual_bd_pnt()
   include "constants.h"
 
   ! Local variables
-  integer :: i,ios,temp1_read,temp2_read,f_num
+  integer :: i,ios,f_num
   character(len=150) dummystring
+  double precision :: temp1_read,temp2_read
 
   !calculate the total sources number
   nspec_bd_pnt_elastic = 0
@@ -264,3 +288,15 @@ subroutine locate_virtual_bd_pnt()
 
 end subroutine locate_virtual_bd_pnt
 
+
+function delta_func(a,b)
+
+  integer,intent(in) :: a,b
+  integer :: delta_func
+  if ( a == b )then
+       delta_func=1
+     else
+       delta_func=0
+  endif
+
+end function delta_func

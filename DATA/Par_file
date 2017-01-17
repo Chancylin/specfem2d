@@ -1,5 +1,5 @@
 # title of job
-title                           = SPECFEM2D: quick test with box model (local homo)
+title                           = SPECFEM2D: quick test with box model (global homo)
 
 # axisymmetric (2.5D) or Cartesian planar (2D) simulation
 AXISYM                          = .false.
@@ -41,7 +41,7 @@ freq0                           =  1            # frequency for viscous attenuat
 p_sv                            = .true.         # set the type of calculation (P-SV or SH/membrane waves)
 
 # time step parameters
-nt                              = 6000           # total number of time steps
+nt                              = 3000           # total number of time steps
 deltat                          = 0.05d-1         # duration of a time step (see section "How to choose the time step" of the manual for how to do this)
 USER_T0                         = 0.0d0          # use this t0 as earliest starting time rather than the automatically calculated one
 time_stepping_scheme            = 1              # 1 = Newmark (2nd order), 2 = LDDRK4-6 (4th-order 6-stage low storage Runge-Kutta), 3 = classical RK4 4th-order 4-stage Runge-Kutta
@@ -62,8 +62,8 @@ READ_VELOCITIES_AT_f0           = .false.        # shift velocities to account f
 seismotype                      = 1              # record 1=displ 2=veloc 3=accel 4=pressure 5=curl of displ 6=the fluid potential
 USE_TRICK_FOR_BETTER_PRESSURE   = .false.        # so far, this option can only be used if all the receivers are in acoustic elements
 NSTEP_BETWEEN_OUTPUT_SEISMOS    = 5000000        # every how many time steps we save the seismograms (costly, do not use a very small value; if you use a very large value that is larger than the total number of time steps of the run, the seismograms will automatically be saved once at the end of the run anyway)
-save_ASCII_seismograms          = .false.         # save seismograms in ASCII format or not
-save_binary_seismograms_single  = .false.         # save seismograms in single precision binary format or not (can be used jointly with ASCII above to save both)
+save_ASCII_seismograms          = .true.         # save seismograms in ASCII format or not
+save_binary_seismograms_single  = .true.         # save seismograms in single precision binary format or not (can be used jointly with ASCII above to save both)
 save_binary_seismograms_double  = .false.        # save seismograms in double precision binary format or not (can be used jointly with both flags above to save all)
 SU_FORMAT                       = .false.        # output single precision binary seismograms in Seismic Unix format (adjoint traces will be read in the same format)
 subsamp_seismos                 = 1              # subsampling of the seismograms to create smaller files (but less accurately sampled in time)
@@ -88,7 +88,7 @@ NSTEP_BETWEEN_OUTPUT_IMAGES     = 200            # every how many time steps we 
 cutsnaps                        = 1.             # minimum amplitude kept in % for the JPEG and PostScript snapshots; amplitudes below that are muted
 #### for JPEG color images ####
 output_color_image              = .true.         # output JPEG color image of the results every NSTEP_BETWEEN_OUTPUT_IMAGES time steps or not
-imagetype_JPEG                  = 1              # display 1=displ_Ux 2=displ_Uz 3=displ_norm 4=veloc_Vx 5=veloc_Vz 6=veloc_norm 7=accel_Ax 8=accel_Az 9=accel_norm 10=pressure
+imagetype_JPEG                  = 2              # display 1=displ_Ux 2=displ_Uz 3=displ_norm 4=veloc_Vx 5=veloc_Vz 6=veloc_norm 7=accel_Ax 8=accel_Az 9=accel_norm 10=pressure
 factor_subsample_image          = 1.0d0          # (double precision) factor to subsample color images output by the code (useful for very large models)
 USE_CONSTANT_MAX_AMPLITUDE      = .false.        # by default the code normalizes each image independently to its maximum; use this option to use the global maximum below instead
 CONSTANT_MAX_AMPLITUDE_TO_USE   = 1.17d4         # constant maximum amplitude to use for all color images if the above USE_CONSTANT_MAX_AMPLITUDE option is true
@@ -118,7 +118,7 @@ output_grid_ASCII               = .false.        # dump the grid in an ASCII tex
 output_energy                   = .false.        # compute and output total acoustic and elastic energy curves (slows down the code significantly)
 
 
-nbmodels                        = 4
+nbmodels                        = 3
 # available material types (see user manual for more information)
 #   acoustic:    model_number 1 rho Vp 0  0 0 QKappa Qmu 0 0 0 0 0 0 (for QKappa and Qmu use 9999 to ignore them)
 #### currently acoustic media have no attenuation and thus QKappa and Qmu are ignored, but this will or should change soon
@@ -134,9 +134,8 @@ nbmodels                        = 4
 #   tomo:        model_number -1 0 0 A 0 0 0 0 0 0 0 0 0 0
 
 1 1 5000.0 3000.0 1800.0 0 0 9999.0 9999.0 0 0 0 0 0 0
-2 1 5000.0 3000.0 0.0 0 0 9999.0 9999.0 0 0 0 0 0 0
+2 1 5000.0 3000.0 1800.0 0 0 9999.0 9999.0 0 0 0 0 0 0
 3 1 5000.0 3000.0 1800.0 0 0 9999.0 9999.0 0 0 0 0 0 0
-4 1 5000.0 3000.0 0.0 0 0 9999.0 9999.0 0 0 0 0 0 0
 
 # external tomography file
 TOMOGRAPHY_FILE                 = ./DATA/tomo_file.xyz
@@ -162,14 +161,14 @@ GPU_MODE                        = .false.
 
 # data concerning mesh, when generated using third-party app (more info in README)
 # (see also absorbing_conditions above)
-mesh_file                       = ./DATA/quick_test/local_hete/mesh_file   # file containing the mesh
-nodes_coords_file               = ./DATA/quick_test/local_hete/nodes_coords_file   # file containing the nodes coordinates
-materials_file                  = ./DATA/quick_test/local_hete/materials_file   # file containing the material number for each element
-free_surface_file               = ./DATA/quick_test/local_hete/free_surface_file   # file containing the free surface
+mesh_file                       = ./DATA/quick_test/global/mesh_file   # file containing the mesh
+nodes_coords_file               = ./DATA/quick_test/global/nodes_coords_file   # file containing the nodes coordinates
+materials_file                  = ./DATA/quick_test/global/materials_file   # file containing the material number for each element
+free_surface_file               = ./DATA/quick_test/global/free_surface_file   # file containing the free surface
 axial_elements_file             = ./DATA/axial_elements_file # file containing the axial elements if AXISYM is true
-absorbing_surface_file          = ./DATA/quick_test/local_hete/absorbing_surface_file   # file containing the absorbing surface
+absorbing_surface_file          = ./DATA/quick_test/global/absorbing_surface_file   # file containing the absorbing surface
 acoustic_forcing_surface_file   = ./DATA/MSH/Surf_acforcing_Bottom_enforcing_mesh   # file containing the acoustic forcing surface
-CPML_element_file               = ./DATA/quick_test/local_hete/Elements_CPML_list  # file containing the CPML element numbers
+CPML_element_file               = ./DATA/quick_test/global/Elements_CPML_list  # file containing the CPML element numbers
 tangential_detection_curve_file = ./DATA/courbe_eros_nodes # file containing the curve delimiting the velocity model
 
 #-----------------------------------------------------------------------------
