@@ -146,7 +146,7 @@ subroutine compute_add_pot_f_acoustic_bd(potential_dot_dot_acoustic,it)
 
   real(kind=CUSTOM_REAL), dimension(nglob_acoustic) :: potential_dot_dot_acoustic
   integer :: it
-  integer :: i_pot_source,iglob,i,j,iv,ir
+  integer :: i_pot_source,iglob,i,j,iv,ir,a,b
   double precision :: xixd,xizd,gammaxd,gammazd
   double precision :: B_1,B_2,mid_temp_acoustic
 
@@ -187,13 +187,19 @@ subroutine compute_add_pot_f_acoustic_bd(potential_dot_dot_acoustic,it)
         B_1 = Pot_x(i_pot_source)*xixd + Pot_z(i_pot_source)*xizd
         B_2 = Pot_x(i_pot_source)*gammaxd + Pot_z(i_pot_source)*gammazd
 
+        do a = 1,NGLLX 
+           do b = 1,NGLLZ
 
-        mid_temp_acoustic =  B_1*hprime_xx(i,i) & 
-                           + B_2*hprime_zz(j,j)
+           mid_temp_acoustic =  B_1*hprime_xx(i,a)*delta_func(j,b) & 
+                              + B_2*hprime_zz(j,b)*delta_func(i,a)
+           iglob = ibool(a,b,ispec_bd_elmt_acoustic(i_f_source))
 
-        potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) &
-                                        + mid_temp_acoustic &
-                                        / rhostore(i,j,ispec_bd_elmt_acoustic(i_pot_source))
+           potential_dot_dot_acoustic(iglob) = potential_dot_dot_acoustic(iglob) &
+                                           + mid_temp_acoustic &
+                                           / rhostore(i,j,ispec_bd_elmt_acoustic(i_pot_source))
+
+           enddo
+         enddo
 
        else
          stop 'not designed for SH case yet'
