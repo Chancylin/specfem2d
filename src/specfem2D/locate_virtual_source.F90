@@ -61,7 +61,17 @@
   integer  :: ierror
 #endif
 
-
+!geometry bounda. Here we play a trick to locate the virtual sources in the local mesh side
+!instead of the global mesh side, regarding the special case that the local mesh share the 
+!same boundary (or GLL points) with the global mesh. Hopefully we won't use this in future
+  double precision :: box_t,box_b,box_l,box_r
+  box_t = 5000.0
+  box_b = -5000.0
+  box_l = -5000.0
+  box_r = 5000.0
+  logical :: element_locate
+  
+  element_locate = .FALSE.
 
 ! **************
   if (myrank == 0 .or. nproc == 1) then
@@ -82,31 +92,41 @@
      !locate in the elastic/acoustic region
      if( (elastic(ispec) .eqv. elastic_flag) .and. (acoustic(ispec) .eqv. acoustic_flag) ) then
 
+     !geometry bounda
+     iglob = ibool(2,2,ispec)
+
+     if((dble(coord(1,iglob)) > box_l) .and. (dble(coord(1,iglob)) < box_r) &
+         .and. dble(coord(2,iglob)) > box_b .and. dble(coord(2,iglob)) < box_t )then
+
+        element_locate = .TRUE.
 ! loop only on points inside the element
 ! exclude edges to ensure this point is not shared with other elements
-     do j = 2,NGLLZ-1
-        do i = 2,NGLLX-1
-
-           iglob = ibool(i,j,ispec)
-
-           !  we compare squared distances instead of distances themselves to significantly speed up calculations
-           dist_squared = (x_source-dble(coord(1,iglob)))**2 + (z_source-dble(coord(2,iglob)))**2
-
-           ! keep this point if it is closer to the source
-           if(dist_squared < distmin_squared) then
-              iglob_source = iglob
-              distmin_squared = dist_squared
-              ispec_selected_source = ispec
-              ix_initial_guess = i
-              iz_initial_guess = j
-           endif
-
+        do j = 2,NGLLZ-1
+           do i = 2,NGLLX-1
+   
+              iglob = ibool(i,j,ispec)
+   
+              !  we compare squared distances instead of distances themselves to significantly speed up calculations
+              dist_squared = (x_source-dble(coord(1,iglob)))**2 + (z_source-dble(coord(2,iglob)))**2
+   
+              ! keep this point if it is closer to the source
+              if(dist_squared < distmin_squared) then
+                 iglob_source = iglob
+                 distmin_squared = dist_squared
+                 ispec_selected_source = ispec
+                 ix_initial_guess = i
+                 iz_initial_guess = j
+              endif
+   
+           enddo
         enddo
-     enddo
 
+       endif !geometry bound
      endif
 ! end of loop on all the spectral elements
   enddo
+  
+  if ( .not. element_locate ) stop 'virtual source could not be located'
 
 #ifdef USE_MPI
   ! global minimum distance computed over all processes
