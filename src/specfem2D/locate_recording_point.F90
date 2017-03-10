@@ -4,7 +4,7 @@
   subroutine locate_recording_point(ibool,coord,nspec,nglob,xigll,zigll, &
                       coorg,knods,ngnod,npgeo)
 
-  use specfem_par, only: elastic,acoustic,&
+  use specfem_par, only: elastic,acoustic,p_sv,&
                          record_local_bkgd_boundary,npnt,ispec_selected_bd_pnt,&
                          nspec_bd_pnt_elastic,nspec_bd_pnt_acoustic,&
                          bd_pnt_i_bg_elastic, bd_pnt_j_bg_elastic,&
@@ -33,6 +33,7 @@
                          !nspec_bd_elmt_elastic_pure_edge,nspec_bd_elmt_acoustic_pure_edge,&
                          trac_bd_pnt_elastic_reconst,trac_f,&
                          m_xx,m_xz,m_zz,m_zx,m_xx_reconst,m_xz_reconst,m_zz_reconst,m_zx_reconst,&
+                         m_yx,m_yz,m_yx_reconst,m_yz_reconst,&
                          Grad_pot,grad_pot_x_reconst,grad_pot_z_reconst,Pot_x,Pot_z 
 
   implicit none
@@ -671,26 +672,40 @@
         !elastic
         allocate(trac_bd_pnt_elastic_reconst(3,nspec_bd_pnt_elastic))
         allocate(trac_f(3,nspec_bd_pnt_elastic))
-        !allocate(m_f(nspec_bd_pnt_elastic,3))
-        allocate(m_xx(nspec_bd_pnt_elastic))
-        allocate(m_xz(nspec_bd_pnt_elastic))
-        allocate(m_zz(nspec_bd_pnt_elastic))
-        allocate(m_zx(nspec_bd_pnt_elastic))
-        allocate(m_xx_reconst(nspec_bd_pnt_elastic))
-        allocate(m_xz_reconst(nspec_bd_pnt_elastic))
-        allocate(m_zz_reconst(nspec_bd_pnt_elastic))
-        allocate(m_zx_reconst(nspec_bd_pnt_elastic))
-
         trac_bd_pnt_elastic_reconst = 0.0
         trac_f = 0.0
+
+        !P-SV and SH cases will record different boundary information
+        if( p_sv ) then
+           allocate(m_xx(nspec_bd_pnt_elastic))
+           allocate(m_xz(nspec_bd_pnt_elastic))
+           allocate(m_zz(nspec_bd_pnt_elastic))
+           allocate(m_zx(nspec_bd_pnt_elastic))
+           allocate(m_xx_reconst(nspec_bd_pnt_elastic))
+           allocate(m_xz_reconst(nspec_bd_pnt_elastic))
+           allocate(m_zz_reconst(nspec_bd_pnt_elastic))
+           allocate(m_zx_reconst(nspec_bd_pnt_elastic))
+        else
+           !should we also separate the allocation of memory for P-SV and SH cases
+           allocate(m_yx(nspec_bd_pnt_elastic))
+           allocate(m_yz(nspec_bd_pnt_elastic))
+           allocate(m_yx_reconst(nspec_bd_pnt_elastic))
+           allocate(m_yz_reconst(nspec_bd_pnt_elastic))
+        endif
+        
+
+        
         !m_f = 0.0
      endif
 
      if( nspec_bd_pnt_acoustic /= 0 ) then
         !acoustic
-        allocate(Grad_pot(nspec_bd_pnt_acoustic))
-        allocate(grad_pot_x_reconst(nspec_bd_pnt_acoustic),grad_pot_z_reconst(nspec_bd_pnt_acoustic))
-        allocate(Pot_x(nspec_bd_pnt_acoustic),Pot_z(nspec_bd_pnt_acoustic))
+        if( p_sv ) then
+           allocate(Grad_pot(nspec_bd_pnt_acoustic))
+           allocate(grad_pot_x_reconst(nspec_bd_pnt_acoustic),grad_pot_z_reconst(nspec_bd_pnt_acoustic))
+           allocate(Pot_x(nspec_bd_pnt_acoustic),Pot_z(nspec_bd_pnt_acoustic))
+        endif
+        
      endif
 
   endif

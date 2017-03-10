@@ -38,10 +38,10 @@ ATTENUATION_VISCOELASTIC_SOLID  = .false.        # turn attenuation (viscoelasti
 ATTENUATION_PORO_FLUID_PART     = .false.        # turn viscous attenuation on or off for the fluid part of poroelastic parts of the model
 Q0                              =  1             # quality factor for viscous attenuation
 freq0                           =  1            # frequency for viscous attenuation
-p_sv                            = .true.         # set the type of calculation (P-SV or SH/membrane waves)
+p_sv                            = .false.         # set the type of calculation (P-SV or SH/membrane waves)
 
 # time step parameters
-nt                              = 3000           # total number of time steps
+nt                              = 4000           # total number of time steps
 deltat                          = 0.05d-1         # duration of a time step (see section "How to choose the time step" of the manual for how to do this)
 USER_T0                         = 0.0d0          # use this t0 as earliest starting time rather than the automatically calculated one
 time_stepping_scheme            = 1              # 1 = Newmark (2nd order), 2 = LDDRK4-6 (4th-order 6-stage low storage Runge-Kutta), 3 = classical RK4 4th-order 4-stage Runge-Kutta
@@ -63,7 +63,7 @@ seismotype                      = 1              # record 1=displ 2=veloc 3=acce
 USE_TRICK_FOR_BETTER_PRESSURE   = .false.        # so far, this option can only be used if all the receivers are in acoustic elements
 NSTEP_BETWEEN_OUTPUT_SEISMOS    = 5000000        # every how many time steps we save the seismograms (costly, do not use a very small value; if you use a very large value that is larger than the total number of time steps of the run, the seismograms will automatically be saved once at the end of the run anyway)
 save_ASCII_seismograms          = .true.         # save seismograms in ASCII format or not
-save_binary_seismograms_single  = .true.         # save seismograms in single precision binary format or not (can be used jointly with ASCII above to save both)
+save_binary_seismograms_single  = .false.         # save seismograms in single precision binary format or not (can be used jointly with ASCII above to save both)
 save_binary_seismograms_double  = .false.        # save seismograms in double precision binary format or not (can be used jointly with both flags above to save all)
 SU_FORMAT                       = .false.        # output single precision binary seismograms in Seismic Unix format (adjoint traces will be read in the same format)
 subsamp_seismos                 = 1              # subsampling of the seismograms to create smaller files (but less accurately sampled in time)

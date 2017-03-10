@@ -29,66 +29,67 @@
       !locate the corresponding recording point
          if ( ispec_bd_elmt_elastic(ispec_bd_pnt_elastic) == ispec .and. ispec_bd_elmt_elastic_i(ispec_bd_pnt_elastic) == i &
             .and. ispec_bd_elmt_elastic_j(ispec_bd_pnt_elastic) == j ) then
-        !trac_x
-        trac_bd_pnt_elastic_reconst(1,ispec_bd_pnt_elastic) = nx_bd_pnt_elastic(ispec_bd_pnt_elastic)*sigma_xx + &
-                                   nz_bd_pnt_elastic(ispec_bd_pnt_elastic)*sigma_xz
-        !trac_z
-        trac_bd_pnt_elastic_reconst(3,ispec_bd_pnt_elastic) = nx_bd_pnt_elastic(ispec_bd_pnt_elastic)*sigma_xz + &
-                                   nz_bd_pnt_elastic(ispec_bd_pnt_elastic)*sigma_zz
-        !trac_y
-        trac_bd_pnt_elastic_reconst(2,ispec_bd_pnt_elastic) = nx_bd_pnt_elastic(ispec_bd_pnt_elastic)*sigma_xy + &
-                                   nz_bd_pnt_elastic(ispec_bd_pnt_elastic)*sigma_zy
+            !trac_x
+            trac_bd_pnt_elastic_reconst(1,ispec_bd_pnt_elastic) = nx_bd_pnt_elastic(ispec_bd_pnt_elastic)*sigma_xx + &
+                 nz_bd_pnt_elastic(ispec_bd_pnt_elastic)*sigma_xz
+            !trac_z
+            trac_bd_pnt_elastic_reconst(3,ispec_bd_pnt_elastic) = nx_bd_pnt_elastic(ispec_bd_pnt_elastic)*sigma_xz + &
+                 nz_bd_pnt_elastic(ispec_bd_pnt_elastic)*sigma_zz
+            !trac_y
+            trac_bd_pnt_elastic_reconst(2,ispec_bd_pnt_elastic) = nx_bd_pnt_elastic(ispec_bd_pnt_elastic)*sigma_xy + &
+                 nz_bd_pnt_elastic(ispec_bd_pnt_elastic)*sigma_zy
 
-      !multiply the weigth coefficients, depending on different sides
-      !1. the sign may need to be changed because now these traction force are like external to the interested region
-      !2. may merge the 'right and left' and 'bottom and top' case
-           if( side_type_elastic(ispec_bd_pnt_elastic) == 'L' )then  !Left
+            !multiply the weigth coefficients, depending on different sides
+            !1. the sign may need to be changed because now these traction force are like external
+            !to the interested region
+            !2. may merge the 'right and left' and 'bottom and top' case
+            if( side_type_elastic(ispec_bd_pnt_elastic) == 'L' )then  !Left
 
-             xgamma = - xiz(i,j,ispec) * jacobian(i,j,ispec)
-             zgamma = + xix(i,j,ispec) * jacobian(i,j,ispec)
-             jacobian1D = sqrt(xgamma**2 + zgamma**2)
-             weight = jacobian1D * wzgll(j)
+              xgamma = - xiz(i,j,ispec) * jacobian(i,j,ispec)
+              zgamma = + xix(i,j,ispec) * jacobian(i,j,ispec)
+              jacobian1D = sqrt(xgamma**2 + zgamma**2)
+              weight = jacobian1D * wzgll(j)
 
-             trac_f(:,ispec_bd_pnt_elastic) = trac_bd_pnt_elastic_reconst(:,ispec_bd_pnt_elastic)*weight
+              trac_f(:,ispec_bd_pnt_elastic) = trac_bd_pnt_elastic_reconst(:,ispec_bd_pnt_elastic)*weight
 
-           else if( side_type_elastic(ispec_bd_pnt_elastic) == 'R' ) then !Right
+            else if( side_type_elastic(ispec_bd_pnt_elastic) == 'R' ) then !Right
 
-             xgamma = - xiz(i,j,ispec) * jacobian(i,j,ispec)
-             zgamma = + xix(i,j,ispec) * jacobian(i,j,ispec)
-             jacobian1D = sqrt(xgamma**2 + zgamma**2)
-             weight = jacobian1D * wzgll(j)
-
-             trac_f(:,ispec_bd_pnt_elastic) = trac_bd_pnt_elastic_reconst(:,ispec_bd_pnt_elastic)*weight
+              xgamma = - xiz(i,j,ispec) * jacobian(i,j,ispec)
+              zgamma = + xix(i,j,ispec) * jacobian(i,j,ispec)
+              jacobian1D = sqrt(xgamma**2 + zgamma**2)
+              weight = jacobian1D * wzgll(j)
+ 
+              trac_f(:,ispec_bd_pnt_elastic) = trac_bd_pnt_elastic_reconst(:,ispec_bd_pnt_elastic)*weight
              
-           else if( side_type_elastic(ispec_bd_pnt_elastic) == 'B' ) then !Bottom
+            else if( side_type_elastic(ispec_bd_pnt_elastic) == 'B' ) then !Bottom
 
-             xxi = + gammaz(i,j,ispec) * jacobian(i,j,ispec)
-             zxi = - gammax(i,j,ispec) * jacobian(i,j,ispec)
-             jacobian1D = sqrt(xxi**2 + zxi**2)
-             weight = jacobian1D * wxgll(i)
+              xxi = + gammaz(i,j,ispec) * jacobian(i,j,ispec)
+              zxi = - gammax(i,j,ispec) * jacobian(i,j,ispec)
+              jacobian1D = sqrt(xxi**2 + zxi**2)
+              weight = jacobian1D * wxgll(i)
+ 
+              trac_f(:,ispec_bd_pnt_elastic) = trac_bd_pnt_elastic_reconst(:,ispec_bd_pnt_elastic)*weight
 
-             trac_f(:,ispec_bd_pnt_elastic) = trac_bd_pnt_elastic_reconst(:,ispec_bd_pnt_elastic)*weight
+            else if( side_type_elastic(ispec_bd_pnt_elastic) == 'T' ) then !Top
 
-           else if( side_type_elastic(ispec_bd_pnt_elastic) == 'T' ) then !Top
+              xxi = + gammaz(i,j,ispec) * jacobian(i,j,ispec)
+              zxi = - gammax(i,j,ispec) * jacobian(i,j,ispec)
+              jacobian1D = sqrt(xxi**2 + zxi**2)
+              weight = jacobian1D * wxgll(i)
+ 
+              trac_f(:,ispec_bd_pnt_elastic) = trac_bd_pnt_elastic_reconst(:,ispec_bd_pnt_elastic)*weight
 
-             xxi = + gammaz(i,j,ispec) * jacobian(i,j,ispec)
-             zxi = - gammax(i,j,ispec) * jacobian(i,j,ispec)
-             jacobian1D = sqrt(xxi**2 + zxi**2)
-             weight = jacobian1D * wxgll(i)
+            else
 
-             trac_f(:,ispec_bd_pnt_elastic) = trac_bd_pnt_elastic_reconst(:,ispec_bd_pnt_elastic)*weight
+              stop 'type of side is unknown'
 
-           else
-
-           stop 'type of side is unknown'
-
-           endif
+            endif
 
            exit loop1
         
         endif !finding corresponding recording point
 
-   enddo loop1 
+   enddo loop1
 
  end subroutine record_bd_elmnt_elastic_reconst_f
 
@@ -97,9 +98,10 @@
  subroutine record_bd_elmnt_elastic_reconst_m(ispec,i,j,displ_elastic,&
                            lambdaplus2mu_unrelaxed_elastic,lambdal_unrelaxed_elastic,mul_unrelaxed_elastic)
 
-   use specfem_par, only: ispec_bd_elmt_elastic_i,ispec_bd_elmt_elastic_j,ispec_bd_elmt_elastic,&
+   use specfem_par, only: p_sv,ispec_bd_elmt_elastic_i,ispec_bd_elmt_elastic_j,ispec_bd_elmt_elastic,&
                           m_xx,m_xz,m_zz,m_zx,&
                           m_xx_reconst,m_xz_reconst,m_zz_reconst,m_zx_reconst,&
+                          m_yx,m_yz,m_yx_reconst,m_yz_reconst,&
                           nx_bd_pnt_elastic,nz_bd_pnt_elastic,&
                           it,record_nt1_reconst,record_nt2_reconst,& !control time step for recording
                           side_type_elastic,nspec_bd_pnt_elastic,wzgll,wxgll,&
@@ -132,14 +134,6 @@
 
             nx = nx_bd_pnt_elastic(ispec_bd_pnt_elastic)
             nz = nz_bd_pnt_elastic(ispec_bd_pnt_elastic)
-            !m_kl = u_i * n_j * C_ijkl
-            m_xx_reconst(ispec_bd_pnt_elastic) = displ_elastic(1)*nx &
-                 *lambdaplus2mu_unrelaxed_elastic + displ_elastic(3)*nz*lambdal_unrelaxed_elastic
-            m_xz_reconst(ispec_bd_pnt_elastic) = displ_elastic(1)*nz &
-                 *mul_unrelaxed_elastic + displ_elastic(3)*nx* mul_unrelaxed_elastic 
-            m_zz_reconst(ispec_bd_pnt_elastic) = displ_elastic(1)*nx &
-                 *lambdal_unrelaxed_elastic + displ_elastic(3)*nz*lambdaplus2mu_unrelaxed_elastic 
-            m_zx_reconst(ispec_bd_pnt_elastic) = m_xz_reconst(ispec_bd_pnt_elastic) 
 
             if( side_type_elastic(ispec_bd_pnt_elastic) == 'L' ) then !left
 
@@ -171,17 +165,46 @@
 
               stop 'type of side is unknown' 
             endif
-            !calculate the linear integral to obtain the discrete moment tensor at each GLL points
 
-            m_xx(ispec_bd_pnt_elastic) = m_xx_reconst(ispec_bd_pnt_elastic)*weight
-            m_xz(ispec_bd_pnt_elastic) = m_xz_reconst(ispec_bd_pnt_elastic)*weight
-            m_zz(ispec_bd_pnt_elastic) = m_zz_reconst(ispec_bd_pnt_elastic)*weight
-            m_zx(ispec_bd_pnt_elastic) = m_xz(ispec_bd_pnt_elastic) 
+            !m_kl = u_i * n_j * C_ijkl
+            !here we simply use the Lame coefficients for C_ijkl, because we deal with the elastic case.
+            !If full anisotropic material is dealed with, then need to use a full tensor C_ijkl
+            if( p_sv ) then
+               m_xx_reconst(ispec_bd_pnt_elastic) = displ_elastic(1)*nx &
+                    *lambdaplus2mu_unrelaxed_elastic + displ_elastic(3)*nz*lambdal_unrelaxed_elastic
+               m_xz_reconst(ispec_bd_pnt_elastic) = displ_elastic(1)*nz &
+                    *mul_unrelaxed_elastic + displ_elastic(3)*nx* mul_unrelaxed_elastic 
+               m_zz_reconst(ispec_bd_pnt_elastic) = displ_elastic(1)*nx &
+                    *lambdal_unrelaxed_elastic + displ_elastic(3)*nz*lambdaplus2mu_unrelaxed_elastic 
+               m_zx_reconst(ispec_bd_pnt_elastic) = m_xz_reconst(ispec_bd_pnt_elastic) 
+
+
+               !calculate the linear integral to obtain the discrete moment tensor at each GLL points
+
+               m_xx(ispec_bd_pnt_elastic) = m_xx_reconst(ispec_bd_pnt_elastic)*weight
+               m_xz(ispec_bd_pnt_elastic) = m_xz_reconst(ispec_bd_pnt_elastic)*weight
+               m_zz(ispec_bd_pnt_elastic) = m_zz_reconst(ispec_bd_pnt_elastic)*weight
+               m_zx(ispec_bd_pnt_elastic) = m_xz(ispec_bd_pnt_elastic) 
+
+            else !SH case
+            !calculate m_yx,m_yy,m_yz for SH case
+               m_yx_reconst(ispec_bd_pnt_elastic) = displ_elastic(2)*nx &
+                    *mul_unrelaxed_elastic
+               m_yz_reconst(ispec_bd_pnt_elastic) = displ_elastic(2)*nz &
+                    *mul_unrelaxed_elastic
+
+               !calculate the linear integral
+               m_yx(ispec_bd_pnt_elastic) = m_yx_reconst(ispec_bd_pnt_elastic)*weight
+               m_yz(ispec_bd_pnt_elastic) = m_yz_reconst(ispec_bd_pnt_elastic)*weight
+
+            endif
+
+
             exit loop1
 
        endif !locate the corresponding recording point
            
-   enddo loop1  
+   enddo loop1
      
 
  end subroutine record_bd_elmnt_elastic_reconst_m
@@ -600,7 +623,7 @@
  subroutine record_bd_elmnt_acoustic_reconst_Grad_pot(ispec,i,j,&
             dux_dxl,dux_dzl)
 
-   use specfem_par, only: ispec_bd_elmt_acoustic_i,ispec_bd_elmt_acoustic_j,ispec_bd_elmt_acoustic,&
+   use specfem_par, only: p_sv,ispec_bd_elmt_acoustic_i,ispec_bd_elmt_acoustic_j,ispec_bd_elmt_acoustic,&
                           grad_pot_x_reconst,grad_pot_z_reconst,Grad_pot,&
                           nx_bd_pnt_acoustic,nz_bd_pnt_acoustic, &
                           it,record_nt1_reconst,record_nt2_reconst,&
@@ -616,8 +639,9 @@
    integer :: ispec_bd_pnt_acoustic   
    real(kind=CUSTOM_REAL) :: weight,xxi,zxi,xgamma,zgamma,jacobian1D
    
-   if (it < record_nt1_reconst .or. it > record_nt2_reconst ) return
+   if(it < record_nt1_reconst .or. it > record_nt2_reconst ) return
 
+   if( .not. p_sv ) return !don't need any calculation if SH case
    
   loop1:do ispec_bd_pnt_acoustic = 1, nspec_bd_pnt_acoustic
 
@@ -685,7 +709,7 @@
 
  subroutine record_bd_elmnt_acoustic_reconst_Pot(ispec,i,j,potential_acoustic)
  
-   use specfem_par, only: ispec_bd_elmt_acoustic_i,ispec_bd_elmt_acoustic_j,ispec_bd_elmt_acoustic,&
+   use specfem_par, only: p_sv,ispec_bd_elmt_acoustic_i,ispec_bd_elmt_acoustic_j,ispec_bd_elmt_acoustic,&
                           Pot_x,Pot_z,&
                           nx_bd_pnt_acoustic,nz_bd_pnt_acoustic, &
                           it,record_nt1_reconst,record_nt2_reconst,&
@@ -703,6 +727,7 @@
    real(kind=CUSTOM_REAL) :: weight,xxi,zxi,xgamma,zgamma,jacobian1D
 
    if (it < record_nt1_reconst .or. it > record_nt2_reconst ) return
+   if( .not. p_sv ) return !don't need any calculation if SH case
    loop1:do ispec_bd_pnt_acoustic = 1, nspec_bd_pnt_acoustic
 
       if ( ispec_bd_elmt_acoustic(ispec_bd_pnt_acoustic) == ispec .and. ispec_bd_elmt_acoustic_i(ispec_bd_pnt_acoustic) == i &
@@ -762,10 +787,10 @@
 
  subroutine write_bd_pnts_reconst()
 
-  use specfem_par, only: it,& !original para
+  use specfem_par, only: it,p_sv,& !original para
                          fname,f_num,&
                          nspec_bd_pnt_elastic,nspec_bd_pnt_acoustic,&
-                         trac_f,m_xx,m_xz,m_zz, &
+                         trac_f,m_xx,m_xz,m_zz, m_yx,m_yz,&
                          Grad_pot,Pot_x,Pot_z, &
                          record_nt1_reconst,record_nt2_reconst !control time step for recording
  
@@ -780,51 +805,71 @@
 
   if (it < record_nt1_reconst .or. it > record_nt2_reconst ) return
 
-  !inquire (iolength = length_unf_2) grad_pot_bd_pnt_acoustic(:,1),pot_dot_bd_pnt_acoustic(1)
-
   !for elastic 
   if( nspec_bd_pnt_elastic /= 0 )then
-    !calculate moment density tensor point sources
-    !call calculate_bd_elastic_reconst_m_f()
-    !!!this is the recording length for unformatted recording
-    inquire (iolength = length_unf_1) trac_f(:,1),m_xx(1),m_xx(1),m_xx(1)
     f_num=113
     write(fname,"('./OUTPUT_FILES/reconst_record/&
           &elastic_pnts/nt_',i6.6)")it
 
-    !unformatted recording
-    open(unit=f_num,file=trim(fname),access='direct',status='new',&
-         action='write',iostat=ios,recl=length_unf_1) 
-    if( ios /= 0 ) stop 'error saving values at recording points'
+    if( p_sv ) then
+       
+       !!!this is the recording length for unformatted recording
+       inquire (iolength = length_unf_1) trac_f(1,1),trac_f(1,1),m_xx(1),m_xx(1),m_xx(1)
+       !unformatted recording
+       open(unit=f_num,file=trim(fname),access='direct',status='new',&
+            action='write',iostat=ios,recl=length_unf_1) 
+       if( ios /= 0 ) stop 'error saving values at recording points'
 
-    do k = 1, nspec_bd_pnt_elastic
-       write(f_num,rec=k) trac_f(:,k),m_xx(k),m_xz(k),m_zz(k)
-    enddo
+       do k = 1, nspec_bd_pnt_elastic
+          !save traction_x, traction_z, m_xx, m_xz, m_zz
+          write(f_num,rec=k) trac_f(1,k),trac_f(3,k),m_xx(k),m_xz(k),m_zz(k)
+       enddo
+       
+    else
+       
+       inquire (iolength = length_unf_1) trac_f(1,1),m_yx(1),m_yz(1)
+       !unformatted recording
+       open(unit=f_num,file=trim(fname),access='direct',status='new',&
+            action='write',iostat=ios,recl=length_unf_1) 
+       if( ios /= 0 ) stop 'error saving values at recording points'
+
+       do k = 1, nspec_bd_pnt_elastic
+          !save traction_y, m_yx, m_yz
+          write(f_num,rec=k) trac_f(2,k),m_yx(k),m_yz(k)
+       enddo
+       
+    endif
+    
 
     close(f_num)
   
-  endif 
+  endif
 
   !for acoustic
   if( nspec_bd_pnt_acoustic /= 0 )then
-    inquire (iolength = length_unf_2) Grad_pot(1),Pot_x(1),Pot_z(1)
 
-    f_num=114
-    write(fname,"('./OUTPUT_FILES/reconst_record/&
-          &acoustic_pnts/nt_',i6.6)")it
+     if( p_sv ) then !only need to do the recording if P-SV case
+        inquire (iolength = length_unf_2) Grad_pot(1),Pot_x(1),Pot_z(1)
 
-    !unformatted recording
-    open(unit=f_num,file=trim(fname),access='direct',status='new',&
-         action='write',iostat=ios,recl=length_unf_2) 
+        f_num=114
+        write(fname,"('./OUTPUT_FILES/reconst_record/&
+             &acoustic_pnts/nt_',i6.6)")it
+
+        !unformatted recording
+        open(unit=f_num,file=trim(fname),access='direct',status='new',&
+             action='write',iostat=ios,recl=length_unf_2) 
 
 
-    if( ios /= 0 ) stop 'error saving values at recording points'
+        if( ios /= 0 ) stop 'error saving values at recording points'
 
-    do k = 1, nspec_bd_pnt_acoustic
-       write(f_num,rec=k) Grad_pot(k),Pot_x(k),Pot_z(k) 
-    enddo
+        do k = 1, nspec_bd_pnt_acoustic
+           write(f_num,rec=k) Grad_pot(k),Pot_x(k),Pot_z(k) 
+        enddo
 
-    close(f_num)
+        close(f_num)
+
+     endif
+     
 
   endif
 
