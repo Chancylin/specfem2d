@@ -2,11 +2,13 @@
 %%because the original output of wavefield is sampled at GLL points what looks 
 %%not even distributed. This step is up to you. I just build the points with 
 %%constant interval in x and z direction.
+clear all;
 coor_new=load('./new_point.txt');
 
 %the directory containing wavefield data files
 %name2 = '../../global_reconst_full/';
-name2 = '../../global_homo_reconst_traction/';
+type_simulation = 'global_homo';
+name2 = ['../../',type_simulation,'/'];
 %load the coordinate of grids
 grid_coor=load([name2 'wavefield_grid_for_dumps_000.txt']);
 figure('Position',[1,1,800,800])
@@ -21,6 +23,7 @@ for istep = 200:200:4000;
         name1=['0' num2str(istep)];
     end
     filename=[name2 'wavefield00' name1 '_01_000.txt'];
+    %first column is x comp, second column is z comp
     field=load(filename);
     %filename_back=[name2_back 'wavefield00' name1 '_01_000.txt'];
     %field_back=load(filename_back);
@@ -28,6 +31,7 @@ for istep = 200:200:4000;
     field_scat=field;
 
 %Interpolate scattered data
+%field_scat(:,1) for x comp, field_scat(:,2) for z comp
     F=TriScatteredInterp(grid_coor(:,1),grid_coor(:,2),field_scat(:,1));
     x_new = F(coor_new(:,1),coor_new(:,2));
 %plot the wavefield
@@ -80,4 +84,5 @@ for istep = 200:200:4000;
 	% Write this frame out to a new video file.
 	%myMovie(frameIndex) = thisFrame;
 end
-movie2avi(frame,'wave_movie_true.avi','fps',2);
+movie_name = [name2,'wave_movie_',type_simulation,'.avi'];
+movie2avi(frame,movie_name,'fps',2);

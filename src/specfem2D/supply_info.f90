@@ -267,14 +267,6 @@ end subroutine time_interplt_supply
 
 subroutine supply_pnt_reconst()
 
-  !use specfem_par, only: it,read_nt1_reconst,read_nt2 !original para
-                         !nspec_bd_pnt_elastic,nspec_bd_pnt_acoustic,&
-                         !x_final_bd_pnt_elastic,z_final_bd_pnt_elastic,&
-                         !trac_f,&
-                         !x_final_bd_pnt_acoustic,z_final_bd_pnt_acoustic
-                        !grad_pot_bd_pnt_acoustic,pot_dot_bd_pnt_acoustic,&
-                         
-
   implicit none
   include "constants.h"
  
@@ -311,9 +303,6 @@ subroutine time_interplt_supply_reconst()
   real(kind=CUSTOM_REAL) :: m_xx_t2,m_xz_t2,m_zz_t2,m_yx_t2,m_yz_t2
   real(kind=CUSTOM_REAL) :: Grad_pot_t1,Pot_x_t1,Pot_z_t1 
   real(kind=CUSTOM_REAL) :: Grad_pot_t2,Pot_x_t2,Pot_z_t2 
-  !real(kind=CUSTOM_REAL), dimension(3) :: trac_bd_pnt_t1,vel_bd_pnt_t1,trac_bd_pnt_t2,vel_bd_pnt_t2
-  !real(kind=CUSTOM_REAL), dimension(2) :: grad_pot_bd_pnt_t1, grad_pot_bd_pnt_t2
-  !real(kind=CUSTOM_REAL) :: pot_dot_bd_pnt_t1, pot_dot_bd_pnt_t2 
   trac_f_t1 = 0.0
   trac_f_t2 = 0.0
 
@@ -355,7 +344,7 @@ subroutine time_interplt_supply_reconst()
 
         do i=1,nspec_bd_pnt_elastic
            read(f_num_1,rec=i) trac_f_t1(1),trac_f_t1(3),m_xx_t1,m_xz_t1,m_zz_t1
-           read(f_num_2,rec=i) trac_f_t1(1),trac_f_t1(3),m_xx_t2,m_xz_t2,m_zz_t2
+           read(f_num_2,rec=i) trac_f_t2(1),trac_f_t2(3),m_xx_t2,m_xz_t2,m_zz_t2
 
 !!!linear interpolation in time domain
            trac_f(:,i) = (trac_f_t2(:) - trac_f_t1(:)) * &
