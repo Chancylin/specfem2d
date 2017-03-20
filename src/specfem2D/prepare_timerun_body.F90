@@ -32,7 +32,7 @@ integer i,j,ispec,k,iglob,irec,i_source,ispecabs, irecloc
   call prepare_timerun_read()
   
   !by lcx: this subroutine is for reading parameter controlling 
-  call read_para_hybird()
+  call read_para_hybrid()
 
 
   if(GPU_MODE) then

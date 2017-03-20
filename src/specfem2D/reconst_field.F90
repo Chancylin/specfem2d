@@ -1,15 +1,16 @@
-!this subroutine is to construct the wavefield in global model by taking the information provide from local simulation
-!Note: the basic idea here is to provide the traction force and moment force as the sources to excite
-!the wavefield, i.e., reconstructing.
+!this subroutine is to construct the wavefield in global model by taking the
+!information provide from local simulation Note: the basic idea here is to
+!provide the traction force and moment force as the sources to excite the
+!wavefield, i.e., reconstructing.
 !Nov. 4, 2016
-!Since the excitation terms will be treated as the input sources in the global model, the local mesh could
-!be different from the global mesh
+!Since the excitation terms will be treated as the input sources in the global
+!model, the local mesh could be different from the global mesh
 
 subroutine compute_add_trac_f_viscoelastic(accel_elastic,it)
        
   use specfem_par, only: p_sv,nglob_elastic,&
                          nspec_bd_pnt_elastic,&
-                         trac_f, m_xx,m_xz,m_zz,&
+                         trac_f,m_xx,m_xz,m_zz,m_yx,m_yz,&
                          ispec_selected_elastic_source_reconst,&  !this should be located by a subroutine
                          hxis_trac_f_store,hgammas_trac_f_store,ibool,&
                          hpxis_trac_f_store,hpgammas_trac_f_store, &
@@ -24,8 +25,8 @@ subroutine compute_add_trac_f_viscoelastic(accel_elastic,it)
   integer :: i_f_source,i,j,iglob, a,b,k,iv,ir
   double precision :: hlagrange 
   double precision :: xixd,xizd,gammaxd,gammazd
-  double precision, dimension(NGLLX,NGLLZ) :: G_11,G_13,G_31,G_33
-  double precision, dimension(2,NGLLX,NGLLZ) :: mid_temp
+  double precision, dimension(NGLLX,NGLLZ) :: G_11,G_13,G_31,G_33,G_21,G_23
+  double precision, dimension(3,NGLLX,NGLLZ) :: mid_temp
   !logical :: switch1,switch2
   
   !switch1 = .TRUE.
@@ -91,7 +92,8 @@ subroutine compute_add_trac_f_viscoelastic(accel_elastic,it)
 
          do a = 1,NGLLX
             do b = 1,NGLLZ
-               mid_temp(:,a,b) = ZERO
+               mid_temp(1,a,b) = ZERO
+               mid_temp(2,a,b) = ZERO
 
                do iv=1,NGLLZ
                   do ir=1,NGLLX
@@ -129,7 +131,49 @@ subroutine compute_add_trac_f_viscoelastic(accel_elastic,it)
        enddo
 
          else 
-           stop 'SH case not supported for moment density tensor so far'  
+            !stop 'SH case not supported for moment density tensor so far'
+            do k = 1,NGLLZ
+               do i = 1,NGLLX
+                  xixd    = xix(i,k,ispec_selected_elastic_source_reconst(i_f_source))
+                  xizd    = xiz(i,k,ispec_selected_elastic_source_reconst(i_f_source))
+                  gammaxd = gammax(i,k,ispec_selected_elastic_source_reconst(i_f_source))
+                  gammazd = gammaz(i,k,ispec_selected_elastic_source_reconst(i_f_source))
+
+                  G_21(i,k) = m_yx(i_f_source)*xixd  + m_yz(i_f_source)*xizd
+                  G_23(i,k) = m_yx(i_f_source)*gammaxd  + m_yz(i_f_source)*gammazd
+               enddo
+            enddo
+
+            do a = 1,NGLLX
+               do b = 1,NGLLZ
+                  mid_temp(3,a,b) = ZERO
+
+                  do iv=1,NGLLZ
+                     do ir=1,NGLLX
+
+                        mid_temp(3,a,b) = mid_temp(3,a,b) + hxis_trac_f_store(i_f_source,ir) &
+                             *hgammas_trac_f_store(i_f_source,iv) &
+                             *( G_21(ir,iv)*hpxis_trac_f_store(i_f_source,a) &
+                             *hgammas_trac_f_store(i_f_source,b) &
+                             + G_23(ir,iv)*hxis_trac_f_store(i_f_source,a) &
+                             *hpgammas_trac_f_store(i_f_source,b))
+
+                     enddo
+                  enddo
+
+               enddo
+            enddo
+            
+            do i = 1,NGLLX
+               do j = 1,NGLLZ
+                  !the moment density tensor point sources are coinsiding with the traction point sources
+                  iglob = ibool(i,j,ispec_selected_elastic_source_reconst(i_f_source))
+
+                  accel_elastic(2,iglob) = accel_elastic(2,iglob) &
+                       + mid_temp(3,i,j) 
+               enddo
+            enddo
+            
 
          endif
 
@@ -233,7 +277,7 @@ subroutine compute_add_pot_f_acoustic(potential_dot_dot_acoustic,it)
        enddo
 
        else
-         stop 'not designed for SH case yet'
+          !basically nothing needs to do for SH case
        endif
 
     enddo
@@ -245,9 +289,9 @@ end subroutine compute_add_pot_f_acoustic
 
 subroutine setup_trac_f_sources()
  
-  use specfem_par, only: nspec_bd_pnt_elastic, &
+  use specfem_par, only: p_sv,nspec_bd_pnt_elastic, &
                          coord,ibool,nglob,nspec, &
-                         trac_f, m_xx,m_xz,m_zz, &
+                         trac_f, m_xx,m_xz,m_zz,m_yx,m_yz, &
                          hxis_trac_f,hgammas_trac_f,hxis_trac_f_store,hgammas_trac_f_store,&
                          hpxis_trac_f,hpgammas_trac_f,hpxis_trac_f_store,hpgammas_trac_f_store,&
                          x_final_bd_pnt_elastic,z_final_bd_pnt_elastic,ispec_selected_elastic_source_reconst, &
@@ -289,8 +333,14 @@ subroutine setup_trac_f_sources()
 
       allocate(x_final_bd_pnt_elastic(nspec_bd_pnt_elastic),z_final_bd_pnt_elastic(nspec_bd_pnt_elastic))
       allocate(trac_f(3,nspec_bd_pnt_elastic))
-      !allocate(m_f(nspec_bd_pnt_elastic,3))
-      allocate(m_xx(nspec_bd_pnt_elastic),m_xz(nspec_bd_pnt_elastic),m_zz(nspec_bd_pnt_elastic))
+      trac_f = 0.0
+      
+      if( p_sv ) then
+         allocate(m_xx(nspec_bd_pnt_elastic),m_xz(nspec_bd_pnt_elastic),m_zz(nspec_bd_pnt_elastic))
+      else
+         allocate(m_yx(nspec_bd_pnt_elastic),m_yz(nspec_bd_pnt_elastic))
+      endif
+      
 
      !read the coordinates of the source points. The coordinate will be the key information
      f_num = 111                                                                 
@@ -364,7 +414,7 @@ end subroutine setup_trac_f_sources
 
 subroutine setup_pot_f_sources()
 
-  use specfem_par, only: nspec_bd_pnt_acoustic, &
+  use specfem_par, only: p_sv,nspec_bd_pnt_acoustic, &
                          coord,ibool,nglob,nspec, &
                          Grad_pot,Pot_x,Pot_z, &
                          hxis_pot_f,hgammas_pot_f,hxis_pot_f_store,hgammas_pot_f_store,&
@@ -402,8 +452,8 @@ subroutine setup_pot_f_sources()
    close(1)
 
 
-
-   if( nspec_bd_pnt_acoustic /= 0 ) then
+   !we only allocate the variables for excitations in acoustic elements if P-SV case.
+   if( nspec_bd_pnt_acoustic /= 0 .and. p_sv ) then
 
       allocate(x_final_bd_pnt_acoustic(nspec_bd_pnt_acoustic),z_final_bd_pnt_acoustic(nspec_bd_pnt_acoustic))
       allocate(Grad_pot(nspec_bd_pnt_acoustic))

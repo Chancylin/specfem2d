@@ -1,6 +1,6 @@
 !by lcx:the subroutine prepares parameters to control recording or
 !reading back the local/global bd info
-  subroutine read_para_hybird()
+  subroutine read_para_hybrid()
 
     use specfem_par, only: record_local_bkgd_boundary,export_gll_pnt_local,&
                            supply_local_bkgd_boundary,virtual_ab_bd,&
@@ -49,4 +49,5 @@
    if( record_local_boundary_reconst ) print *,"the code will record the excitation for reconstruction"
    if( supply_reconst ) print *,"the code will supply excitations for reconstruction"
 
-  end subroutine read_para_hybird
+
+  end subroutine read_para_hybrid

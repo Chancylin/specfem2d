@@ -137,7 +137,7 @@ specfem2D_OBJECTS = \
 	$O/prepare_timerun_body.spec.o \
 	$O/read_databases.spec.o \
 	$O/read_external_model.spec.o \
-	$O/read_para_hybird.spec.o \
+	$O/read_para_hybrid.spec.o \
 	$O/recompute_jacobian.spec.o \
 	$O/reconst_field.spec.o \
 	$O/record_bd_pnt.spec.o \
@@ -377,7 +377,7 @@ $O/prepare_timerun_body.spec.o: $O/specfem2D_par.spec.o
 $O/prepare_timerun_gpu.spec.o: $O/specfem2D_par.spec.o
 $O/read_databases.spec.o: $O/specfem2D_par.spec.o
 $O/read_external_model.spec.o: $O/specfem2D_par.spec.o
-$O/read_para_hybird.spec.o: $O/specfem2D_par.spec.o
+$O/read_para_hybrid.spec.o: $O/specfem2D_par.spec.o
 $O/recompute_jacobian.spec.o: $O/specfem2D_par.spec.o
 $O/reconst_field.spec.o: $O/specfem2D_par.spec.o
 $O/record_bd_pnt.spec.o: $O/specfem2D_par.spec.o

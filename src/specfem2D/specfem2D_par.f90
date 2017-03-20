@@ -346,8 +346,9 @@ module specfem_par
   integer :: nspec_bd_elmt_elastic_pure_edge,nspec_bd_elmt_acoustic_pure_edge
   real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: trac_bd_pnt_elastic_reconst
   real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: trac_f,m_f 
-  real(kind=CUSTOM_REAL), dimension(:), allocatable :: m_xx,m_xz,m_zz,m_zx
-  real(kind=CUSTOM_REAL), dimension(:), allocatable :: m_xx_reconst,m_xz_reconst,m_zz_reconst,m_zx_reconst 
+  real(kind=CUSTOM_REAL), dimension(:), allocatable :: m_xx,m_xz,m_zz,m_zx,m_yx,m_yz
+  real(kind=CUSTOM_REAL), dimension(:), allocatable :: m_xx_reconst,m_xz_reconst,m_zz_reconst,m_zx_reconst,&
+                                                       m_yx_reconst,m_yz_reconst
   !!acoustic
   real(kind=CUSTOM_REAL), dimension(:), allocatable :: grad_pot_x_reconst,grad_pot_z_reconst
   real(kind=CUSTOM_REAL), dimension(:), allocatable :: Grad_pot,Pot_x,Pot_z

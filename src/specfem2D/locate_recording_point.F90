@@ -4,8 +4,9 @@
   subroutine locate_recording_point(ibool,coord,nspec,nglob,xigll,zigll, &
                       coorg,knods,ngnod,npgeo)
 
-  use specfem_par, only: elastic,acoustic,&
-                         record_local_bkgd_boundary,npnt,ispec_selected_bd_pnt,nspec_bd_pnt_elastic,nspec_bd_pnt_acoustic,&
+  use specfem_par, only: elastic,acoustic,p_sv,&
+                         record_local_bkgd_boundary,npnt,&
+                         ispec_selected_bd_pnt,nspec_bd_pnt_elastic,nspec_bd_pnt_acoustic,&
                          nspec_bd_elmt_elastic_pure,nspec_bd_elmt_acoustic_pure,&
                          ispec_bd_elmt_elastic_pure, ispec_bd_elmt_acoustic_pure,& 
                          hxi_bd_store,hgammar_bd_store,&
@@ -30,6 +31,7 @@
                          !nspec_bd_elmt_elastic_pure_edge,nspec_bd_elmt_acoustic_pure_edge,&
                          trac_bd_pnt_elastic_reconst,trac_f,&
                          m_xx,m_xz,m_zz,m_zx,m_xx_reconst,m_xz_reconst,m_zz_reconst,m_zx_reconst,&
+                         m_yx,m_yz,m_yx_reconst,m_yz_reconst,&
                          Grad_pot,grad_pot_x_reconst,grad_pot_z_reconst,Pot_x,Pot_z 
 
   implicit none
@@ -585,34 +587,34 @@
 !!export the elastic/acoustic points profiles, which will be used to reconstruct the wavefield
   if( record_local_boundary_reconst ) then
     
-    if ( nspec_bd_pnt_elastic /= 0 ) then
-       fname = './OUTPUT_FILES/reconst_record/elastic_pnts_profile'
-       f_num = 111
-       open(unit=f_num,file=trim(fname),status='new',&
-            action='write',iostat=ios)
-       if( ios /= 0 ) stop 'error saving elastic point profile'
+     fname = './OUTPUT_FILES/reconst_record/elastic_pnts_profile'
+     f_num = 111
+     open(unit=f_num,file=trim(fname),status='new',&
+          action='write',iostat=ios)
+     if( ios /= 0 ) stop 'error saving elastic point profile'
 
-       do i=1,nspec_bd_pnt_elastic
-          !write(f_num,110) ispec_bd_elmt_elastic(i), x_final_bd_pnt_elastic(i), z_final_bd_pnt_elastic(i)
-          write(f_num,111) ispec_bd_elmt_elastic(i), ispec_bd_elmt_elastic_i(i), ispec_bd_elmt_elastic_j(i),&
-                           x_final_bd_pnt_elastic(i), z_final_bd_pnt_elastic(i)
-                           ! nx_bd_pnt_elastic(i),nz_bd_pnt_elastic(i)
-       enddo
-       close(f_num)
-    endif
+     if ( nspec_bd_pnt_elastic /= 0 ) then
+        do i=1,nspec_bd_pnt_elastic
+           !write(f_num,110) ispec_bd_elmt_elastic(i), x_final_bd_pnt_elastic(i), z_final_bd_pnt_elastic(i)
+           write(f_num,111) ispec_bd_elmt_elastic(i), ispec_bd_elmt_elastic_i(i), ispec_bd_elmt_elastic_j(i),&
+                x_final_bd_pnt_elastic(i), z_final_bd_pnt_elastic(i)
+           ! nx_bd_pnt_elastic(i),nz_bd_pnt_elastic(i)
+        enddo
+     endif
+     close(f_num)
 
-    if ( nspec_bd_pnt_acoustic /= 0 ) then
-       fname = './OUTPUT_FILES/reconst_record/acoustic_pnts_profile' 
-       open(unit=f_num,file=trim(fname),status='new',&
-            action='write',iostat=ios)
-       if( ios /= 0 ) stop 'error saving acoustic point profile' 
+     fname = './OUTPUT_FILES/reconst_record/acoustic_pnts_profile' 
+     open(unit=f_num,file=trim(fname),status='new',&
+          action='write',iostat=ios)
+     if( ios /= 0 ) stop 'error saving acoustic point profile' 
 
-       do i=1,nspec_bd_pnt_acoustic
-          write(f_num,111) ispec_bd_elmt_acoustic(i), ispec_bd_elmt_acoustic_i(i), ispec_bd_elmt_acoustic_j(i),& 
-                           x_final_bd_pnt_acoustic(i), z_final_bd_pnt_acoustic(i)
-       enddo
-       close(f_num)
-    endif
+     if ( nspec_bd_pnt_acoustic /= 0 ) then
+        do i=1,nspec_bd_pnt_acoustic
+           write(f_num,111) ispec_bd_elmt_acoustic(i), ispec_bd_elmt_acoustic_i(i), ispec_bd_elmt_acoustic_j(i),& 
+                x_final_bd_pnt_acoustic(i), z_final_bd_pnt_acoustic(i)
+        enddo
+     endif
+     close(f_num)
 
   endif
 
@@ -631,26 +633,37 @@
         !elastic
         allocate(trac_bd_pnt_elastic_reconst(3,nspec_bd_pnt_elastic))
         allocate(trac_f(3,nspec_bd_pnt_elastic))
-        !allocate(m_f(nspec_bd_pnt_elastic,3))
-        allocate(m_xx(nspec_bd_pnt_elastic))
-        allocate(m_xz(nspec_bd_pnt_elastic))
-        allocate(m_zz(nspec_bd_pnt_elastic))
-        allocate(m_zx(nspec_bd_pnt_elastic))
-        allocate(m_xx_reconst(nspec_bd_pnt_elastic))
-        allocate(m_xz_reconst(nspec_bd_pnt_elastic))
-        allocate(m_zz_reconst(nspec_bd_pnt_elastic))
-        allocate(m_zx_reconst(nspec_bd_pnt_elastic))
 
         trac_bd_pnt_elastic_reconst = 0.0
         trac_f = 0.0
-        !m_f = 0.0
+        
+        !P-SV and SH cases will record different boundary information
+        if( p_sv ) then
+           allocate(m_xx(nspec_bd_pnt_elastic))
+           allocate(m_xz(nspec_bd_pnt_elastic))
+           allocate(m_zz(nspec_bd_pnt_elastic))
+           allocate(m_zx(nspec_bd_pnt_elastic))
+           allocate(m_xx_reconst(nspec_bd_pnt_elastic))
+           allocate(m_xz_reconst(nspec_bd_pnt_elastic))
+           allocate(m_zz_reconst(nspec_bd_pnt_elastic))
+           allocate(m_zx_reconst(nspec_bd_pnt_elastic))
+        else
+           !should we also separate the allocation of memory for P-SV and SH cases
+           allocate(m_yx(nspec_bd_pnt_elastic))
+           allocate(m_yz(nspec_bd_pnt_elastic))
+           allocate(m_yx_reconst(nspec_bd_pnt_elastic))
+           allocate(m_yz_reconst(nspec_bd_pnt_elastic))
+        endif
+
      endif
 
      if( nspec_bd_pnt_acoustic /= 0 ) then
         !acoustic
-        allocate(Grad_pot(nspec_bd_pnt_acoustic))
-        allocate(grad_pot_x_reconst(nspec_bd_pnt_acoustic),grad_pot_z_reconst(nspec_bd_pnt_acoustic))
-        allocate(Pot_x(nspec_bd_pnt_acoustic),Pot_z(nspec_bd_pnt_acoustic))
+        if( p_sv ) then
+           allocate(Grad_pot(nspec_bd_pnt_acoustic))
+           allocate(grad_pot_x_reconst(nspec_bd_pnt_acoustic),grad_pot_z_reconst(nspec_bd_pnt_acoustic))
+           allocate(Pot_x(nspec_bd_pnt_acoustic),Pot_z(nspec_bd_pnt_acoustic))
+        endif
      endif
 
   endif

@@ -14,7 +14,7 @@ subroutine supply_bd_pnt()
   implicit none
   include "constants.h"
 
-  integer :: i,ios,temp_read                         
+  integer :: i,ios,temp_read
   character(len=150) dummystring
 
   if ( it == 1) then
@@ -67,7 +67,7 @@ subroutine supply_bd_pnt()
      if( nspec_bd_pnt_elastic /= 0 )then
        open(f_num,file='./OUTPUT_FILES/bg_record/elastic_pnts_profile',iostat=ios,status='old',action='read')
        do i=1,nspec_bd_pnt_elastic
-          read(f_num,110) temp_read, x_final_bd_pnt_elastic(i), z_final_bd_pnt_elastic(i)
+          read(f_num,110) temp_read,x_final_bd_pnt_elastic(i), z_final_bd_pnt_elastic(i)
        enddo
        close(f_num)
      endif
@@ -75,63 +75,19 @@ subroutine supply_bd_pnt()
      if( nspec_bd_pnt_acoustic /= 0 )then
        open(f_num,file='./OUTPUT_FILES/bg_record/acoustic_pnts_profile',iostat=ios,status='old',action='read')
        do i=1,nspec_bd_pnt_acoustic
-          read(f_num,110) temp_read, x_final_bd_pnt_acoustic(i), z_final_bd_pnt_acoustic(i)
+          read(f_num,110) temp_read,x_final_bd_pnt_acoustic(i), z_final_bd_pnt_acoustic(i)
        enddo
        close(f_num)
-     endif 
+     endif
 
   endif
 
   110 format(i5,2(es12.4,2x))!consistent with format in 'locate_recording_point.F90'
- 
   !read the stored boundary info
   if (it < read_nt1 .or. it > read_nt2 ) return
 
   !apply the time interpolation 
   call time_interplt_supply() 
-
-  !f_num=113
-  !write(fname,"('./OUTPUT_FILES/bg_record/&
-  !      &elastic_pnts/nt_',i6.6)")it
-  !
-  !!formatted reading
-  !!open(unit=f_num,file=trim(fname),status='old',&
-  !!     action='read',iostat=ios)
-
-  !!unformatted reading
-  !open(unit=f_num,file=trim(fname),access='direct',status='old',&
-  !     action='read',iostat=ios,recl=length_unf_1)
-
-  !if( ios /= 0 ) stop 'error reading values at profile points' 
-  !
-  !do i=1,nspec_bd_pnt_elastic
-  !   !read(f_num,111) trac_bd_pnt_elastic(:,i),vel_bd_pnt_elastic(:,i)
-  !   read(f_num,rec=i) trac_bd_pnt_elastic(:,i),vel_bd_pnt_elastic(:,i)
-  !enddo  
- 
-  !close(f_num)
-
-  !write(fname,"('./OUTPUT_FILES/bg_record/&
-  !      &acoustic_pnts/nt_',i6.6)")it
-  !!formatted reading
-  !!open(unit=f_num,file=trim(fname),status='old',&
-  !!     action='read',iostat=ios)
-
-  !!unformatted reading
-  !open(unit=f_num,file=trim(fname),access='direct',status='old',&
-  !     action='read',iostat=ios,recl=length_unf_2)
-
-  !if( ios /= 0 ) stop 'error reading values at profile points' 
-  !
-  !do i= 1,nspec_bd_pnt_acoustic
-  !   !read(f_num,112) grad_pot_bd_pnt_acoustic(:,i),pot_dot_bd_pnt_acoustic(i)
-  !   read(f_num,rec=i) grad_pot_bd_pnt_acoustic(:,i),pot_dot_bd_pnt_acoustic(i)
-  !enddo
-  !
-  !close(f_num)
-  !format need to be consistent with format in 'record_bd_pnt.F90'
-  !111 format(6(es12.4,2x)) !112 column
-  !112 format(3(es12.4,2x)) !36 column
 
 end subroutine supply_bd_pnt
 
@@ -265,14 +221,6 @@ end subroutine time_interplt_supply
 
 subroutine supply_pnt_reconst()
 
-  !use specfem_par, only: it,read_nt1_reconst,read_nt2 !original para
-                         !nspec_bd_pnt_elastic,nspec_bd_pnt_acoustic,&
-                         !x_final_bd_pnt_elastic,z_final_bd_pnt_elastic,&
-                         !trac_f,&
-                         !x_final_bd_pnt_acoustic,z_final_bd_pnt_acoustic
-                        !grad_pot_bd_pnt_acoustic,pot_dot_bd_pnt_acoustic,&
-                         
-
   implicit none
   include "constants.h"
  
@@ -288,10 +236,10 @@ end subroutine supply_pnt_reconst
 
 subroutine time_interplt_supply_reconst()
 
-  use specfem_par, only: it,deltat_read_reconst,&
+  use specfem_par, only: it,p_sv,deltat_read_reconst,&
                          record_nt1_reconst,record_nt2_reconst, deltat_record_reconst,&
                          nspec_bd_pnt_elastic,nspec_bd_pnt_acoustic, &
-                         trac_f,m_xx,m_xz,m_zz,&
+                         trac_f,m_xx,m_xz,m_zz,m_yx,m_yz,&
                          Grad_pot,Pot_x,Pot_z
 
   implicit none
@@ -305,13 +253,12 @@ subroutine time_interplt_supply_reconst()
 
   
   real(kind=CUSTOM_REAL), dimension(3) :: trac_f_t1,trac_f_t2
-  real(kind=CUSTOM_REAL) :: m_xx_t1,m_xz_t1,m_zz_t1
-  real(kind=CUSTOM_REAL) :: m_xx_t2,m_xz_t2,m_zz_t2
+  real(kind=CUSTOM_REAL) :: m_xx_t1,m_xz_t1,m_zz_t1,m_yx_t1,m_yz_t1
+  real(kind=CUSTOM_REAL) :: m_xx_t2,m_xz_t2,m_zz_t2,m_yx_t2,m_yz_t2
   real(kind=CUSTOM_REAL) :: Grad_pot_t1,Pot_x_t1,Pot_z_t1 
   real(kind=CUSTOM_REAL) :: Grad_pot_t2,Pot_x_t2,Pot_z_t2 
-  !real(kind=CUSTOM_REAL), dimension(3) :: trac_bd_pnt_t1,vel_bd_pnt_t1,trac_bd_pnt_t2,vel_bd_pnt_t2
-  !real(kind=CUSTOM_REAL), dimension(2) :: grad_pot_bd_pnt_t1, grad_pot_bd_pnt_t2
-  !real(kind=CUSTOM_REAL) :: pot_dot_bd_pnt_t1, pot_dot_bd_pnt_t2 
+  trac_f_t1 = 0.0
+  trac_f_t2 = 0.0
 
   nt1_record_reconst = floor(it * deltat_read_reconst / deltat_record_reconst)
   if(nt1_record_reconst < record_nt1_reconst ) nt1_record_reconst = record_nt1_reconst
@@ -321,58 +268,109 @@ subroutine time_interplt_supply_reconst()
 
   if( nspec_bd_pnt_elastic /= 0 ) then
 
-    !you may change the iolength once you take the moment density tensor into account
-    inquire (iolength = length_unf_1) trac_f_t1(:),m_xx_t1,m_xz_t1,m_zz_t1
+     if( p_sv ) then
+        
+        !inquire (iolength = length_unf_1) trac_f_t1(:),m_xx_t1,m_xz_t1,m_zz_t1
+        inquire (iolength = length_unf_1) trac_f_t1(1),trac_f_t1(3),m_xx_t1,m_xz_t1,m_zz_t1
 
-    !elstic elements
-    f_num_1=113
-    write(fname_1,"('./OUTPUT_FILES/reconst_record/&
-          &elastic_pnts/nt_',i6.6)")nt1_record_reconst
-    
-
-    !unformatted reading
-    open(unit=f_num_1,file=trim(fname_1),access='direct',status='old',&
-         action='read',iostat=ios,recl=length_unf_1)
-
-    if( ios /= 0 ) stop 'error reading values at profile points' 
-    
-    f_num_2=114
-    write(fname_2,"('./OUTPUT_FILES/reconst_record/&
-          &elastic_pnts/nt_',i6.6)")nt2_record_reconst
-
-    !unformatted reading
-    open(unit=f_num_2,file=trim(fname_2),access='direct',status='old',&
-         action='read',iostat=ios,recl=length_unf_1)
-
-    if( ios /= 0 ) stop 'error reading values at profile points' 
+        !elstic elements
+        f_num_1=113
+        write(fname_1,"('./OUTPUT_FILES/reconst_record/&
+             &elastic_pnts/nt_',i6.6)")nt1_record_reconst
 
 
-    do i=1,nspec_bd_pnt_elastic
-       read(f_num_1,rec=i) trac_f_t1(:),m_xx_t1,m_xz_t1,m_zz_t1
-       read(f_num_2,rec=i) trac_f_t2(:),m_xx_t2,m_xz_t2,m_zz_t2
+        !unformatted reading
+        open(unit=f_num_1,file=trim(fname_1),access='direct',status='old',&
+             action='read',iostat=ios,recl=length_unf_1)
 
-       !!!linear interpolation in time domain
-       trac_f(:,i) = (trac_f_t2(:) - trac_f_t1(:)) * &
-                                  (it*deltat_read_reconst - nt1_record_reconst*deltat_record_reconst)/deltat_record_reconst + &
-                                  trac_f_t1(:)
-       m_xx(i) = (m_xx_t2 - m_xx_t1) * &
-                                  (it*deltat_read_reconst - nt1_record_reconst*deltat_record_reconst)/deltat_record_reconst + &
-                                  m_xx_t1
-       m_xz(i) = (m_xz_t2 - m_xz_t1) * &
-                                  (it*deltat_read_reconst - nt1_record_reconst*deltat_record_reconst)/deltat_record_reconst + &
-                                  m_xz_t1
-       m_zz(i) = (m_zz_t2 - m_zz_t1) * &
-                                  (it*deltat_read_reconst - nt1_record_reconst*deltat_record_reconst)/deltat_record_reconst + &
-                                  m_zz_t1
-       
-    enddo  
- 
-    close(f_num_1)
-    close(f_num_2)
+        if( ios /= 0 ) stop 'error reading values at profile points' 
 
-  endif  
+        f_num_2=114
+        write(fname_2,"('./OUTPUT_FILES/reconst_record/&
+             &elastic_pnts/nt_',i6.6)")nt2_record_reconst
 
-  if( nspec_bd_pnt_acoustic /= 0 )then
+        !unformatted reading
+        open(unit=f_num_2,file=trim(fname_2),access='direct',status='old',&
+             action='read',iostat=ios,recl=length_unf_1)
+
+        if( ios /= 0 ) stop 'error reading values at profile points' 
+
+
+        do i=1,nspec_bd_pnt_elastic
+           read(f_num_1,rec=i) trac_f_t1(1),trac_f_t1(3),m_xx_t1,m_xz_t1,m_zz_t1
+           read(f_num_2,rec=i) trac_f_t2(1),trac_f_t2(3),m_xx_t2,m_xz_t2,m_zz_t2
+
+!!!linear interpolation in time domain
+           trac_f(:,i) = (trac_f_t2(:) - trac_f_t1(:)) * &
+                (it*deltat_read_reconst - nt1_record_reconst*deltat_record_reconst)/deltat_record_reconst + &
+                trac_f_t1(:)
+           m_xx(i) = (m_xx_t2 - m_xx_t1) * &
+                (it*deltat_read_reconst - nt1_record_reconst*deltat_record_reconst)/deltat_record_reconst + &
+                m_xx_t1
+           m_xz(i) = (m_xz_t2 - m_xz_t1) * &
+                (it*deltat_read_reconst - nt1_record_reconst*deltat_record_reconst)/deltat_record_reconst + &
+                m_xz_t1
+           m_zz(i) = (m_zz_t2 - m_zz_t1) * &
+                (it*deltat_read_reconst - nt1_record_reconst*deltat_record_reconst)/deltat_record_reconst + &
+                m_zz_t1
+
+        enddo
+
+        close(f_num_1)
+        close(f_num_2)
+
+     else !SH case
+        !only the y-comp traction is needed
+        inquire (iolength = length_unf_1) trac_f_t1(2),m_yx_t1,m_yz_t1
+
+        !elstic elements
+        f_num_1=113
+        write(fname_1,"('./OUTPUT_FILES/reconst_record/&
+             &elastic_pnts/nt_',i6.6)")nt1_record_reconst
+
+
+        !unformatted reading
+        open(unit=f_num_1,file=trim(fname_1),access='direct',status='old',&
+             action='read',iostat=ios,recl=length_unf_1)
+
+        if( ios /= 0 ) stop 'error reading values at profile points' 
+
+        f_num_2=114
+        write(fname_2,"('./OUTPUT_FILES/reconst_record/&
+             &elastic_pnts/nt_',i6.6)")nt2_record_reconst
+
+        !unformatted reading
+        open(unit=f_num_2,file=trim(fname_2),access='direct',status='old',&
+             action='read',iostat=ios,recl=length_unf_1)
+
+        if( ios /= 0 ) stop 'error reading values at profile points' 
+
+
+        do i=1,nspec_bd_pnt_elastic
+           read(f_num_1,rec=i) trac_f_t1(2),m_yx_t1,m_yz_t1
+           read(f_num_2,rec=i) trac_f_t2(2),m_yx_t2,m_yz_t2
+
+!!!linear interpolation in time domain
+           trac_f(:,i) = (trac_f_t2(:) - trac_f_t1(:)) * &
+                (it*deltat_read_reconst - nt1_record_reconst*deltat_record_reconst)/deltat_record_reconst + &
+                trac_f_t1(:)
+           m_yx(i) = (m_yx_t2 - m_yx_t1) * &
+                (it*deltat_read_reconst - nt1_record_reconst*deltat_record_reconst)/deltat_record_reconst + &
+                m_yx_t1
+           m_yz(i) = (m_yz_t2 - m_yz_t1) * &
+                (it*deltat_read_reconst - nt1_record_reconst*deltat_record_reconst)/deltat_record_reconst + &
+                m_yz_t1
+
+        enddo
+
+        close(f_num_1)
+        close(f_num_2)
+     endif
+     
+
+  endif
+
+  if( nspec_bd_pnt_acoustic /= 0 .and. p_sv )then
 
     inquire (iolength = length_unf_2) Grad_pot_t1,Pot_x_t1,Pot_z_t1 
     
@@ -420,7 +418,6 @@ subroutine time_interplt_supply_reconst()
     close(f_num_2)
 
   endif
-
 
 end subroutine time_interplt_supply_reconst
 
