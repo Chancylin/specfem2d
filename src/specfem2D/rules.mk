@@ -62,7 +62,9 @@ specfem2D_OBJECTS = \
 	$O/assemble_MPI.spec.o \
 	$O/attenuation_model.spec.o \
 	$O/axisymmetric_routines.spec.o \
+	$O/build_commu_for_IO.spec.o \
 	$O/calendar.spec.o \
+	$O/calculate_accumulative_pnts.spec.o \
 	$O/check_grid.spec.o \
 	$O/check_stability.spec.o \
 	$O/compute_Bielak_conditions.spec.o \
@@ -313,6 +315,8 @@ $O/acoutic_cuda.spec.o: $O/specfem2D_par.spec.o
 $O/assemble_MPI.spec.o: $O/specfem2D_par.spec.o
 $O/attenuation_model.spec.o: $O/specfem2D_par.spec.o
 $O/axisymmetric_routines.spec.o: $O/specfem2D_par.spec.o
+$O/build_commu_for_IO.spec.o: $O/specfem2D_par.spec.o
+$O/calculate_accumulative_pnts.spec.o: $O/specfem2D_par.spec.o
 $O/check_grid.spec.o: $O/specfem2D_par.spec.o
 $O/check_stability.spec.o: $O/specfem2D_par.spec.o
 $O/compute_add_sources_acoustic.spec.o: $O/specfem2D_par.spec.o

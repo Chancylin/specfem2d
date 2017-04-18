@@ -1,19 +1,31 @@
 !this subroutine is to export the coordinate of GLL points at boudaries
 !note that it will need the database generated from the local model
 subroutine export_gll_pnt_bd()
+
+#ifdef USE_MPI
+  use mpi
+#endif
+  
   use specfem_par, only: nelemabs,ibool,xiz,xix,gammax,gammaz,jacobian,&
                          coord,numabs,codeabs,codeabs_corner,f_num,typeabs, &
-                         elastic,acoustic
+                         elastic,acoustic,myrank,ier
   implicit none
   include "constants.h"
 
   real(kind=CUSTOM_REAL) :: nx,nz,nx_alt,nz_alt,xgamma,zgamma,xxi,zxi,jacobian1D
   integer :: i,j,ispec,ispecabs,iglob
+  character(len=256) :: bd_name
   character(len=1) :: geom_side
   character(len=1) :: elastic_flag, acoustic_flag, corner_flag
 
+#ifdef USE_MPI
+  write(bd_name,"('./DATA/boundary_points',i5.5)") myrank
+#else
+ bd_name = './DATA/boundary_points' 
+#endif
+  
   f_num = 111
-  open(unit=f_num,file='DATA/boundary_points',status='unknown',action='write')
+  open(unit=f_num,file=trim(bd_name),status='unknown',action='write')
   !recored info:
   !elment_index_in_local_model/ /boundary_type_defined_by_code/ /
   !boundary_type_in_real_model/ /x/ /z/ /nx/ /nz
@@ -245,11 +257,20 @@ subroutine export_gll_pnt_bd()
   enddo
 
   close(f_num)
+  
+#ifdef USE_MPI
+  print *, myrank, ' have sucessfully obtained the coordinate of GLL points at boundary'
+  !MPI finish here
+  call MPI_Barrier(MPI_COMM_WORLD,ier)
+  if( myrank == 0 ) print *, 'The program will exit here'
+  call MPI_FINALIZE(ier)
+#else
+  print *, 'we have sucessfully obtained the coordinate of GLL points at boundary'
+  print *, 'program will stop here'
+#endif
 
-  print *, 'We have sucessfully obtained the coordinate of GLL points at boundary,'
-  print *, 'which will be further used in the hybrid method.'
-  print *, 'The program will exit here'
   stop
+
 
   113 format(i5.5,2x,2(i1.1,2x),A1,2x,A1,2x,A1,2x,A1,2x,A1,2x,4(es12.4,2x)) !make sure the writting format is proper
 end subroutine export_gll_pnt_bd

@@ -1375,6 +1375,7 @@ subroutine iterate_time()
 
    !by lcx: record values of this time step
    if ( record_local_bkgd_boundary ) then
+      !print *,'record value at time step', it
       call write_bd_pnts() 
    endif
 

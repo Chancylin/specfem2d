@@ -301,7 +301,8 @@ module specfem_par
   logical :: supply_local_bkgd_boundary, virtual_ab_bd
   integer :: record_nt1,record_nt2,read_nt1,read_nt2
   double precision :: deltat_record, deltat_read
-  integer :: npnt,nspec_bd_pnt_elastic, nspec_bd_pnt_acoustic
+  integer :: npnt
+  integer :: npnt_local,nspec_bd_pnt_elastic, nspec_bd_pnt_acoustic
   integer, dimension(:), allocatable :: ispec_selected_bd_pnt
   integer :: nspec_bd_elmt_elastic_pure, nspec_bd_elmt_acoustic_pure
   integer, dimension(:), allocatable :: ispec_bd_elmt_elastic_pure, ispec_bd_elmt_acoustic_pure
@@ -362,7 +363,11 @@ module specfem_par
   double precision, dimension(:), allocatable :: hxis_pot_f,hgammas_pot_f,hpxis_pot_f,hpgammas_pot_f
   double precision, dimension(:,:), allocatable :: hxis_pot_f_store,hgammas_pot_f_store
   double precision, dimension(:,:), allocatable :: hpxis_pot_f_store,hpgammas_pot_f_store
-  
+
+  !parameters for MPI
+  integer :: num_pnt_elastic, num_pnt_acoustic
+  integer :: bg_record_elastic, bg_record_acoustic
+
   !-------------------------------------------------------------------
 
 

@@ -1000,6 +1000,15 @@ integer i,j,ispec,k,iglob,irec,i_source,ispecabs, irecloc
 
 !by lcx: set up recording point
    if ( record_local_bkgd_boundary .or. record_local_boundary_reconst ) call setup_recording_bd()
+   !test for mpi
+! #ifdef USE_MPI
+!    print *, myrank, 'has create the points profile in the partition region'
+!    call MPI_Barrier(MPI_COMM_WORLD,ier)
+!    if( myrank == 0 ) print *, 'The program will exit here'
+!    call MPI_FINALIZE(ier)
+!    !#else
+! #endif
+
    if ( supply_reconst ) then
       print *,'this is for elastic virtual sources'
       call setup_trac_f_sources() 

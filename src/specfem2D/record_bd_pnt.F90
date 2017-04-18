@@ -106,17 +106,23 @@
 
  subroutine write_bd_pnts()
 
-  use specfem_par, only: elastic,acoustic,it,& !original para
-                         npnt,ispec_selected_bd_pnt,fname,f_num,&
-                         ispec_bd_elmt_elastic_pure, ispec_bd_elmt_acoustic_pure,&
-                         hxi_bd_store, hgammar_bd_store,&
-                         stress_bd_elastic,vel_bd_elastic,grad_pot_bd_acoustic,pot_dot_bd_acoustic,&
-                         stress_bd_pnt_elastic,vel_bd_pnt_elastic,trac_bd_pnt_elastic,&
-                         nspec_bd_elmt_elastic_pure,nspec_bd_elmt_acoustic_pure,&
-                         nspec_bd_pnt_elastic,nspec_bd_pnt_acoustic,&
-                         grad_pot_bd_pnt_acoustic,pot_dot_bd_pnt_acoustic,&
-                         nx_bd_pnt_elastic,nz_bd_pnt_elastic,&
-                         record_nt1,record_nt2 !control time step for recording
+#ifdef USE_MPI
+   use mpi
+#endif
+   
+   use specfem_par, only: elastic,acoustic,it,& !original para
+                          npnt_local,num_pnt_elastic,num_pnt_acoustic,&
+                          ispec_selected_bd_pnt,fname,f_num,&
+                          ispec_bd_elmt_elastic_pure, ispec_bd_elmt_acoustic_pure,&
+                          hxi_bd_store, hgammar_bd_store,&
+                          stress_bd_elastic,vel_bd_elastic,grad_pot_bd_acoustic,pot_dot_bd_acoustic,&
+                          stress_bd_pnt_elastic,vel_bd_pnt_elastic,trac_bd_pnt_elastic,&
+                          nspec_bd_elmt_elastic_pure,nspec_bd_elmt_acoustic_pure,&
+                          nspec_bd_pnt_elastic,nspec_bd_pnt_acoustic,&
+                          grad_pot_bd_pnt_acoustic,pot_dot_bd_pnt_acoustic,&
+                          nx_bd_pnt_elastic,nz_bd_pnt_elastic,&
+                          record_nt1,record_nt2,& !control time step for recording
+                          bg_record_acoustic, bg_record_elastic
 
   !use specfem_par, only: elastic,acoustic,it,& !original para
   !                       npnt,ispec_selected_bd_pnt,fname,f_num,&
@@ -135,9 +141,16 @@
   integer :: ispec_bd_pnt_elastic, ispec_bd_pnt_acoustic
   integer :: ipnt,ispec,k,kk,i,j
   double precision :: hlagrange
-  integer :: ios
+  !integer :: ios
   integer :: length_unf_1
   integer :: length_unf_2
+  !MPI parameters
+  !integer :: offset1, offset2
+  integer (kind=MPI_OFFSET_KIND) :: offset1, offset2
+  integer :: size,bd_info_type,ierror
+  integer :: count
+  !integer (kind=MPI_COUNT_KIND) :: count
+  ! real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: temp
   !integer :: k,kk
   !logical :: switch = .false.
 
@@ -145,18 +158,18 @@
 
   ispec_bd_pnt_elastic = 0
   ispec_bd_pnt_acoustic = 0
-  do ipnt = 1, npnt
+  do ipnt = 1, npnt_local
 
      ispec =  ispec_selected_bd_pnt(ipnt)
-     
-     if ( elastic(ispec) ) then
-       
-       ispec_bd_pnt_elastic = ispec_bd_pnt_elastic + 1
 
-       loop1: do k = 1,nspec_bd_elmt_elastic_pure
+     if ( elastic(ispec) ) then
+
+        ispec_bd_pnt_elastic = ispec_bd_pnt_elastic + 1
+
+        loop1: do k = 1,nspec_bd_elmt_elastic_pure
            !here we locate in which element the recording point locates
            if ( ispec_bd_elmt_elastic_pure(k) == ispec ) then
-           
+
               stress_bd_pnt_elastic(:,ispec_bd_pnt_elastic) = 0.0
               vel_bd_pnt_elastic(:,ispec_bd_pnt_elastic) = 0.0
               !we use the lagrange interpolation to calculate
@@ -164,7 +177,7 @@
               !in that element
               do i = 1,NGLLX
                  do j = 1,NGLLZ
-  
+
                     !print *,'size of hlagrange is ', hlagrange
                     !print *,'size of stress_bd_pnt_elastic(:,ispec_bd_pnt_elastic) is ',&
                     !         shape(stress_bd_pnt_elastic(:,ispec_bd_pnt_elastic))
@@ -173,8 +186,8 @@
                     hlagrange = hxi_bd_store(ipnt,i)*hgammar_bd_store(ipnt,j)
 
                     stress_bd_pnt_elastic(:,ispec_bd_pnt_elastic) = &
-                    stress_bd_pnt_elastic(:,ispec_bd_pnt_elastic) + &
-                    stress_bd_elastic(:,i,j,k)*hlagrange 
+                         stress_bd_pnt_elastic(:,ispec_bd_pnt_elastic) + &
+                         stress_bd_elastic(:,i,j,k)*hlagrange 
                     !print *,'stress_bd_pnt_elastic(:,ispec_bd_pnt_elastic) is'
                     !print *,stress_bd_pnt_elastic(:,ispec_bd_pnt_elastic)
                     !print *,'stress_bd_elastic(:,i,j,k) is'
@@ -182,8 +195,8 @@
                     !stop
 
                     vel_bd_pnt_elastic(:,ispec_bd_pnt_elastic) = &
-                    vel_bd_pnt_elastic(:,ispec_bd_pnt_elastic) + &
-                    vel_bd_elastic(:,i,j,k)*hlagrange
+                         vel_bd_pnt_elastic(:,ispec_bd_pnt_elastic) + &
+                         vel_bd_elastic(:,i,j,k)*hlagrange
                  enddo
               enddo
 
@@ -194,114 +207,243 @@
      endif!elastic pnt
 
      if ( acoustic(ispec) ) then
-       
-       ispec_bd_pnt_acoustic = ispec_bd_pnt_acoustic + 1
- 
-       loop2: do kk = 1,nspec_bd_elmt_acoustic_pure
-            if ( ispec_bd_elmt_acoustic_pure(kk) == ispec ) then
 
-               grad_pot_bd_pnt_acoustic(:,ispec_bd_pnt_acoustic) = 0.0
-               pot_dot_bd_pnt_acoustic(ispec_bd_pnt_acoustic) = 0.0
+        ispec_bd_pnt_acoustic = ispec_bd_pnt_acoustic + 1
 
-               do i = 1,NGLLX
-                  do j = 1,NGLLZ
-                     hlagrange = hxi_bd_store(ipnt,i)*hgammar_bd_store(ipnt,j)
+        loop2: do kk = 1,nspec_bd_elmt_acoustic_pure
+           if ( ispec_bd_elmt_acoustic_pure(kk) == ispec ) then
 
-                     grad_pot_bd_pnt_acoustic(:,ispec_bd_pnt_acoustic) = &
-                     grad_pot_bd_pnt_acoustic(:,ispec_bd_pnt_acoustic) + &
-                     grad_pot_bd_acoustic(:,i,j,kk)*hlagrange
+              grad_pot_bd_pnt_acoustic(:,ispec_bd_pnt_acoustic) = 0.0
+              pot_dot_bd_pnt_acoustic(ispec_bd_pnt_acoustic) = 0.0
 
-                     pot_dot_bd_pnt_acoustic(ispec_bd_pnt_acoustic) = &
-                     pot_dot_bd_pnt_acoustic(ispec_bd_pnt_acoustic) + &
-                     pot_dot_bd_acoustic(i,j,kk)*hlagrange
-                  enddo
-               enddo
+              do i = 1,NGLLX
+                 do j = 1,NGLLZ
+                    hlagrange = hxi_bd_store(ipnt,i)*hgammar_bd_store(ipnt,j)
 
-               exit loop2
-            endif
+                    grad_pot_bd_pnt_acoustic(:,ispec_bd_pnt_acoustic) = &
+                         grad_pot_bd_pnt_acoustic(:,ispec_bd_pnt_acoustic) + &
+                         grad_pot_bd_acoustic(:,i,j,kk)*hlagrange
+
+                    pot_dot_bd_pnt_acoustic(ispec_bd_pnt_acoustic) = &
+                         pot_dot_bd_pnt_acoustic(ispec_bd_pnt_acoustic) + &
+                         pot_dot_bd_acoustic(i,j,kk)*hlagrange
+                 enddo
+              enddo
+
+              exit loop2
+           endif
         enddo loop2
 
      endif!acoustic pnt
 
   enddo
-  
 
- 
-  !for elastic 
-  if( nspec_bd_pnt_elastic /= 0 ) then
+  !now for the boundary info recording, I think the economic way is to save info
+  !of all steps into a large binary file for each partition.  An alternative way
+  !is to save the info of all partition into a large binary file for each time
+  !step.
 
-    !print *,'npnt = ', npnt
-    !print *,'ispec_bd_pnt_elastic = ',ispec_bd_pnt_elastic
-    !print *,'ispec_bd_pnt_acoustic = ',ispec_bd_pnt_acoustic
-
-    !store valuse at recording points at every time step
-    !we firstly compute the traction for those recording points
-    !one tricky things here is the normal vector. Since the normal vectors we have
-    !store in the local model is outer_pointing, for traction exerted on local boundary 
-    !elements, I suppose we should transfer to the opposite direction
-    !trac_x
-    !print *,'size of trac_bd_pnt_elastic(1,:) is ',shape(trac_bd_pnt_elastic(1,:))
-    !print *,'size of nx_bd_pnt_elastic(:) is ', shape(nx_bd_pnt_elastic(:))
-    !print *,'size of stress_bd_pnt_elastic(1,:) is ', shape(stress_bd_pnt_elastic(1,:))
-    !stop 
-    trac_bd_pnt_elastic(1,:) = nx_bd_pnt_elastic(:)*stress_bd_pnt_elastic(1,:) + &
-                               nz_bd_pnt_elastic(:)*stress_bd_pnt_elastic(3,:)
-    !trac_z
-    trac_bd_pnt_elastic(3,:) = nx_bd_pnt_elastic(:)*stress_bd_pnt_elastic(3,:) + &
-                               nz_bd_pnt_elastic(:)*stress_bd_pnt_elastic(4,:)
-    !trac_y
-    trac_bd_pnt_elastic(2,:) = nx_bd_pnt_elastic(:)*stress_bd_pnt_elastic(2,:) + &
-                               nz_bd_pnt_elastic(:)*stress_bd_pnt_elastic(5,:)
-
-    f_num=113
-
-    !!!this is the recording length for unformatted recording
-    inquire (iolength = length_unf_1) trac_bd_pnt_elastic(:,1),vel_bd_pnt_elastic(:,1)
-
-    write(fname,"('./OUTPUT_FILES/bg_record/&
-          &elastic_pnts/nt_',i6.6)")it
-
-    !formatted recording
-    !open(unit=f_num,file=trim(fname),status='new',&
-    !     action='write',iostat=ios) 
-    
-    !unformatted recording
-    open(unit=f_num,file=trim(fname),access='direct',status='new',&
-         action='write',iostat=ios,recl=length_unf_1) 
-    if( ios /= 0 ) stop 'error saving values at recording points'
-
-    do k = 1, nspec_bd_pnt_elastic
-       !write(f_num,111) trac_bd_pnt_elastic(:,k),vel_bd_pnt_elastic(:,k)
-       write(f_num,rec=k) trac_bd_pnt_elastic(:,k),vel_bd_pnt_elastic(:,k)
-    enddo
-
-    close(f_num)
-  endif
   !for acoustic
+
+  write(fname,"('./OUTPUT_FILES/bg_record/&
+       &acoustic_pnts/nt_',i6.6)")it
+
+
   if( nspec_bd_pnt_acoustic /= 0 ) then
 
-    inquire (iolength = length_unf_2) grad_pot_bd_pnt_acoustic(:,1),pot_dot_bd_pnt_acoustic(1)
-    write(fname,"('./OUTPUT_FILES/bg_record/&
-          &acoustic_pnts/nt_',i6.6)")it
-    
-    !formatted recording
-    !open(unit=f_num,file=trim(fname),status='new',&
-    !     action='write',iostat=ios) 
 
-    
-    !unformatted recording
-    open(unit=f_num,file=trim(fname),access='direct',status='new',&
-         action='write',iostat=ios,recl=length_unf_2) 
-    if( ios /= 0 ) stop 'error saving values at recording points'
-    
-    do kk = 1, nspec_bd_pnt_acoustic
-       !write(f_num,112) grad_pot_bd_pnt_acoustic(:,kk),pot_dot_bd_pnt_acoustic(kk)
-       write(f_num,rec=kk) grad_pot_bd_pnt_acoustic(:,kk),pot_dot_bd_pnt_acoustic(kk)
-    enddo
+#ifdef USE_MPI
 
-    close(f_num)
+     call MPI_FILE_OPEN(bg_record_acoustic,fname,&
+          MPI_MODE_CREATE+MPI_MODE_WRONLY,MPI_INFO_NULL,f_num,ierror)
+
+     call MPI_SIZEOF(grad_pot_bd_pnt_acoustic(1,1),size,ierror)
+     call MPI_TYPE_MATCH_SIZE(MPI_TYPECLASS_REAL,size,bd_info_type,ierror)
+
+     inquire (iolength = length_unf_2) grad_pot_bd_pnt_acoustic(:,1),pot_dot_bd_pnt_acoustic(1)
+
+     !need to calculate the offset
+     offset1 = num_pnt_acoustic*length_unf_2
+     ! call MPI_FILE_SEEK(f_num,offset1,MPI_SEEK_SET,ierror)
+
+     count = 2*nspec_bd_pnt_acoustic
+
+     !MPI_FILE_WRITE_AT() should be more natural than MPI_FILE_WRITE_AT_ALL(),
+     !because each processor could do their own writting at this time step
+     call MPI_FILE_WRITE_AT(f_num, offset1, grad_pot_bd_pnt_acoustic, count,&
+          bd_info_type, MPI_STATUS_IGNORE, ierror)
+     ! call MPI_FILE_WRITE(f_num, grad_pot_bd_pnt_acoustic, count,&
+     !      bd_info_type, MPI_STATUS_IGNORE, ierror)
+
+     ! count = 3*nspec_bd_pnt_acoustic
+     ! print *,'count = ', count
+     ! call MPI_FILE_WRITE_AT_ALL(f_num, offset1, temp, count,&
+     !      bd_info_type, MPI_STATUS_IGNORE, ierror)
+
+     inquire (iolength = length_unf_2) grad_pot_bd_pnt_acoustic(:,1) 
+
+     offset2 = offset1 + nspec_bd_pnt_acoustic*length_unf_2
+
+     ! call MPI_FILE_SEEK(f_num,offset2,MPI_SEEK_SET,ierror)
+
+     count = nspec_bd_pnt_acoustic
+     call MPI_FILE_WRITE_AT(f_num, offset2, pot_dot_bd_pnt_acoustic, count,&
+          bd_info_type, MPI_STATUS_IGNORE, ierror)
+     ! call MPI_FILE_WRITE(f_num, pot_dot_bd_pnt_acoustic, count,&
+     !      bd_info_type, MPI_STATUS_IGNORE, ierror)
+
+     call MPI_FILE_CLOSE(f_num,ierror)
+#else
+     inquire (iolength = length_unf_2) grad_pot_bd_pnt_acoustic(:,1),pot_dot_bd_pnt_acoustic(1)
+
+     !formatted recording
+     !open(unit=f_num,file=trim(fname),status='new',&
+     !     action='write',iostat=ios) 
+
+
+     f_num=113
+     !unformatted recording
+     open(unit=f_num,file=trim(fname),access='direct',status='new',&
+          action='write',iostat=ios,recl=length_unf_2) 
+     if( ios /= 0 ) stop 'error saving values at recording points'
+
+     do kk = 1, nspec_bd_pnt_acoustic
+        !write(f_num,112) grad_pot_bd_pnt_acoustic(:,kk),pot_dot_bd_pnt_acoustic(kk)
+        write(f_num,rec=kk) grad_pot_bd_pnt_acoustic(:,kk),pot_dot_bd_pnt_acoustic(kk)
+     enddo
+
+     close(f_num)
+#endif
+
+!   else
+! #ifdef USE_MPI
+!      inquire (iolength = length_unf_2) grad_pot_bd_pnt_acoustic(:,1),pot_dot_bd_pnt_acoustic(1)
+!      offset1 = num_pnt_acoustic*length_unf_2
+!      count = 0
+!      !write something random, which doesn't matter?
+!      call MPI_FILE_WRITE_AT(f_num, offset1, 0.0, count,&
+!           MPI_REAL4, MPI_STATUS_IGNORE, ierror)
+! #endif
 
   endif
+
+! #ifdef USE_MPI
+!   call MPI_FILE_CLOSE(f_num,ierror)
+! #else
+!   close(f_num)
+! #endif
+
+
+  !for elastic 
+
+  write(fname,"('./OUTPUT_FILES/bg_record/&
+       &elastic_pnts/nt_',i6.6)")it
+
+
+  if( nspec_bd_pnt_elastic /= 0 ) then
+
+     !store valuse at recording points at every time step
+     !we firstly compute the traction for those recording points
+     !one tricky things here is the normal vector. Since the normal vectors we have
+     !store in the local model is outer_pointing, for traction exerted on local boundary 
+     !elements, I suppose we should transfer to the opposite direction
+     !trac_x
+     trac_bd_pnt_elastic(1,:) = nx_bd_pnt_elastic(:)*stress_bd_pnt_elastic(1,:) + &
+          nz_bd_pnt_elastic(:)*stress_bd_pnt_elastic(3,:)
+     !trac_z
+     trac_bd_pnt_elastic(3,:) = nx_bd_pnt_elastic(:)*stress_bd_pnt_elastic(3,:) + &
+          nz_bd_pnt_elastic(:)*stress_bd_pnt_elastic(4,:)
+     !trac_y
+     trac_bd_pnt_elastic(2,:) = nx_bd_pnt_elastic(:)*stress_bd_pnt_elastic(2,:) + &
+          nz_bd_pnt_elastic(:)*stress_bd_pnt_elastic(5,:)
+
+
+
+#ifdef USE_MPI
+!!!MPI writing
+
+     call MPI_FILE_OPEN(bg_record_elastic,fname,&
+          MPI_MODE_CREATE+MPI_MODE_WRONLY,MPI_INFO_NULL,f_num,ierror)
+
+     !create the MPI datatype corresponding to real(kind=CUSTOM_REAL)
+     !bd_info_type is a handle referring to the MPI dataype created
+     call MPI_SIZEOF(trac_bd_pnt_elastic(1,1),size,ierror)
+     call MPI_TYPE_MATCH_SIZE(MPI_TYPECLASS_REAL,size,bd_info_type,ierror)
+
+     !the scheme here: because we are not sure about the number of the recording
+     !points in different partitions, the most straightforward way is to make the
+     !offset as the full length of the profile (i.e., all the recording points)
+     inquire (iolength = length_unf_1) trac_bd_pnt_elastic(:,1), vel_bd_pnt_elastic(:,1)!length in byte
+
+     offset1 = num_pnt_elastic*length_unf_1
+
+     ! call MPI_FILE_SEEK(f_num,offset1,MPI_SEEK_SET,ierror)
+     
+     count = 3*nspec_bd_pnt_elastic
+     call MPI_FILE_WRITE_AT(f_num, offset1, trac_bd_pnt_elastic, count,&
+          bd_info_type, MPI_STATUS_IGNORE, ierror)
+     ! call MPI_FILE_WRITE(f_num, trac_bd_pnt_elastic, count,&
+     !      bd_info_type, MPI_STATUS_IGNORE, ierror)
+
+     inquire (iolength = length_unf_1) trac_bd_pnt_elastic(:,1) 
+
+     !need check the logic here
+     offset2 = offset1 + nspec_bd_pnt_elastic*length_unf_1
+
+     ! call MPI_FILE_SEEK(f_num,offset1,MPI_SEEK_SET,ierror)
+     
+     count = 3*nspec_bd_pnt_elastic
+     call MPI_FILE_WRITE_AT(f_num, offset2, vel_bd_pnt_elastic, count,&
+          bd_info_type, MPI_STATUS_IGNORE, ierror)
+     ! call MPI_FILE_WRITE(f_num, vel_bd_pnt_elastic, count,&
+     !      bd_info_type, MPI_STATUS_IGNORE, ierror)
+     call MPI_FILE_CLOSE(f_num,ierror)
+#else
+!!!this is for serial writting
+!!!this is the recording length for unformatted recording
+     inquire (iolength = length_unf_1) trac_bd_pnt_elastic(:,1),vel_bd_pnt_elastic(:,1)
+
+     !formatted recording
+     !open(unit=f_num,file=trim(fname),status='new',&
+     !     action='write',iostat=ios) 
+     f_num=113
+
+     !unformatted recording
+     open(unit=f_num,file=trim(fname),access='direct',status='new',&
+          action='write',iostat=ios,recl=length_unf_1) 
+     if( ios /= 0 ) stop 'error saving values at recording points'
+
+     do k = 1, nspec_bd_pnt_elastic
+        !write(f_num,111) trac_bd_pnt_elastic(:,k),vel_bd_pnt_elastic(:,k)
+        write(f_num,rec=k) trac_bd_pnt_elastic(:,k),vel_bd_pnt_elastic(:,k)
+     enddo
+
+     close(f_num)
+#endif
+
+!   else
+! #ifdef USE_MPI
+!      print *,'trying to do this'
+!      inquire (iolength = length_unf_1) trac_bd_pnt_elastic(:,1), vel_bd_pnt_elastic(:,1)!length in byte
+!      print *, 'length_unf_1 = ', length_unf_1, &
+!           ' num_pnt_elastic = ', num_pnt_elastic, ' nspec_bd_pnt_elastic = ', nspec_bd_pnt_elastic
+!      length_unf_1 = 24
+!      offset1 = num_pnt_elastic*length_unf_1
+!      print *, 'offset1 = ', offset1
+!      count = 0
+!      !write something random, which doesn't matter?
+!      call MPI_FILE_WRITE_AT(f_num, offset1, 0.0, count,&
+!           MPI_REAL4, MPI_STATUS_IGNORE, ierror)
+!      print *,'the writting is done'
+! #endif
+
+  endif
+
+! #ifdef USE_MPI
+!   call MPI_FILE_CLOSE(f_num,ierror)
+! #else
+!   close(f_num)
+! #endif
 
   !111 format(6(es12.4,2x)) !112 column
   !112 format(3(es12.4,2x)) !36 column
