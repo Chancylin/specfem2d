@@ -302,6 +302,7 @@ module specfem_par
   integer :: record_nt1,record_nt2,read_nt1,read_nt2
   double precision :: deltat_record, deltat_read
   integer :: npnt
+  integer :: nspec_bd_pnt_elastic_supply, nspec_bd_pnt_acoustic_supply
   integer :: npnt_local,nspec_bd_pnt_elastic, nspec_bd_pnt_acoustic
   integer, dimension(:), allocatable :: ispec_selected_bd_pnt
   integer :: nspec_bd_elmt_elastic_pure, nspec_bd_elmt_acoustic_pure
@@ -318,6 +319,9 @@ module specfem_par
   double precision, dimension(:), allocatable :: x_final_bd_pnt_elastic, z_final_bd_pnt_elastic
   double precision, dimension(:), allocatable :: x_final_bd_pnt_acoustic, z_final_bd_pnt_acoustic
 
+  double precision, dimension(:), allocatable :: x_final_bd_pnt_elastic_supply, z_final_bd_pnt_elastic_supply
+  double precision, dimension(:), allocatable :: x_final_bd_pnt_acoustic_supply, z_final_bd_pnt_acoustic_supply
+  
   integer :: f_num
   character (len=100) :: fname
 
@@ -353,6 +357,8 @@ module specfem_par
   !!acoustic
   real(kind=CUSTOM_REAL), dimension(:), allocatable :: grad_pot_x_reconst,grad_pot_z_reconst
   real(kind=CUSTOM_REAL), dimension(:), allocatable :: Grad_pot,Pot_x,Pot_z
+  real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: temp_record_elastic
+  real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: temp_record_acoustic
   !!!supplying part
   logical :: supply_reconst
   integer, dimension(:), allocatable :: ispec_selected_elastic_source_reconst,ispec_selected_acoustic_source_reconst 
@@ -365,8 +371,11 @@ module specfem_par
   double precision, dimension(:,:), allocatable :: hpxis_pot_f_store,hpgammas_pot_f_store
 
   !parameters for MPI
+  ! logical, dimension(:), allocatable :: found_element
   integer :: num_pnt_elastic, num_pnt_acoustic
+  ! communicator
   integer :: bg_record_elastic, bg_record_acoustic
+  integer :: nspec_bd_pnt_elastic_clt, nspec_bd_pnt_acoustic_clt
 
   !-------------------------------------------------------------------
 

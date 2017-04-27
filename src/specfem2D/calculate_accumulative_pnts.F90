@@ -14,6 +14,11 @@ subroutine calculate_accumulative_pnts(myrank, npnt_local, offset)
   tag_to_next = 2*myrank + 1
   tag_from_prev = 2*myrank -1
   
+  if( nproc == 1 ) then
+     offset = 0
+     return
+  endif
+  
   if( myrank == 0 )then
      !only send
      offset = 0 !I guess for this first partition, it is zero (or one)? 
@@ -34,5 +39,6 @@ subroutine calculate_accumulative_pnts(myrank, npnt_local, offset)
      call MPI_SEND (offset_for_next, 1, MPI_INTEGER, &
           myrank + 1, tag_to_next, MPI_COMM_WORLD, MPI_STATUS_IGNORE, ier )
   endif
+
   
 end subroutine calculate_accumulative_pnts 

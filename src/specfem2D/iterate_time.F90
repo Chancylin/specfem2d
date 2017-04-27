@@ -229,6 +229,7 @@ subroutine iterate_time()
       if ( record_local_bkgd_boundary ) then
          call record_bd_elemnt_prediction() 
       endif 
+      ! call MPI_BARRIER(MPI_COMM_WORLD,ier)
       !by lcx: here we read the stored boundary info, which will be used for the hybrid for local model
       if ( supply_local_bkgd_boundary ) then
          call supply_bd_pnt()

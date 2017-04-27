@@ -4,23 +4,35 @@
  !this subroutine is used to store prediction value of velocity and pot_dot for the
  !selected bd recording element, since the values involved in the acceleration calculation
  !is prediction value but not correction value
+   
     use specfem_par, only: ibool,veloc_elastic,potential_dot_acoustic,& !original para
                            nspec_bd_elmt_elastic_pure,nspec_bd_elmt_acoustic_pure,&
                            vel_bd_elastic, pot_dot_bd_acoustic,&
                            ispec_bd_elmt_elastic_pure,ispec_bd_elmt_acoustic_pure,&
-                           it,record_nt1,record_nt2 !control time step for recording
+                           it,record_nt1,record_nt2,& !control time step for recording
+                           coord
    
     implicit none
     include "constants.h"
 
     integer :: i,j,k,iglob,ispec
+    !for test
+    double precision :: x,z
      
     if (it < record_nt1 .or. it > record_nt2 ) return
 
     loop1:do k = 1,nspec_bd_elmt_elastic_pure
              ispec = ispec_bd_elmt_elastic_pure(k)
+             !check whether we find the correct location
+             x = dble(coord(1,ibool(2,2,ispec)))
+             z = dble(coord(2,ibool(2,2,ispec)))
+             
+             ! print *,'k = ', k, 'ispec = ', ispec, ' x = ', x, ' z = ', z, ' from rank ', myrank,&
+             !      'veloc_elastic = ', veloc_elastic(3,ibool(2,2,ispec))
+
              do i = 1, NGLLX
                 do j = 1, NGLLZ
+                   !ibool could have different meaning in serial model and parallal mode
                    iglob = ibool(i,j,ispec)
                    vel_bd_elastic(1,i,j,k) = veloc_elastic(1,iglob)
                    vel_bd_elastic(2,i,j,k) = veloc_elastic(2,iglob)
@@ -112,6 +124,7 @@
    
    use specfem_par, only: elastic,acoustic,it,& !original para
                           npnt_local,num_pnt_elastic,num_pnt_acoustic,&
+                          nspec_bd_pnt_elastic_clt, nspec_bd_pnt_acoustic_clt,&
                           ispec_selected_bd_pnt,fname,f_num,&
                           ispec_bd_elmt_elastic_pure, ispec_bd_elmt_acoustic_pure,&
                           hxi_bd_store, hgammar_bd_store,&
@@ -144,6 +157,7 @@
   !integer :: ios
   integer :: length_unf_1
   integer :: length_unf_2
+  integer :: length_unf_3
   !MPI parameters
   !integer :: offset1, offset2
   integer (kind=MPI_OFFSET_KIND) :: offset1, offset2
@@ -256,11 +270,12 @@
 
      call MPI_FILE_OPEN(bg_record_acoustic,fname,&
           MPI_MODE_CREATE+MPI_MODE_WRONLY,MPI_INFO_NULL,f_num,ierror)
+     !how can we stop the code if the directory dosen't exist
 
      call MPI_SIZEOF(grad_pot_bd_pnt_acoustic(1,1),size,ierror)
      call MPI_TYPE_MATCH_SIZE(MPI_TYPECLASS_REAL,size,bd_info_type,ierror)
 
-     inquire (iolength = length_unf_2) grad_pot_bd_pnt_acoustic(:,1),pot_dot_bd_pnt_acoustic(1)
+     inquire (iolength = length_unf_2) grad_pot_bd_pnt_acoustic(:,1) 
 
      !need to calculate the offset
      offset1 = num_pnt_acoustic*length_unf_2
@@ -280,9 +295,10 @@
      ! call MPI_FILE_WRITE_AT_ALL(f_num, offset1, temp, count,&
      !      bd_info_type, MPI_STATUS_IGNORE, ierror)
 
-     inquire (iolength = length_unf_2) grad_pot_bd_pnt_acoustic(:,1) 
+     inquire (iolength = length_unf_3) pot_dot_bd_pnt_acoustic(1)
 
-     offset2 = offset1 + nspec_bd_pnt_acoustic*length_unf_2
+     offset2 = nspec_bd_pnt_acoustic_clt*length_unf_2 &
+               + num_pnt_acoustic*length_unf_3
 
      ! call MPI_FILE_SEEK(f_num,offset2,MPI_SEEK_SET,ierror)
 
@@ -370,11 +386,12 @@
      call MPI_SIZEOF(trac_bd_pnt_elastic(1,1),size,ierror)
      call MPI_TYPE_MATCH_SIZE(MPI_TYPECLASS_REAL,size,bd_info_type,ierror)
 
-     !the scheme here: because we are not sure about the number of the recording
-     !points in different partitions, the most straightforward way is to make the
+     ! the scheme here: because we are not sure about the number of the recording
+     ! points in different partitions, the most straightforward way is to make the
      !offset as the full length of the profile (i.e., all the recording points)
-     inquire (iolength = length_unf_1) trac_bd_pnt_elastic(:,1), vel_bd_pnt_elastic(:,1)!length in byte
+     ! inquire (iolength = length_unf_1) trac_bd_pnt_elastic(:,1), vel_bd_pnt_elastic(:,1)!length in byte   6x4 = 24
 
+     inquire (iolength = length_unf_1) trac_bd_pnt_elastic(:,1)
      offset1 = num_pnt_elastic*length_unf_1
 
      ! call MPI_FILE_SEEK(f_num,offset1,MPI_SEEK_SET,ierror)
@@ -385,10 +402,11 @@
      ! call MPI_FILE_WRITE(f_num, trac_bd_pnt_elastic, count,&
      !      bd_info_type, MPI_STATUS_IGNORE, ierror)
 
-     inquire (iolength = length_unf_1) trac_bd_pnt_elastic(:,1) 
 
      !need check the logic here
-     offset2 = offset1 + nspec_bd_pnt_elastic*length_unf_1
+     offset2 = nspec_bd_pnt_elastic_clt*length_unf_1 + offset1
+     ! offset2 = nspec_bd_pnt_elastic_clt*length_unf_1 &
+     !           + num_pnt_elastic*length_unf_1
 
      ! call MPI_FILE_SEEK(f_num,offset1,MPI_SEEK_SET,ierror)
      
@@ -398,6 +416,27 @@
      ! call MPI_FILE_WRITE(f_num, vel_bd_pnt_elastic, count,&
      !      bd_info_type, MPI_STATUS_IGNORE, ierror)
      call MPI_FILE_CLOSE(f_num,ierror)
+
+     ! !print the value for the first point in rank 0 (5000, 5000)
+     ! if( myrank == 0 ) then
+     !    if( it == 1 ) then
+     !       open(unit=555,file='./OUTPUT_FILES/bg_record/velocity',status='new',position='append')
+     !       open(unit=556,file='./OUTPUT_FILES/bg_record/traction',status='new',position='append')
+     !    endif
+
+     !    write(unit=555,fmt='(2(es12.4,2x),/)',advance='no')  vel_bd_pnt_elastic(1,1), vel_bd_pnt_elastic(3,1)
+     !    write(unit=556,fmt='(2(es12.4,2x),/)',advance='no')  trac_bd_pnt_elastic(1,1), trac_bd_pnt_elastic(3,1)
+        
+     !    if(it == record_nt2 )then
+     !       close(555)
+     !       close(556)
+     !    endif
+        
+     ! endif
+     
+     ! !for test
+     ! print *, 'size = ', size, ' length_unf_1 = ', length_unf_1,&
+     !      ' offset1 = ', offset1, ' offset2 = ', offset2, ' from rank ', myrank
 #else
 !!!this is for serial writting
 !!!this is the recording length for unformatted recording

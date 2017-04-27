@@ -61,16 +61,16 @@
   integer  :: ierror
 #endif
 
-!geometry bounda. Here we play a trick to locate the virtual sources in the local mesh side
-!instead of the global mesh side, regarding the special case that the local mesh share the 
-!same boundary (or GLL points) with the global mesh. Hopefully we won't use this in future
-  double precision :: box_t,box_b,box_l,box_r
-  logical :: element_locate
+! !geometry bounda. Here we play a trick to locate the virtual sources in the local mesh side
+! !instead of the global mesh side, regarding the special case that the local mesh share the 
+! !same boundary (or GLL points) with the global mesh. Hopefully we won't use this in future
+!   double precision :: box_t,box_b,box_l,box_r
+!   logical :: element_locate
 
-  box_t = 5000.0
-  box_b = -5000.0
-  box_l = -5000.0
-  box_r = 5000.0
+!   box_t = 5000.0
+!   box_b = -5000.0
+!   box_l = -5000.0
+!   box_r = 5000.0
   
   element_locate = .FALSE.
 
@@ -96,8 +96,8 @@
      !geometry bounda
      iglob = ibool(2,2,ispec)
 
-     if((dble(coord(1,iglob)) > box_l) .and. (dble(coord(1,iglob)) < box_r) &
-         .and. dble(coord(2,iglob)) > box_b .and. dble(coord(2,iglob)) < box_t )then
+     ! if((dble(coord(1,iglob)) > box_l) .and. (dble(coord(1,iglob)) < box_r) &
+     !     .and. dble(coord(2,iglob)) > box_b .and. dble(coord(2,iglob)) < box_t )then
 
         element_locate = .TRUE.
 ! loop only on points inside the element
@@ -122,7 +122,7 @@
            enddo
         enddo
 
-       endif !geometry bound
+       ! endif !geometry bound
      endif
 ! end of loop on all the spectral elements
   enddo

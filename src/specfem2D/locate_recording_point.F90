@@ -9,12 +9,13 @@
     
     use specfem_par, only: myrank,elastic,acoustic,p_sv,&
                            record_local_bkgd_boundary,npnt,npnt_local,num_pnt_elastic,num_pnt_acoustic,&
+                           nspec_bd_pnt_elastic_clt, nspec_bd_pnt_acoustic_clt,&
                            ispec_selected_bd_pnt,nspec_bd_pnt_elastic,nspec_bd_pnt_acoustic,&
                            nspec_bd_elmt_elastic_pure,nspec_bd_elmt_acoustic_pure,&
                            ispec_bd_elmt_elastic_pure, ispec_bd_elmt_acoustic_pure,& 
                            hxi_bd_store,hgammar_bd_store,&
                            xi_bd_pnt,gamma_bd_pnt,&
-                           bd_pnt_xval,bd_pnt_zval,&
+                           ! bd_pnt_xval,bd_pnt_zval,&
                            nx_bd_pnt_elastic,nz_bd_pnt_elastic,&
                            nx_bd_pnt_acoustic,nz_bd_pnt_acoustic,&
                            nx_pnt,nz_pnt,fname,f_num,&
@@ -35,7 +36,8 @@
                            trac_bd_pnt_elastic_reconst,trac_f,&
                            m_xx,m_xz,m_zz,m_zx,m_xx_reconst,m_xz_reconst,m_zz_reconst,m_zx_reconst,&
                            m_yx,m_yz,m_yx_reconst,m_yz_reconst,&
-                           Grad_pot,grad_pot_x_reconst,grad_pot_z_reconst,Pot_x,Pot_z 
+                           Grad_pot,grad_pot_x_reconst,grad_pot_z_reconst,Pot_x,Pot_z,& 
+                           temp_record_elastic,temp_record_acoustic
 
   implicit none
   include "constants.h"
@@ -91,9 +93,16 @@
 
  
  !para for recording the information to reconstruct the wavefield
-  integer, dimension(:), allocatable :: bd_pnt_i,bd_pnt_j
+  integer, dimension(:), allocatable :: bd_pnt_i, bd_pnt_j
+  integer, dimension(:), allocatable :: bd_pnt_i_elastic, bd_pnt_j_elastic
+  integer, dimension(:), allocatable :: bd_pnt_i_acoustic, bd_pnt_j_acoustic
+
+  !para for mpi
+  integer :: ierror
 
   print *,myrank,'this has ran' 
+
+  
   !!!geometry bound. Here we play the trick to locate the point in the exact 
   !!element we want. Otherwise, it could happen that the points at the edges
   !!are located in the neighbound element
@@ -106,15 +115,39 @@
   ! print *, nspec, ' in rank ', myrank
   !figure out the number of recording point firstly
   npnt = 0
-  open(unit=1,file='DATA/boundary_points_total',iostat=ios,status='old',action='read')
-  do while(ios == 0)
-     read(1,"(a)",iostat=ios) dummystring
-     if(ios == 0) npnt=npnt+1
-  enddo
-  close(1)
- 
-  print *,'total recording points from profile: ',npnt
-  
+  if( record_local_bkgd_boundary ) then
+
+     open(unit=1,file='DATA/boundary_points_total',iostat=ios,status='old',action='read')
+     do while(ios == 0)
+        read(1,"(a)",iostat=ios) dummystring
+        if(ios == 0) npnt=npnt+1
+     enddo
+     close(1)
+
+     print *,'total recording points from profile: ',npnt
+
+  else if( record_local_boundary_reconst ) then
+
+     write(fname,"('./DATA/boundary_points',i5.5)") myrank
+     open(unit=1,file=trim(fname),iostat=ios,status='old',action='read')
+     do while(ios == 0)
+        read(1,"(a)",iostat=ios) dummystring
+        if(ios == 0) npnt=npnt+1
+     enddo
+     close(1)
+
+     print *,'total recording points from profile: ',npnt, ' for rank', myrank
+
+  else
+     stop 'flag is incorrect for the usage of locate_recording_points()'
+     
+  endif
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  ! #ifdef USE_MPI
+  !   allocate(found_element(npnt))
+  !   found_element = .false.
+  !   call MPI_BARRIER(MPI_COMM_WORLD, ierror)
+  ! #endif
   allocate(in_element(npnt))
   allocate(elastic_flag_total(npnt),acoustic_flag_total(npnt),corner_flag_total(npnt))
   allocate(ispec_selected_bd_pnt_total(npnt)) !this is the element index in global model
@@ -132,161 +165,214 @@
 
   nspec_bd_pnt_elastic = 0
   nspec_bd_pnt_acoustic = 0
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  
+113 format(i5.5,2x,2(i1.1,2x),L1,2x,L1,2x,L1,2x,A1,2x,A1,2x,4(es12.4,2x))
+  
+  if( record_local_bkgd_boundary ) then
 
-  113 format(i5.5,2x,2(i1.1,2x),L1,2x,L1,2x,L1,2x,A1,2x,A1,2x,4(es12.4,2x))
-  open(unit=1,file='DATA/boundary_points_total',status='old',action='read')
-  !loop over all points
-  ! loop only on points inside the element
-  ! exclude edges to ensure this point is not shared with other elements
-  !comments: this could be improved by just comparing with the central point
-  ipnt_locate: do ipnt=1,npnt
+     open(unit=1,file='DATA/boundary_points_total',status='old',action='read')
+     ! loop over all points
+     ! loop only on points inside the element
+     ! exclude edges to ensure this point is not shared with other elements
+     !comments: this could be improved by just comparing with the central point
+     ipnt_locate: do ipnt=1,npnt
 
-    distmin_squared = HUGEVAL
+        distmin_squared = HUGEVAL
 
-    !read(1,*) bd_pnt_xval(ipnt), bd_pnt_zval(ipnt), nx_pnt(ipnt), nz_pnt(ipnt)
-    !note now when dealing with the reconstruting problem, you need the type of side
-    !(i.e., L, R, T, B), which should be pre-known from the 'boundary_points' profile
+        !read(1,*) bd_pnt_xval(ipnt), bd_pnt_zval(ipnt), nx_pnt(ipnt), nz_pnt(ipnt)
+        !note now when dealing with the reconstruting problem, you need the type of side
+        !(i.e., L, R, T, B), which should be pre-known from the 'boundary_points' profile
 
-    !lcx: you may want to use derived datatype or structure to process the data.
-    !and then use map/union to quickly acess to the dataset
-    read(1,113)bd_pnt_elmnt_num_total(ipnt),bd_pnt_i_total(ipnt),bd_pnt_j_total(ipnt),&
-               elastic_flag_total(ipnt),acoustic_flag_total(ipnt),&
-               corner_flag_total(ipnt),side_type_total(ipnt), temp_side,&
-               bd_pnt_xval_total(ipnt), bd_pnt_zval_total(ipnt),&
-               nx_pnt_total(ipnt), nz_pnt_total(ipnt)
+        !lcx: you may want to use derived datatype or structure to process the data.
+        !and then use map/union to quickly acess to the dataset
+        read(1,113)bd_pnt_elmnt_num_total(ipnt),bd_pnt_i_total(ipnt),bd_pnt_j_total(ipnt),&
+             elastic_flag_total(ipnt),acoustic_flag_total(ipnt),&
+             corner_flag_total(ipnt),side_type_total(ipnt), temp_side,&
+             bd_pnt_xval_total(ipnt), bd_pnt_zval_total(ipnt),&
+             nx_pnt_total(ipnt), nz_pnt_total(ipnt)
 
-    !the following loop is used to locate which element the recording point is in
-    !And the algrithm is not perfect, since it could locate the corner recording point
-    !in the neighbor element. I guess this is not a serious issue
-    do ispec=1,nspec
-       
-       !!the if sentence is used to distinguish the edge point which could be shared
-       !!by the neighbour elastic/fluid elements
-       if( (elastic(ispec) .eqv. elastic_flag_total(ipnt) ) .and. (acoustic(ispec) .eqv. acoustic_flag_total(ipnt) ) ) then
 
-      !!add the geometry bound in case it will pick the neighbor element which is
-      !!out of the loca region.
-      !!but somehow this is unnecessary, considering the traction and velocity should be
-      !!continuous in the media which does not have sudden change of property
-       !iglob = ibool(2,2,ispec)
-       !if((dble(coord(1,iglob)) > box_l) .and. (dble(coord(1,iglob)) < box_r) &
-       ! .and. dble(coord(2,iglob)) > box_b .and. dble(coord(2,iglob)) < box_t )then
-      !!!!!!!!!!!!!!
-         do j=2,NGLLZ-1
-           do i=2,NGLLX-1
-             iglob = ibool(i,j,ispec)
-             dist_squared = (bd_pnt_xval_total(ipnt)-dble(coord(1,iglob)))**2 + &
-             (bd_pnt_zval_total(ipnt)-dble(coord(2,iglob)))**2
+        ! !recording point already found in other processors
+        ! if( found_element(ipnt) ) cycle ipnt_locate
 
-             if(dist_squared < distmin_squared) then
-               distmin_squared = dist_squared
-               ispec_selected_bd_pnt_total(ipnt) = ispec
-               ix_initial_guess = i
-               iz_initial_guess = j
+        !the following loop is used to locate which element the recording point is in
+        !And the algrithm is not perfect, since it could locate the corner recording point
+        !in the neighbor element. I guess this is not a serious issue
+        do ispec=1,nspec
 
-               !else if (dist_squared == distmin_squared)then
+           !!the if sentence is used to distinguish the edge point which could be shared
+           !!by the neighbour elastic/fluid elements
+           if( (elastic(ispec) .eqv. elastic_flag_total(ipnt) ) .and. (acoustic(ispec) .eqv. acoustic_flag_total(ipnt) ) ) then
 
-                    ! if((dble(coord(1,iglob)) > box_l) .and. (dble(coord(1,iglob)) < box_r) .and. &
-                    !     dble(coord(2,iglob)) > box_b .and. dble(coord(2,iglob)) < box_t )then
+              !!add the geometry bound in case it will pick the neighbor element which is
+              !!out of the loca region.
+              !!but somehow this is unnecessary, considering the traction and velocity should be
+              !!continuous in the media which does not have sudden change of property
+              !iglob = ibool(2,2,ispec)
+              !if((dble(coord(1,iglob)) > box_l) .and. (dble(coord(1,iglob)) < box_r) &
+              ! .and. dble(coord(2,iglob)) > box_b .and. dble(coord(2,iglob)) < box_t )then
+!!!!!!!!!!!!!!
+              do j=2,NGLLZ-1
+                 do i=2,NGLLX-1
+                    iglob = ibool(i,j,ispec)
+                    dist_squared = (bd_pnt_xval_total(ipnt)-dble(coord(1,iglob)))**2 + &
+                         (bd_pnt_zval_total(ipnt)-dble(coord(2,iglob)))**2
 
-                       
-             endif
-           enddo
-         enddo
+                    if(dist_squared < distmin_squared) then
+                       distmin_squared = dist_squared
+                       ispec_selected_bd_pnt_total(ipnt) = ispec
+                       ix_initial_guess = i
+                       iz_initial_guess = j
 
-       ! endif!geometry check 
+                       !else if (dist_squared == distmin_squared)then
 
-      endif !check if the elastic/acoustic flag is correct
+                       ! if((dble(coord(1,iglob)) > box_l) .and. (dble(coord(1,iglob)) < box_r) .and. &
+                       !     dble(coord(2,iglob)) > box_b .and. dble(coord(2,iglob)) < box_t )then
 
-   enddo !end the loop for all elements
 
-   !if ispec_selected_bd_pnt_total(ipnt) is zero, which means the flag condition
-   !cannot be met when the previous loop try to locate it. That means the recording
-   !point is not in the current partition. Then just jump to next recording point
-   if( ispec_selected_bd_pnt_total(ipnt) == 0 )then
-      in_element(ipnt) = .false.
-         cycle ipnt_locate
-   endif
- 
-   ! print *, ipnt, ' and ', ispec_selected_bd_pnt_total(ipnt), ' from rank ', myrank
-   if(elastic(ispec_selected_bd_pnt_total(ipnt))) nspec_bd_pnt_elastic=nspec_bd_pnt_elastic +1
-   if(acoustic(ispec_selected_bd_pnt_total(ipnt))) nspec_bd_pnt_acoustic=nspec_bd_pnt_acoustic+1
+                    endif
+                 enddo
+              enddo
 
-    !find the best (xi, gamma) for each recording point
-    !start using intial guess in xi and gamma
-      xi = xigll(ix_initial_guess)
-      gamma = zigll(iz_initial_guess)
+              ! endif!geometry check 
 
-     do iter_loop = 1,NUM_ITER
-       ! compute coordinates of the new point and derivatives dxi/dx, dxi/dz
-       call recompute_jacobian(xi,gamma,x,z,xix,xiz,gammax,gammaz,jacobian, &
-                   coorg,knods,ispec_selected_bd_pnt_total(ipnt),ngnod,nspec,npgeo, &
-                   .true.)
- 
-       ! compute distance to target location
-       dx = - (x - bd_pnt_xval_total(ipnt))
-       dz = - (z - bd_pnt_zval_total(ipnt))
- 
-       ! compute increments
-       dxi  = xix*dx + xiz*dz
-       dgamma = gammax*dx + gammaz*dz
- 
-       ! update values
-       xi = xi + dxi
-       gamma = gamma + dgamma
- 
-       ! impose that we stay in that element
-       ! (useful if user gives a receiver outside the mesh for instance)
-       ! we can go slightly outside the [1,1] segment since with finite elements
-       ! the polynomial solution is defined everywhere
-       ! this can be useful for convergence of itertive scheme with distorted elements
-       !lcx: we can use this as criteria to check whether the recording points is in the element
+           endif !check if the elastic/acoustic flag is correct
 
-       ! if (xi > 1.10d0) xi = 1.10d0
-       ! if (xi < -1.10d0) xi = -1.10d0
-       ! if (gamma > 1.10d0) gamma = 1.10d0
-       ! if (gamma < -1.10d0) gamma = -1.10d0
-       
- 
-     ! end of non linear iterations
-     enddo
+        enddo !end the loop for all elements
 
-     !check whether the recording points is in the located element
-     if( xi > 1.10d0 .or. xi < -1.10d0 .or. gamma > 1.10d0 .or. gamma < -1.10d0)then
-        in_element(ipnt) = .false.
-
-        !since we already use the elastic/acoustic_flag, the calculation of
-        !elastic/acoustic elements here is unnecessary
-        if( elastic(ispec_selected_bd_pnt_total(ipnt)) )then
-           nspec_bd_pnt_elastic = nspec_bd_pnt_elastic - 1
-        else if( acoustic(ispec_selected_bd_pnt_total(ipnt)) )then
-           nspec_bd_pnt_acoustic = nspec_bd_pnt_acoustic - 1
+        !if ispec_selected_bd_pnt_total(ipnt) is zero, which means the flag condition
+        !cannot be met when the previous loop try to locate it. That means the recording
+        !point is not in the current partition. Then just jump to next recording point
+        if( ispec_selected_bd_pnt_total(ipnt) == 0 )then
+           in_element(ipnt) = .false.
+           cycle ipnt_locate
         endif
 
-     endif
-     ! compute final coordinates of point found
+        ! print *, ipnt, ' and ', ispec_selected_bd_pnt_total(ipnt), ' from rank ', myrank
+        if(elastic(ispec_selected_bd_pnt_total(ipnt))) nspec_bd_pnt_elastic=nspec_bd_pnt_elastic +1
+        if(acoustic(ispec_selected_bd_pnt_total(ipnt))) nspec_bd_pnt_acoustic=nspec_bd_pnt_acoustic+1
 
-     !by lcx: I think the basic idea here is we want to find the best 
-     !(xi,gammar) for the point (x_bd_pnt,z_bd_pnt). Hence we need to 
-     ! recompute the jacobian for several iterations. Once a point
-     ! which is closed enough is found in (xi,gammar) (nature) coordinate
-     ! we will reproject it back to the real coordinate
+        !find the best (xi, gamma) for each recording point
+        !start using intial guess in xi and gamma
+        xi = xigll(ix_initial_guess)
+        gamma = zigll(iz_initial_guess)
 
-     call recompute_jacobian(xi,gamma,x,z,xix,xiz,gammax,gammaz,jacobian, &
-                 coorg,knods,ispec_selected_bd_pnt_total(ipnt),ngnod,nspec,npgeo, &
-                 .true.)
- 
-     ! store xi,gamma of point found
-     xi_bd_pnt_total(ipnt) = xi
-     gamma_bd_pnt_total(ipnt) = gamma
- 
- 
-     x_final_bd_pnt_total(ipnt) = x
-     z_final_bd_pnt_total(ipnt) = z
- 
-  enddo ipnt_locate !end loop for all recording points 
+        do iter_loop = 1,NUM_ITER
+           ! compute coordinates of the new point and derivatives dxi/dx, dxi/dz
+           call recompute_jacobian(xi,gamma,x,z,xix,xiz,gammax,gammaz,jacobian, &
+                coorg,knods,ispec_selected_bd_pnt_total(ipnt),ngnod,nspec,npgeo, &
+                .true.)
 
-  close(1)
+           ! compute distance to target location
+           dx = - (x - bd_pnt_xval_total(ipnt))
+           dz = - (z - bd_pnt_zval_total(ipnt))
+
+           ! compute increments
+           dxi  = xix*dx + xiz*dz
+           dgamma = gammax*dx + gammaz*dz
+
+           ! update values
+           xi = xi + dxi
+           gamma = gamma + dgamma
+
+           ! impose that we stay in that element
+           ! (useful if user gives a receiver outside the mesh for instance)
+           ! we can go slightly outside the [1,1] segment since with finite elements
+           ! the polynomial solution is defined everywhere
+           ! this can be useful for convergence of itertive scheme with distorted elements
+           !lcx: we can use this as criteria to check whether the recording points is in the element
+
+           ! if (xi > 1.10d0) xi = 1.10d0
+           ! if (xi < -1.10d0) xi = -1.10d0
+           ! if (gamma > 1.10d0) gamma = 1.10d0
+           ! if (gamma < -1.10d0) gamma = -1.10d0
+
+
+           ! end of non linear iterations
+        enddo
+
+        !check whether the recording points is in the located element
+        if( xi > 1.10d0 .or. xi < -1.10d0 .or. gamma > 1.10d0 .or. gamma < -1.10d0)then
+           in_element(ipnt) = .false.
+
+           !since we already use the elastic/acoustic_flag, the calculation of
+           !elastic/acoustic elements here is unnecessary
+           if( elastic(ispec_selected_bd_pnt_total(ipnt)) )then
+              nspec_bd_pnt_elastic = nspec_bd_pnt_elastic - 1
+           else if( acoustic(ispec_selected_bd_pnt_total(ipnt)) )then
+              nspec_bd_pnt_acoustic = nspec_bd_pnt_acoustic - 1
+           endif
+
+        endif
+        ! compute final coordinates of point found
+
+        ! #ifdef USE_MPI
+        !      !broadcost the info that the current process find this recording point
+        !      if( in_element(ipnt) )then
+
+        !         !when the recording point is already found by others, don't broadcast that
+        !         if( found_element(ipnt) )then
+        !            in_element(ipnt) = .false.
+        !         else 
+        !            found_element(ipnt) = .true.
+        !            !all sent to rank 0
+        !            call MPI_SEND(found_element, npnt, MPI_LOGICAL, &
+        !                 0, send_to_zero, MPI_COMM_WORLD, MPI_STATUS_IGNORE, ierror)
+        !            call MPI_BCAST(found_element(ipnt), 1, MPI_LOGICAL, myrank, MPI_COMM_WORLD, ierror)
+        !            print *, 'point ', ipnt, 'has been found and broadcasted by ', myrank 
+        !         endif
+
+        !      endif
+
+        ! #endif
+
+
+        !by lcx: I think the basic idea here is we want to find the best 
+        !(xi,gammar) for the point (x_bd_pnt,z_bd_pnt). Hence we need to 
+        ! recompute the jacobian for several iterations. Once a point
+        ! which is closed enough is found in (xi,gammar) (nature) coordinate
+        ! we will reproject it back to the real coordinate
+
+        call recompute_jacobian(xi,gamma,x,z,xix,xiz,gammax,gammaz,jacobian, &
+             coorg,knods,ispec_selected_bd_pnt_total(ipnt),ngnod,nspec,npgeo, &
+             .true.)
+
+        ! store xi,gamma of point found
+        xi_bd_pnt_total(ipnt) = xi
+        gamma_bd_pnt_total(ipnt) = gamma
+
+
+        x_final_bd_pnt_total(ipnt) = x
+        z_final_bd_pnt_total(ipnt) = z
+
+
+     enddo ipnt_locate !end loop for all recording points 
+
+     close(1)
+
+  else if( record_local_boundary_reconst ) then
+
+     write(fname,"('./DATA/boundary_points',i5.5)") myrank
+     open(unit=1,file=trim(fname),iostat=ios,status='old',action='read')
+     
+     do ipnt=1,npnt
+        
+        read(1,113)bd_pnt_elmnt_num_total(ipnt),bd_pnt_i_total(ipnt),bd_pnt_j_total(ipnt),&
+             elastic_flag_total(ipnt),acoustic_flag_total(ipnt),&
+             corner_flag_total(ipnt),side_type_total(ipnt), temp_side,&
+             bd_pnt_xval_total(ipnt), bd_pnt_zval_total(ipnt),&
+             nx_pnt_total(ipnt), nz_pnt_total(ipnt)
+
+     enddo
+
+     close(1)
+
+     x_final_bd_pnt_total = bd_pnt_xval_total
+     z_final_bd_pnt_total = bd_pnt_zval_total
+
+  endif
+
  
   !!this is a test by lcx: the check could be useful
   !!to check the the final coordinates located by global mesher are
@@ -317,23 +403,35 @@
   ! enddo
 
   !calculate the number of recording points located in this partition
+  !actually, for recording in local model, the npnt_local is just the npnt read from the profile, i.e., npnt_local = npnt
   npnt_local = count(in_element)
+
+  !for test purpose
+  if( record_local_boundary_reconst ) then
+     if(npnt_local /= npnt ) stop 'something wrong'
+  endif
 
   print *, 'recording points in partition', myrank, ' is ', npnt_local
 
   
   !create the arrays for recording points in this partition allocate(xi_bd_pnt_total(npnt),gamma_bd_pnt_total(npnt))
 
+  !for both in global and local model
   allocate(ispec_selected_bd_pnt(npnt_local))
+  allocate(elastic_flag(npnt_local),acoustic_flag(npnt_local))
   allocate(bd_pnt_elmnt_num(npnt_local))
-  allocate(side_type(npnt_local))
-  allocate(elastic_flag(npnt),acoustic_flag(npnt))
-  
+  allocate(nx_pnt(npnt_local),nz_pnt(npnt_local))
+
+  !for recording in global model
   allocate(xi_bd_pnt(npnt_local),gamma_bd_pnt(npnt_local))
   allocate(x_final_bd_pnt(npnt_local),z_final_bd_pnt(npnt_local))
+
+  !for recording in local model
+  allocate(side_type(npnt_local))
   allocate(bd_pnt_i(npnt_local),bd_pnt_j(npnt_local))
-  allocate(bd_pnt_xval(npnt_local),bd_pnt_zval(npnt_local))
-  allocate(nx_pnt(npnt_local),nz_pnt(npnt_local))
+
+  !unnecessary
+  ! allocate(bd_pnt_xval(npnt_local),bd_pnt_zval(npnt_local))
 
   ispec_selected_bd_pnt = pack(ispec_selected_bd_pnt_total,in_element)
   elastic_flag          = pack(elastic_flag_total,in_element)
@@ -342,30 +440,34 @@
   bd_pnt_elmnt_num      = pack(bd_pnt_elmnt_num_total,in_element) 
   bd_pnt_i              = pack(bd_pnt_i_total,in_element) 
   bd_pnt_j              = pack(bd_pnt_j_total,in_element) 
-  bd_pnt_xval           = pack(bd_pnt_xval_total,in_element) 
-  bd_pnt_zval           = pack(bd_pnt_zval_total,in_element) 
+  ! bd_pnt_xval           = pack(bd_pnt_xval_total,in_element) 
+  ! bd_pnt_zval           = pack(bd_pnt_zval_total,in_element) 
   nx_pnt                = pack(nx_pnt_total,in_element) 
   nz_pnt                = pack(nz_pnt_total,in_element) 
-  xi_bd_pnt             = pack(xi_bd_pnt_total,in_element)
-  gamma_bd_pnt          = pack(gamma_bd_pnt_total,in_element)
   x_final_bd_pnt        = pack(x_final_bd_pnt_total,in_element)
   z_final_bd_pnt        = pack(z_final_bd_pnt_total,in_element)
   
   !define and store lagrange interpolators at all the boundary recording points
-  allocate(hxi_bd_store(npnt_local,NGLLX),hgammar_bd_store(npnt_local,NGLLZ))
+  if( record_local_bkgd_boundary ) then
 
-  do ipnt=1,npnt_local
-     call lagrange_any(xi_bd_pnt(ipnt),NGLLX,xigll,hxi_bd_pnt,hpxi_bd_pnt)
-     call lagrange_any(gamma_bd_pnt(ipnt),NGLLZ,zigll,hgamma_bd_pnt,hpgamma_bd_pnt)
-  
-     hxi_bd_store(ipnt,:) = hxi_bd_pnt
-     hgammar_bd_store(ipnt,:) = hgamma_bd_pnt 
-     
-  enddo
+     xi_bd_pnt             = pack(xi_bd_pnt_total,in_element)
+     gamma_bd_pnt          = pack(gamma_bd_pnt_total,in_element)
+
+     allocate(hxi_bd_store(npnt_local,NGLLX),hgammar_bd_store(npnt_local,NGLLZ))
+
+     do ipnt=1,npnt_local
+        call lagrange_any(xi_bd_pnt(ipnt),NGLLX,xigll,hxi_bd_pnt,hpxi_bd_pnt)
+        call lagrange_any(gamma_bd_pnt(ipnt),NGLLZ,zigll,hgamma_bd_pnt,hpgamma_bd_pnt)
+
+        hxi_bd_store(ipnt,:) = hxi_bd_pnt
+        hgammar_bd_store(ipnt,:) = hgamma_bd_pnt 
+
+     enddo
+  endif
 
   nspec_bd_pnt_elastic  = count(elastic_flag)
   nspec_bd_pnt_acoustic = count(acoustic_flag)
-
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !this should be written as a subroutine in future
 #ifdef USE_MPI
   
@@ -373,6 +475,14 @@
   !call the subroutine to figure out the accumulative points number in partition
   call calculate_accumulative_pnts(myrank,nspec_bd_pnt_elastic,num_pnt_elastic)
   call calculate_accumulative_pnts(myrank,nspec_bd_pnt_acoustic,num_pnt_acoustic)
+
+  !need to calculate the total nspec_bd_pnt_elastic and nspec_bd_pnt_acoustic of all the partitions
+  call MPI_ALLREDUCE(nspec_bd_pnt_elastic, nspec_bd_pnt_elastic_clt, 1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, ierror)
+  call MPI_ALLREDUCE(nspec_bd_pnt_acoustic, nspec_bd_pnt_acoustic_clt, 1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, ierror)
+  
+  
+  print *, 'offset: nspec_bd_pnt_elastic_clt = ', nspec_bd_pnt_elastic_clt, &
+        ' from rank ', myrank
 
   ! !for test
   ! print *, 'offset: nspec_bd_pnt_elastic = ', nspec_bd_pnt_elastic, &
@@ -385,19 +495,25 @@
   call build_commu_bg_record(nspec_bd_pnt_elastic, nspec_bd_pnt_acoustic)
 
 #endif
-  
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
   !this is the target elements where the recording points locate in
   !we try to seperate them into elastic and acoustic these are the necessary
   !information to calculate the traction by lagrange interpolation in the target
   !elements in global simulation
   allocate(ispec_bd_elmt_elastic(nspec_bd_pnt_elastic)) 
   allocate(ispec_bd_elmt_acoustic(nspec_bd_pnt_acoustic))
-
+  allocate(bd_pnt_i_elastic(nspec_bd_pnt_elastic))
+  allocate(bd_pnt_j_elastic(nspec_bd_pnt_elastic))
+  allocate(bd_pnt_i_acoustic(nspec_bd_pnt_acoustic))
+  allocate(bd_pnt_j_acoustic(nspec_bd_pnt_acoustic))
+  
   allocate(x_final_bd_pnt_elastic(nspec_bd_pnt_elastic),z_final_bd_pnt_elastic(nspec_bd_pnt_elastic))
   allocate(x_final_bd_pnt_acoustic(nspec_bd_pnt_acoustic),z_final_bd_pnt_acoustic(nspec_bd_pnt_acoustic))
 
   allocate(nx_bd_pnt_elastic(nspec_bd_pnt_elastic),nz_bd_pnt_elastic(nspec_bd_pnt_elastic))
   allocate(nx_bd_pnt_acoustic(nspec_bd_pnt_acoustic),nz_bd_pnt_acoustic(nspec_bd_pnt_acoustic))
+
 
   if ( record_local_bkgd_boundary ) then
      
@@ -517,6 +633,7 @@
 
   !allocate array to store info for those elements in which the recording_bd_pnt locates
   if ( record_local_bkgd_boundary ) then
+
      if ( nspec_bd_pnt_elastic /= 0 ) then
 
         !elastic
@@ -553,51 +670,138 @@
 
   endif
 
-  if( record_local_boundary_reconst )then
-  !when recording the information for wavefield reconstruction, we just need
+  !here we just export the element index in global model partition, the
+  !coordinate of the recording point by separating them
+  !into elastic/acoustic
+  if( record_local_bkgd_boundary ) then
+
+#ifdef USE_MPI
+     write(fname,"('./OUTPUT_FILES/bg_record/elastic_pnts_profile',i5.5)") myrank
+#else
+     fname = './OUTPUT_FILES/bg_record/elastic_pnts_profile' 
+#endif
+     f_num = 111
+     open(unit=f_num,file=trim(fname),status='new',&
+          action='write',iostat=ios)
+     if( ios /= 0 ) stop 'error saving elastic point profile'
+
+     if ( nspec_bd_pnt_elastic /= 0 ) then
+        do i=1,nspec_bd_pnt_elastic
+           !write(f_num,110) ispec_bd_elmt_elastic(i), x_final_bd_pnt_elastic(i), z_final_bd_pnt_elastic(i)
+           write(f_num,110) ispec_bd_elmt_elastic(i), x_final_bd_pnt_elastic(i), z_final_bd_pnt_elastic(i)
+           ! nx_bd_pnt_elastic(i),nz_bd_pnt_elastic(i)
+        enddo
+     endif
+
+     close(f_num)
+     !stop 'here we see the normal vector. DO NOT foget to modify the writing format 100'
+
+#ifdef USE_MPI
+     write(fname,"('./OUTPUT_FILES/bg_record/acoustic_pnts_profile',i5.5)") myrank
+#else
+     fname = './OUTPUT_FILES/bg_record/acoustic_pnts_profile' 
+#endif
+
+     open(unit=f_num,file=trim(fname),status='new',&
+          action='write',iostat=ios)
+     if( ios /= 0 ) stop 'error saving acoustic point profile' 
+
+     if ( nspec_bd_pnt_acoustic /= 0 ) then
+        do i=1,nspec_bd_pnt_acoustic
+           !print *,'i = ',i
+           !print *,ispec_bd_elmt_acoustic(i)
+           !print *,x_final_bd_pnt_acoustic(i)
+           !print *,z_final_bd_pnt_acoustic(i)
+           write(f_num,110) ispec_bd_elmt_acoustic(i), x_final_bd_pnt_acoustic(i), z_final_bd_pnt_acoustic(i)
+        enddo
+     endif
+
+     close(f_num)
+
+  endif
+
+  
+  !When recording the information for wavefield reconstruction, we just need
   !the exact recording points provided from 'boundary_points' based on the local model
   !Thus, unnecessary to locate the points again 
+  if( record_local_boundary_reconst )then
 
-     allocate(ispec_bd_elmt_elastic_i(nspec_bd_pnt_elastic))
-     allocate(ispec_bd_elmt_elastic_j(nspec_bd_pnt_elastic))
-     allocate(side_type_elastic(nspec_bd_pnt_elastic))
+     if( nspec_bd_pnt_elastic /= 0 ) then
+        
+        nx_bd_pnt_elastic      = pack(nx_pnt,elastic_flag)
+        nz_bd_pnt_elastic      = pack(nz_pnt,elastic_flag)
+        x_final_bd_pnt_elastic = pack(x_final_bd_pnt,elastic_flag)
+        z_final_bd_pnt_elastic = pack(z_final_bd_pnt,elastic_flag)
+        
+        bd_pnt_i_elastic       = pack(bd_pnt_i,elastic_flag)
+        bd_pnt_j_elastic       = pack(bd_pnt_j,elastic_flag)
 
-     allocate(ispec_bd_elmt_acoustic_i(nspec_bd_pnt_acoustic))
-     allocate(ispec_bd_elmt_acoustic_j(nspec_bd_pnt_acoustic))
-     allocate(side_type_acoustic(nspec_bd_pnt_acoustic))
+        allocate(ispec_bd_elmt_elastic_i(nspec_bd_pnt_elastic))
+        allocate(ispec_bd_elmt_elastic_j(nspec_bd_pnt_elastic))
+        allocate(side_type_elastic(nspec_bd_pnt_elastic))
 
+        ispec_bd_elmt_elastic   = pack(bd_pnt_elmnt_num,elastic_flag)
+        ispec_bd_elmt_elastic_i = bd_pnt_i_elastic
+        ispec_bd_elmt_elastic_j = bd_pnt_j_elastic
+        side_type_elastic       = pack(side_type,elastic_flag)
 
-     i = 1
-     j = 1
-     do ipnt=1,npnt
-       if(elastic(ispec_selected_bd_pnt(ipnt)))then
-         ispec_bd_elmt_elastic(i) = bd_pnt_elmnt_num(ipnt)  !!this is the element index in the local model
-         
-         ispec_bd_elmt_elastic_i(i) = bd_pnt_i(ipnt)
-         ispec_bd_elmt_elastic_j(i) = bd_pnt_j(ipnt)
-         side_type_elastic(i) = side_type(ipnt)
-       !here we also record the coordinate for the point
-         nx_bd_pnt_elastic(i) = nx_pnt(ipnt)
-         nz_bd_pnt_elastic(i) = nz_pnt(ipnt)
-         x_final_bd_pnt_elastic(i) = bd_pnt_xval(ipnt)
-         z_final_bd_pnt_elastic(i) = bd_pnt_zval(ipnt)
-         i = i+1
-       endif
+     endif
+
+     if( nspec_bd_pnt_acoustic /= 0 ) then
+
+        nx_bd_pnt_acoustic      = pack(nx_pnt,acoustic_flag)
+        nz_bd_pnt_acoustic      = pack(nz_pnt,acoustic_flag)
+        x_final_bd_pnt_acoustic = pack(x_final_bd_pnt,acoustic_flag)
+        z_final_bd_pnt_acoustic = pack(z_final_bd_pnt,acoustic_flag)
+        
+        bd_pnt_i_acoustic       = pack(bd_pnt_i,acoustic_flag)
+        bd_pnt_j_acoustic       = pack(bd_pnt_j,acoustic_flag)
+
+        allocate(ispec_bd_elmt_acoustic_i(nspec_bd_pnt_acoustic))
+        allocate(ispec_bd_elmt_acoustic_j(nspec_bd_pnt_acoustic))
+        allocate(side_type_acoustic(nspec_bd_pnt_acoustic))
+
+        ispec_bd_elmt_acoustic   = pack(bd_pnt_elmnt_num,acoustic_flag)
+        ispec_bd_elmt_acoustic_i = bd_pnt_i_acoustic
+        ispec_bd_elmt_acoustic_j = bd_pnt_j_acoustic
+        side_type_acoustic       = pack(side_type,acoustic_flag)
+
+     endif
      
-       if(acoustic(ispec_selected_bd_pnt(ipnt)))then
-         ispec_bd_elmt_acoustic(j) = bd_pnt_elmnt_num(ipnt)
-         ispec_bd_elmt_acoustic_i(j) = bd_pnt_i(ipnt)
-         ispec_bd_elmt_acoustic_j(j) = bd_pnt_j(ipnt)
-         side_type_acoustic(j) = side_type(ipnt)
+     
 
-         nx_bd_pnt_acoustic(j) = nx_pnt(ipnt)
-         nz_bd_pnt_acoustic(j) = nz_pnt(ipnt)
-         x_final_bd_pnt_acoustic(j) = bd_pnt_xval(ipnt)
-         z_final_bd_pnt_acoustic(j) = bd_pnt_zval(ipnt)
+     
+     ! i = 1
+     ! j = 1
+     ! do ipnt=1,npnt
+     !   if(elastic(ispec_selected_bd_pnt(ipnt)))then
+     !     ispec_bd_elmt_elastic(i) = bd_pnt_elmnt_num(ipnt)  !!this is the element index in the local model
+         
+     !     ispec_bd_elmt_elastic_i(i) = bd_pnt_i(ipnt)
+     !     ispec_bd_elmt_elastic_j(i) = bd_pnt_j(ipnt)
+     !     side_type_elastic(i) = side_type(ipnt)
+     !   !here we also record the coordinate for the point
+     !     nx_bd_pnt_elastic(i) = nx_pnt(ipnt)
+     !     nz_bd_pnt_elastic(i) = nz_pnt(ipnt)
+     !     x_final_bd_pnt_elastic(i) = bd_pnt_xval(ipnt)
+     !     z_final_bd_pnt_elastic(i) = bd_pnt_zval(ipnt)
+     !     i = i+1
+     !   endif
+     
+     !   if(acoustic(ispec_selected_bd_pnt(ipnt)))then
+     !     ispec_bd_elmt_acoustic(j) = bd_pnt_elmnt_num(ipnt)
+     !     ispec_bd_elmt_acoustic_i(j) = bd_pnt_i(ipnt)
+     !     ispec_bd_elmt_acoustic_j(j) = bd_pnt_j(ipnt)
+     !     side_type_acoustic(j) = side_type(ipnt)
 
-         j = j+1
-       endif
-     enddo
+     !     nx_bd_pnt_acoustic(j) = nx_pnt(ipnt)
+     !     nz_bd_pnt_acoustic(j) = nz_pnt(ipnt)
+     !     x_final_bd_pnt_acoustic(j) = bd_pnt_xval(ipnt)
+     !     z_final_bd_pnt_acoustic(j) = bd_pnt_zval(ipnt)
+
+     !     j = j+1
+     !   endif
+     ! enddo
 
 !
 !  !!we need to sort out what element edges we will operate. 
@@ -690,104 +894,8 @@
 !
   endif
 
-
-  !here we just export the element index in global model partition, the
-  !coordinate of the recording point by separating them
-  !into elastic/acoustic
-  if( record_local_bkgd_boundary ) then
-
-#ifdef USE_MPI
-     write(fname,"('./OUTPUT_FILES/bg_record/elastic_pnts_profile',i5.5)") myrank
-#else
-     fname = './OUTPUT_FILES/bg_record/elastic_pnts_profile' 
-#endif
-     f_num = 111
-     open(unit=f_num,file=trim(fname),status='new',&
-          action='write',iostat=ios)
-     if( ios /= 0 ) stop 'error saving elastic point profile'
-
-     if ( nspec_bd_pnt_elastic /= 0 ) then
-        do i=1,nspec_bd_pnt_elastic
-           !write(f_num,110) ispec_bd_elmt_elastic(i), x_final_bd_pnt_elastic(i), z_final_bd_pnt_elastic(i)
-           write(f_num,110) ispec_bd_elmt_elastic(i), x_final_bd_pnt_elastic(i), z_final_bd_pnt_elastic(i)
-           ! nx_bd_pnt_elastic(i),nz_bd_pnt_elastic(i)
-        enddo
-     endif
-
-     close(f_num)
-     !stop 'here we see the normal vector. DO NOT foget to modify the writing format 100'
-
-#ifdef USE_MPI
-     write(fname,"('./OUTPUT_FILES/bg_record/acoustic_pnts_profile',i5.5)") myrank
-#else
-     fname = './OUTPUT_FILES/bg_record/acoustic_pnts_profile' 
-#endif
-
-     open(unit=f_num,file=trim(fname),status='new',&
-          action='write',iostat=ios)
-     if( ios /= 0 ) stop 'error saving acoustic point profile' 
-
-     if ( nspec_bd_pnt_acoustic /= 0 ) then
-        do i=1,nspec_bd_pnt_acoustic
-           !print *,'i = ',i
-           !print *,ispec_bd_elmt_acoustic(i)
-           !print *,x_final_bd_pnt_acoustic(i)
-           !print *,z_final_bd_pnt_acoustic(i)
-           write(f_num,110) ispec_bd_elmt_acoustic(i), x_final_bd_pnt_acoustic(i), z_final_bd_pnt_acoustic(i)
-        enddo
-     endif
-
-     close(f_num)
-
-  endif
-
-!!export the elastic/acoustic points profiles, which will be used to reconstruct the wavefield
-  if( record_local_boundary_reconst ) then
-    
-     fname = './OUTPUT_FILES/reconst_record/elastic_pnts_profile'
-     f_num = 111
-     open(unit=f_num,file=trim(fname),status='new',&
-          action='write',iostat=ios)
-     if( ios /= 0 ) stop 'error saving elastic point profile'
-
-     if ( nspec_bd_pnt_elastic /= 0 ) then
-        do i=1,nspec_bd_pnt_elastic
-           !write(f_num,110) ispec_bd_elmt_elastic(i), x_final_bd_pnt_elastic(i), z_final_bd_pnt_elastic(i)
-           write(f_num,111) ispec_bd_elmt_elastic(i), ispec_bd_elmt_elastic_i(i), ispec_bd_elmt_elastic_j(i),&
-                x_final_bd_pnt_elastic(i), z_final_bd_pnt_elastic(i)
-           ! nx_bd_pnt_elastic(i),nz_bd_pnt_elastic(i)
-        enddo
-     endif
-     close(f_num)
-
-     fname = './OUTPUT_FILES/reconst_record/acoustic_pnts_profile' 
-     open(unit=f_num,file=trim(fname),status='new',&
-          action='write',iostat=ios)
-     if( ios /= 0 ) stop 'error saving acoustic point profile' 
-
-     if ( nspec_bd_pnt_acoustic /= 0 ) then
-        do i=1,nspec_bd_pnt_acoustic
-           write(f_num,111) ispec_bd_elmt_acoustic(i), ispec_bd_elmt_acoustic_i(i), ispec_bd_elmt_acoustic_j(i),& 
-                x_final_bd_pnt_acoustic(i), z_final_bd_pnt_acoustic(i)
-        enddo
-     endif
-     close(f_num)
-
-  endif
-
-  110 format(i5,2(es12.4,2x))!you may need to adjust the format depending on the precision
-  111 format(i5,2x,i1,2x,i1,2x,2(es12.4,2x))!you may need to adjust the format depending on the precision
-
-  !the coordinate of recording points are not needed since we already know the
-  !target element of location and the lagrange coefficients
-  deallocate(x_final_bd_pnt_elastic,z_final_bd_pnt_elastic)
-  deallocate(x_final_bd_pnt_acoustic,z_final_bd_pnt_acoustic)
-
-  
-
-
-
   if ( record_local_boundary_reconst ) then
+
      if ( nspec_bd_pnt_elastic /= 0 ) then
         !elastic
         allocate(trac_bd_pnt_elastic_reconst(3,nspec_bd_pnt_elastic))
@@ -796,8 +904,12 @@
         trac_bd_pnt_elastic_reconst = 0.0
         trac_f = 0.0
         
+
         !P-SV and SH cases will record different boundary information
         if( p_sv ) then
+           !temporary array for MPI writing   
+           allocate(temp_record_elastic(3,nspec_bd_pnt_elastic))
+
            allocate(m_xx(nspec_bd_pnt_elastic))
            allocate(m_xz(nspec_bd_pnt_elastic))
            allocate(m_zz(nspec_bd_pnt_elastic))
@@ -807,6 +919,8 @@
            allocate(m_zz_reconst(nspec_bd_pnt_elastic))
            allocate(m_zx_reconst(nspec_bd_pnt_elastic))
         else
+
+           allocate(temp_record_elastic(2,nspec_bd_pnt_elastic))
            !should we also separate the allocation of memory for P-SV and SH cases
            allocate(m_yx(nspec_bd_pnt_elastic))
            allocate(m_yz(nspec_bd_pnt_elastic))
@@ -822,35 +936,101 @@
            allocate(Grad_pot(nspec_bd_pnt_acoustic))
            allocate(grad_pot_x_reconst(nspec_bd_pnt_acoustic),grad_pot_z_reconst(nspec_bd_pnt_acoustic))
            allocate(Pot_x(nspec_bd_pnt_acoustic),Pot_z(nspec_bd_pnt_acoustic))
+           allocate(temp_record_acoustic(2,nspec_bd_pnt_acoustic))
         endif
      endif
 
   endif
 
+  !!export the elastic/acoustic points profiles, which will be used to reconstruct the wavefield
+  if( record_local_boundary_reconst ) then
+    
+#ifdef USE_MPI
+     write(fname,"('./OUTPUT_FILES/reconst_record/elastic_pnts_profile',i5.5)") myrank
+#else
+     fname = './OUTPUT_FILES/reconst_record/elastic_pnts_profile'
+#endif
+     
+     f_num = 111
+     open(unit=f_num,file=trim(fname),status='new',&
+          action='write',iostat=ios)
+     if( ios /= 0 ) stop 'error saving elastic point profile'
+
+     if ( nspec_bd_pnt_elastic /= 0 ) then
+        do i=1,nspec_bd_pnt_elastic
+           !write(f_num,110) ispec_bd_elmt_elastic(i), x_final_bd_pnt_elastic(i), z_final_bd_pnt_elastic(i)
+           write(f_num,111) ispec_bd_elmt_elastic(i), ispec_bd_elmt_elastic_i(i), ispec_bd_elmt_elastic_j(i),&
+                x_final_bd_pnt_elastic(i), z_final_bd_pnt_elastic(i)
+           ! nx_bd_pnt_elastic(i),nz_bd_pnt_elastic(i)
+        enddo
+     endif
+
+     close(f_num)
+
+#ifdef USE_MPI
+     write(fname,"('./OUTPUT_FILES/reconst_record/acoustic_pnts_profile',i5.5)") myrank
+#else
+     fname = './OUTPUT_FILES/reconst_record/acoustic_pnts_profile' 
+#endif
+
+     open(unit=f_num,file=trim(fname),status='new',&
+          action='write',iostat=ios)
+     if( ios /= 0 ) stop 'error saving acoustic point profile' 
+
+     if ( nspec_bd_pnt_acoustic /= 0 ) then
+        do i=1,nspec_bd_pnt_acoustic
+           write(f_num,111) ispec_bd_elmt_acoustic(i), ispec_bd_elmt_acoustic_i(i), ispec_bd_elmt_acoustic_j(i),& 
+                x_final_bd_pnt_acoustic(i), z_final_bd_pnt_acoustic(i)
+        enddo
+     endif
+
+     close(f_num)
+
+  endif
+
+  110 format(i5,2(es12.4,2x))!you may need to adjust the format depending on the precision
+  111 format(i5,2x,i1,2x,i1,2x,2(es12.4,2x))!you may need to adjust the format depending on the precision
+
+
+
+
   !deallocate the intermediate arrays for wavefield record in global model
-  deallocate(bd_pnt_i_total, bd_pnt_j_total)
+  !total
   deallocate(side_type_total)
   deallocate(ispec_selected_bd_pnt_total)
-  deallocate(elastic_flag_total, acoustic_flag_total,corner_flag_total)
+  deallocate(elastic_flag_total, acoustic_flag_total)
+  deallocate(corner_flag_total)
+
   deallocate(bd_pnt_elmnt_num_total)
+  deallocate(bd_pnt_i_total, bd_pnt_j_total)
   deallocate(bd_pnt_xval_total, bd_pnt_zval_total)
-  deallocate(nx_pnt_total, nz_pnt_total)
+
   deallocate(xi_bd_pnt_total, gamma_bd_pnt_total)
+
+  deallocate(nx_pnt_total, nz_pnt_total)
   deallocate(x_final_bd_pnt_total, z_final_bd_pnt_total)
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
+  !local
+  deallocate(side_type)
+  deallocate(ispec_selected_bd_pnt)
   deallocate(elastic_flag,acoustic_flag)
+
   deallocate(bd_pnt_elmnt_num)
   deallocate(bd_pnt_i,bd_pnt_j)
-  deallocate(bd_pnt_xval,bd_pnt_zval)
+  !deallocate(bd_pnt_xval,bd_pnt_zval)
+
+  deallocate(xi_bd_pnt, gamma_bd_pnt)
+
+  deallocate(nx_pnt, nz_pnt)
+  deallocate(x_final_bd_pnt, z_final_bd_pnt)
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
-
-
-
+  !elastic/acoustic
+  deallocate(bd_pnt_i_elastic,bd_pnt_j_elastic)
+  deallocate(bd_pnt_i_acoustic,bd_pnt_j_acoustic)
   
+  !the coordinate of recording points are not needed since we already know the
+  !target element of location and the lagrange coefficients
+  deallocate(x_final_bd_pnt_elastic,z_final_bd_pnt_elastic)
+  deallocate(x_final_bd_pnt_acoustic,z_final_bd_pnt_acoustic)
 
-  
   end subroutine locate_recording_point

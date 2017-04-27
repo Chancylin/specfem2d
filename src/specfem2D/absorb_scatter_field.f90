@@ -693,7 +693,7 @@ subroutine pnt_info_interpl_solid(iglob,veloc_x_store,veloc_y_store,veloc_z_stor
 !this subroutine is used to assign the information to the boundary points of local model. 
 !Since the profile points we use are those exported from the local model,
 !which is already the boundary points, here we just search the closest coordinateand assign the values directly.
-  use specfem_par, only: nspec_bd_pnt_elastic,coord,x_final_bd_pnt_elastic,z_final_bd_pnt_elastic,&
+  use specfem_par, only: nspec_bd_pnt_elastic_supply,coord,x_final_bd_pnt_elastic_supply,z_final_bd_pnt_elastic_supply,&
                          vel_bd_pnt_elastic,trac_bd_pnt_elastic
                          
   
@@ -710,11 +710,11 @@ subroutine pnt_info_interpl_solid(iglob,veloc_x_store,veloc_y_store,veloc_z_stor
   z = dble(coord(2,iglob))
 
   !initial distance
-  d_min = (x-x_final_bd_pnt_elastic(1))**2 + (z-z_final_bd_pnt_elastic(1))**2
+  d_min = (x-x_final_bd_pnt_elastic_supply(1))**2 + (z-z_final_bd_pnt_elastic_supply(1))**2
   point_locate = 1
 
-  do i=2,nspec_bd_pnt_elastic
-     d_search = (x-x_final_bd_pnt_elastic(i))**2 + (z-z_final_bd_pnt_elastic(i))**2 
+  do i=2,nspec_bd_pnt_elastic_supply
+     d_search = (x-x_final_bd_pnt_elastic_supply(i))**2 + (z-z_final_bd_pnt_elastic_supply(i))**2 
      if(d_search < d_min )then
        d_min = d_search
        point_locate = i
@@ -722,10 +722,9 @@ subroutine pnt_info_interpl_solid(iglob,veloc_x_store,veloc_y_store,veloc_z_stor
 
   enddo
 
-  !print *,'\n'
-  !print *,'the original coordinate is ',x,z
-  !print *,'the point we interpolate is ',x_final_bd_pnt_elastic(point_locate),&
-  !        z_final_bd_pnt_elastic(point_locate)
+  ! print *,'the original coordinate is ',x,z
+  ! print *,'the point we interpolate is ',x_final_bd_pnt_elastic_supply(point_locate),&
+  !        z_final_bd_pnt_elastic_supply(point_locate)
 
   veloc_x_store = vel_bd_pnt_elastic(1,point_locate)
   veloc_y_store = vel_bd_pnt_elastic(2,point_locate)
@@ -739,7 +738,7 @@ end subroutine pnt_info_interpl_solid
 
 
 subroutine pnt_info_interpl_fluid(iglob,grad_pot_x_store,grad_pot_z_store,potential_dot_acoustic_store)
-  use specfem_par, only: nspec_bd_pnt_acoustic,coord,x_final_bd_pnt_acoustic,z_final_bd_pnt_acoustic,&
+  use specfem_par, only: nspec_bd_pnt_acoustic_supply,coord,x_final_bd_pnt_acoustic_supply,z_final_bd_pnt_acoustic_supply,&
                          grad_pot_bd_pnt_acoustic,pot_dot_bd_pnt_acoustic
 
   implicit none
@@ -755,11 +754,11 @@ subroutine pnt_info_interpl_fluid(iglob,grad_pot_x_store,grad_pot_z_store,potent
   z = dble(coord(2,iglob))
 
   !initial distance
-  d_min = (x-x_final_bd_pnt_acoustic(1))**2 + (z-z_final_bd_pnt_acoustic(1))**2
+  d_min = (x-x_final_bd_pnt_acoustic_supply(1))**2 + (z-z_final_bd_pnt_acoustic_supply(1))**2
   point_locate = 1
 
-  do i=2,nspec_bd_pnt_acoustic
-     d_search = (x-x_final_bd_pnt_acoustic(i))**2 + (z-z_final_bd_pnt_acoustic(i))**2 
+  do i=2,nspec_bd_pnt_acoustic_supply
+     d_search = (x-x_final_bd_pnt_acoustic_supply(i))**2 + (z-z_final_bd_pnt_acoustic_supply(i))**2 
      if(d_search < d_min )then
        d_min = d_search
        point_locate = i
@@ -770,8 +769,8 @@ subroutine pnt_info_interpl_fluid(iglob,grad_pot_x_store,grad_pot_z_store,potent
   !test
   !print *,'\n'
   !print *,'the original coordinate is ',x,z
-  !print *,'the point we interpolate is ',x_final_bd_pnt_acoustic(point_locate),&
-  !        z_final_bd_pnt_acoustic(point_locate)
+  !print *,'the point we interpolate is ',x_final_bd_pnt_acoustic_supply(point_locate),&
+  !        z_final_bd_pnt_acoustic_supply(point_locate)
   !!
   grad_pot_x_store = grad_pot_bd_pnt_acoustic(1,point_locate)
   grad_pot_z_store = grad_pot_bd_pnt_acoustic(2,point_locate)

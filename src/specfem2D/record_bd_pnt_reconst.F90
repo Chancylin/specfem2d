@@ -375,8 +375,16 @@
 
  subroutine write_bd_pnts_reconst()
 
+#ifdef USE_MPI
+   use mpi
+#endif
+   
   use specfem_par, only: it,p_sv,& !original para
+                         num_pnt_elastic,num_pnt_acoustic,&
+                         nspec_bd_pnt_elastic_clt, nspec_bd_pnt_acoustic_clt,&
+                         bg_record_elastic, bg_record_acoustic,&
                          fname,f_num,&
+                         temp_record_elastic,temp_record_acoustic,&
                          nspec_bd_pnt_elastic,nspec_bd_pnt_acoustic,&
                          trac_f,m_xx,m_xz,m_zz,m_yx,m_yz, &
                          Grad_pot,Pot_x,Pot_z, &
@@ -386,64 +394,216 @@
   implicit none
   include "constants.h"
 
-  integer :: k
-  integer :: ios
   integer :: length_unf_1
   integer :: length_unf_2
+#ifdef USE_MPI
+  !MPI parameters
+  integer (kind=MPI_OFFSET_KIND) :: offset1, offset2
+  integer :: size,bd_info_type,ierror
+  integer :: count
+#else
+  integer :: k
+  integer :: ios
+#endif
 
   if (it < record_nt1_reconst .or. it > record_nt2_reconst ) return
 
 
   !for elastic 
+
+  write(fname,"('./OUTPUT_FILES/reconst_record/&
+       &elastic_pnts/nt_',i6.6)")it
+
   if( nspec_bd_pnt_elastic /= 0 )then
 
-    f_num=113
-    write(fname,"('./OUTPUT_FILES/reconst_record/&
-          &elastic_pnts/nt_',i6.6)")it
+#ifdef USE_MPI
 
-    if( p_sv ) then
-       
-       !!!this is the recording length for unformatted recording
-       inquire (iolength = length_unf_1) trac_f(1,1),trac_f(1,1),m_xx(1),m_xx(1),m_xx(1)
-       !unformatted recording
-       open(unit=f_num,file=trim(fname),access='direct',status='new',&
-            action='write',iostat=ios,recl=length_unf_1) 
-       if( ios /= 0 ) stop 'error saving values at recording points'
+     call MPI_FILE_OPEN(bg_record_elastic,fname,&
+          MPI_MODE_CREATE+MPI_MODE_WRONLY,MPI_INFO_NULL,f_num,ierror)
 
-       do k = 1, nspec_bd_pnt_elastic
-          !save traction_x, traction_z, m_xx, m_xz, m_zz
-          write(f_num,rec=k) trac_f(1,k),trac_f(3,k),m_xx(k),m_xz(k),m_zz(k)
-       enddo
-       
-    else
-       
-       inquire (iolength = length_unf_1) trac_f(1,1),m_yx(1),m_yz(1)
-       !unformatted recording
-       open(unit=f_num,file=trim(fname),access='direct',status='new',&
-            action='write',iostat=ios,recl=length_unf_1) 
-       if( ios /= 0 ) stop 'error saving values at recording points'
+     !create the MPI datatype corresponding to real(kind=CUSTOM_REAL)
+     !bd_info_type is a handle referring to the MPI dataype created
+     call MPI_SIZEOF(trac_f(1,1),size,ierror)
+     call MPI_TYPE_MATCH_SIZE(MPI_TYPECLASS_REAL,size,bd_info_type,ierror)
 
-       do k = 1, nspec_bd_pnt_elastic
-          !save traction_y, m_yx, m_yz
-          write(f_num,rec=k) trac_f(2,k),m_yx(k),m_yz(k)
-       enddo
-       
-    endif
 
-    close(f_num)
-  
-  endif 
+     if( p_sv ) then
+
+        !use temp_record to contain m_xx, m_xz and m_zz will make it easier for writing
+        !but one should realize that the reason we can just MPI write temp_record_elastic
+        !into file, mainly because Fortran is column-major
+        temp_record_elastic(1,:) = m_xx
+        temp_record_elastic(2,:) = m_xz
+        temp_record_elastic(3,:) = m_zz
+
+        inquire (iolength = length_unf_1) trac_f((/1,3/),1) !e.g., length_unf_1 = 4X2
+        offset1 = num_pnt_elastic*length_unf_1
+
+        count = 2*nspec_bd_pnt_elastic
+        call MPI_FILE_WRITE_AT(f_num, offset1, trac_f((/1,3/),:), count,&
+             bd_info_type, MPI_STATUS_IGNORE, ierror)
+
+        !I don't like the usage of 'size' here, making the code unclear in terms of logic
+        offset2 = nspec_bd_pnt_elastic_clt*length_unf_1 &
+             +  num_pnt_elastic*size*3 !size = 4
+
+        count = nspec_bd_pnt_elastic*3
+
+        call MPI_FILE_WRITE_AT(f_num, offset2, temp_record_elastic, count,&
+             bd_info_type, MPI_STATUS_IGNORE, ierror)
+
+
+        ! offset2 = nspec_bd_pnt_elastic_clt*length_unf_1 &
+        !      + nspec_bd_pnt_elastic_clt*size &
+        !      +  num_pnt_elastic*size
+
+
+        ! call MPI_FILE_WRITE_AT(f_num, offset2, m_xz, count,&
+        !      bd_info_type, MPI_STATUS_IGNORE, ierror)
+
+
+        ! offset2 = nspec_bd_pnt_elastic_clt*length_unf_1 &
+        !      + nspec_bd_pnt_elastic_clt*size &
+        !      + nspec_bd_pnt_elastic_clt*size &
+        !      +  num_pnt_elastic*size
+
+        ! call MPI_FILE_WRITE_AT(f_num, offset2, m_zz, count,&
+        !      bd_info_type, MPI_STATUS_IGNORE, ierror)
+
+
+     else
+
+        temp_record_elastic(1,:) = m_yx
+        temp_record_elastic(2,:) = m_yz
+
+        inquire (iolength = length_unf_1) trac_f(2,1)  !length_unf_1 = 4
+        offset1 = num_pnt_elastic*length_unf_1
+
+        count = nspec_bd_pnt_elastic
+        call MPI_FILE_WRITE_AT(f_num, offset1, trac_f(2,:), count,&
+             bd_info_type, MPI_STATUS_IGNORE, ierror)
+
+        !I don't like the usage of 'size' here, making the code unclear in terms of logic
+        offset2 = nspec_bd_pnt_elastic_clt*length_unf_1 &
+             +  num_pnt_elastic*size*2
+
+        count = nspec_bd_pnt_elastic*2
+
+        call MPI_FILE_WRITE_AT(f_num, offset2, temp_record_elastic, count,&
+             bd_info_type, MPI_STATUS_IGNORE, ierror)
+
+
+        ! offset2 = nspec_bd_pnt_elastic_clt*length_unf_1 &
+        !      + nspec_bd_pnt_elastic_clt*size &
+        !      +  num_pnt_elastic*size
+
+
+        ! call MPI_FILE_WRITE_AT(f_num, offset2, m_yz, count,&
+        !      bd_info_type, MPI_STATUS_IGNORE, ierror)
+
+
+     endif
+
+     ! call MPI_FILE_WRITE(f_num, vel_bd_pnt_elastic, count,&
+     !      bd_info_type, MPI_STATUS_IGNORE, ierror)
+     call MPI_FILE_CLOSE(f_num,ierror)
+
+#else
+     f_num=113
+
+     if( p_sv ) then
+
+!!!this is the recording length for unformatted recording
+        inquire (iolength = length_unf_1) trac_f(1,1),trac_f(1,1),m_xx(1),m_xx(1),m_xx(1)
+        !unformatted recording
+        open(unit=f_num,file=trim(fname),access='direct',status='new',&
+             action='write',iostat=ios,recl=length_unf_1) 
+        if( ios /= 0 ) stop 'error saving values at recording points'
+
+        do k = 1, nspec_bd_pnt_elastic
+           !save traction_x, traction_z, m_xx, m_xz, m_zz
+           write(f_num,rec=k) trac_f(1,k),trac_f(3,k),m_xx(k),m_xz(k),m_zz(k)
+        enddo
+
+     else
+
+        inquire (iolength = length_unf_1) trac_f(1,1),m_yx(1),m_yz(1)
+        !unformatted recording
+        open(unit=f_num,file=trim(fname),access='direct',status='new',&
+             action='write',iostat=ios,recl=length_unf_1) 
+        if( ios /= 0 ) stop 'error saving values at recording points'
+
+        do k = 1, nspec_bd_pnt_elastic
+           !save traction_y, m_yx, m_yz
+           write(f_num,rec=k) trac_f(2,k),m_yx(k),m_yz(k)
+        enddo
+
+     endif
+
+     close(f_num)
+
+#endif
+
+  endif
 
   !for acoustic
   if( nspec_bd_pnt_acoustic /= 0 )then
+
+     write(fname,"('./OUTPUT_FILES/reconst_record/&
+          &acoustic_pnts/nt_',i6.6)")it
+
+#ifdef USE_MPI
+
+     call MPI_FILE_OPEN(bg_record_acoustic,fname,&
+          MPI_MODE_CREATE+MPI_MODE_WRONLY,MPI_INFO_NULL,f_num,ierror)
+
+     !create the MPI datatype corresponding to real(kind=CUSTOM_REAL)
+     !bd_info_type is a handle referring to the MPI dataype created
+     call MPI_SIZEOF(Grad_pot(1),size,ierror)
+     call MPI_TYPE_MATCH_SIZE(MPI_TYPECLASS_REAL,size,bd_info_type,ierror)
+
+     if( p_sv ) then
+
+        temp_record_acoustic(1,:) = Pot_x
+        temp_record_acoustic(2,:) = Pot_z
+        
+        inquire (iolength = length_unf_2) Grad_pot(1) !length_unf_2 = 4 
+        offset1 = num_pnt_acoustic*length_unf_2
+        
+        count = nspec_bd_pnt_acoustic
+
+        call MPI_FILE_WRITE_AT(f_num, offset1, Grad_pot, count,&
+             bd_info_type, MPI_STATUS_IGNORE, ierror)
+
+
+        offset2 = nspec_bd_pnt_acoustic_clt*length_unf_2 &
+             + num_pnt_acoustic*length_unf_2*2
+
+
+        call MPI_FILE_WRITE_AT(f_num, offset2, temp_record_acoustic, count,&
+             bd_info_type, MPI_STATUS_IGNORE, ierror)
+
+
+        ! offset2 = nspec_bd_pnt_acoustic_clt*length_unf_2 &
+        !      + nspec_bd_pnt_acoustic_clt*length_unf_2 &
+        !      + num_pnt_acoustic*length_unf_2
+
+
+        ! call MPI_FILE_WRITE_AT(f_num, offset2, Pot_z, count,&
+        !      bd_info_type, MPI_STATUS_IGNORE, ierror)
+        
+     ! else  ! actually, nothing needs to do if SH case
+        
+     endif
+     
+     call MPI_FILE_CLOSE(f_num,ierror)
+#else
 
      if( p_sv ) then !only need to do the recording if P-SV case
 
         inquire (iolength = length_unf_2) Grad_pot(1),Pot_x(1),Pot_z(1)
 
         f_num=114
-        write(fname,"('./OUTPUT_FILES/reconst_record/&
-             &acoustic_pnts/nt_',i6.6)")it
 
         !unformatted recording
         open(unit=f_num,file=trim(fname),access='direct',status='new',&
@@ -458,6 +618,8 @@
         close(f_num)
 
      endif
+
+#endif
 
   endif
 
