@@ -370,6 +370,8 @@ module specfem_par
   double precision, dimension(:,:), allocatable :: hxis_pot_f_store,hgammas_pot_f_store
   double precision, dimension(:,:), allocatable :: hpxis_pot_f_store,hpgammas_pot_f_store
 
+  integer, dimension(:), allocatable :: booking_reconst_elastic,booking_reconst_acoustic 
+  integer :: nspec_bd_pnt_elastic_supply_total, nspec_bd_pnt_acoustic_supply_total
   !parameters for MPI
   ! logical, dimension(:), allocatable :: found_element
   integer :: num_pnt_elastic, num_pnt_acoustic
@@ -377,6 +379,8 @@ module specfem_par
   integer :: bg_record_elastic, bg_record_acoustic
   integer :: nspec_bd_pnt_elastic_clt, nspec_bd_pnt_acoustic_clt
 
+  integer :: bg_supply_elastic, bg_supply_acoustic
+  integer :: nspec_bd_pnt_elastic_supply_clt, nspec_bd_pnt_acoustic_supply_clt
   !-------------------------------------------------------------------
 
 

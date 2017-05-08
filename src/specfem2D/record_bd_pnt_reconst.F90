@@ -579,7 +579,8 @@
         offset2 = nspec_bd_pnt_acoustic_clt*length_unf_2 &
              + num_pnt_acoustic*length_unf_2*2
 
-
+        count = nspec_bd_pnt_acoustic*2
+        
         call MPI_FILE_WRITE_AT(f_num, offset2, temp_record_acoustic, count,&
              bd_info_type, MPI_STATUS_IGNORE, ierror)
 

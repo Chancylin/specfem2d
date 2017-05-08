@@ -7,8 +7,9 @@
 
     use mpi
     
-    use specfem_par, only: myrank,elastic,acoustic,p_sv,&
+    use specfem_par, only: myrank,nproc,elastic,acoustic,p_sv,&
                            record_local_bkgd_boundary,npnt,npnt_local,num_pnt_elastic,num_pnt_acoustic,&
+                           bg_record_elastic, bg_record_acoustic,&
                            nspec_bd_pnt_elastic_clt, nspec_bd_pnt_acoustic_clt,&
                            ispec_selected_bd_pnt,nspec_bd_pnt_elastic,nspec_bd_pnt_acoustic,&
                            nspec_bd_elmt_elastic_pure,nspec_bd_elmt_acoustic_pure,&
@@ -65,7 +66,7 @@
   double precision x,z,xix,xiz,gammax,gammaz,jacobian
 
  ! use dynamic allocation
-  double precision distmin_squared, dist_squared
+  double precision distmin_squared, dist_squared, dist_glob_squared
 
   integer  :: ios
   character(len=150) dummystring
@@ -99,6 +100,10 @@
 
   !para for mpi
   integer :: ierror
+  integer :: is_proc_recording_pnt
+  integer :: nb_proc_recording_pnt
+  integer, dimension(1:nproc) :: allgather_is_proc_recording_pnt
+  integer, dimension(1) :: locate_is_proc_recording_pnt
 
   print *,myrank,'this has ran' 
 
@@ -159,6 +164,10 @@
   allocate(bd_pnt_i_total(npnt),bd_pnt_j_total(npnt))
   allocate(bd_pnt_xval_total(npnt),bd_pnt_zval_total(npnt))
   allocate(nx_pnt_total(npnt),nz_pnt_total(npnt))
+
+  ! !build the booking
+  ! allocate(booking_record = )
+  ! booking_record = 
   
   in_element = .true.
   ispec_selected_bd_pnt_total = 0 
@@ -180,6 +189,7 @@
 
         distmin_squared = HUGEVAL
 
+        is_proc_recording_pnt = 0
         !read(1,*) bd_pnt_xval(ipnt), bd_pnt_zval(ipnt), nx_pnt(ipnt), nz_pnt(ipnt)
         !note now when dealing with the reconstruting problem, you need the type of side
         !(i.e., L, R, T, B), which should be pre-known from the 'boundary_points' profile
@@ -241,6 +251,52 @@
 
         enddo !end the loop for all elements
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        ! we add the global communication to solve the allocating problem when the recording point is at the interface of different partitions
+#ifdef USE_MPI
+        ! global minimum distance computed over all processes
+        call MPI_ALLREDUCE (distmin_squared, dist_glob_squared, 1, MPI_DOUBLE_PRECISION, MPI_MIN, MPI_COMM_WORLD, ierror)
+#else
+        dist_glob_squared = distmin_squared
+#endif
+
+        ! check if this process contains the source
+        if ( abs(sqrt(dist_glob_squared) - sqrt(distmin_squared)) < TINYVAL ) is_proc_recording_pnt = 1
+        
+#ifdef USE_MPI
+        ! determining the number of processes that contain the recording point
+        ! (useful when the source is located on an interface)
+        call MPI_ALLREDUCE (is_proc_recording_pnt, nb_proc_recording_pnt, 1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, ierror)
+#else
+        nb_proc_recording_pnt = is_proc_recording_pnt
+#endif
+
+#ifdef USE_MPI
+        ! when several processes contain the source, we elect one of them (minimum rank).
+        if ( nb_proc_recording_pnt > 1 ) then
+
+           call MPI_ALLGATHER(is_proc_recording_pnt, 1, MPI_INTEGER, allgather_is_proc_recording_pnt(1), &
+                1, MPI_INTEGER, MPI_COMM_WORLD, ierror)
+           
+           locate_is_proc_recording_pnt = maxloc(allgather_is_proc_recording_pnt) - 1
+
+           if ( myrank /= locate_is_proc_recording_pnt(1) ) then
+              is_proc_recording_pnt = 0
+           endif
+           nb_proc_recording_pnt = 1
+
+        endif
+
+#endif
+
+        if( is_proc_recording_pnt == 0 ) then
+           in_element(ipnt) = .false.
+           cycle ipnt_locate
+        endif
+        
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        
         !if ispec_selected_bd_pnt_total(ipnt) is zero, which means the flag condition
         !cannot be met when the previous loop try to locate it. That means the recording
         !point is not in the current partition. Then just jump to next recording point
@@ -292,40 +348,22 @@
            ! end of non linear iterations
         enddo
 
-        !check whether the recording points is in the located element
-        if( xi > 1.10d0 .or. xi < -1.10d0 .or. gamma > 1.10d0 .or. gamma < -1.10d0)then
-           in_element(ipnt) = .false.
+! !since now we locate the point according to the global_min_dist, the if-sentence here is unnecessary any more.
+!         !check whether the recording points is in the located element
+!         if( xi > 1.10d0 .or. xi < -1.10d0 .or. gamma > 1.10d0 .or. gamma < -1.10d0)then
+!            in_element(ipnt) = .false.
 
-           !since we already use the elastic/acoustic_flag, the calculation of
-           !elastic/acoustic elements here is unnecessary
-           if( elastic(ispec_selected_bd_pnt_total(ipnt)) )then
-              nspec_bd_pnt_elastic = nspec_bd_pnt_elastic - 1
-           else if( acoustic(ispec_selected_bd_pnt_total(ipnt)) )then
-              nspec_bd_pnt_acoustic = nspec_bd_pnt_acoustic - 1
-           endif
+!            !since we already use the elastic/acoustic_flag, the calculation of
+!            !elastic/acoustic elements here is unnecessary
+!            if( elastic(ispec_selected_bd_pnt_total(ipnt)) )then
+!               nspec_bd_pnt_elastic = nspec_bd_pnt_elastic - 1
+!            else if( acoustic(ispec_selected_bd_pnt_total(ipnt)) )then
+!               nspec_bd_pnt_acoustic = nspec_bd_pnt_acoustic - 1
+!            endif
 
-        endif
+!         endif
+
         ! compute final coordinates of point found
-
-        ! #ifdef USE_MPI
-        !      !broadcost the info that the current process find this recording point
-        !      if( in_element(ipnt) )then
-
-        !         !when the recording point is already found by others, don't broadcast that
-        !         if( found_element(ipnt) )then
-        !            in_element(ipnt) = .false.
-        !         else 
-        !            found_element(ipnt) = .true.
-        !            !all sent to rank 0
-        !            call MPI_SEND(found_element, npnt, MPI_LOGICAL, &
-        !                 0, send_to_zero, MPI_COMM_WORLD, MPI_STATUS_IGNORE, ierror)
-        !            call MPI_BCAST(found_element(ipnt), 1, MPI_LOGICAL, myrank, MPI_COMM_WORLD, ierror)
-        !            print *, 'point ', ipnt, 'has been found and broadcasted by ', myrank 
-        !         endif
-
-        !      endif
-
-        ! #endif
 
 
         !by lcx: I think the basic idea here is we want to find the best 
@@ -351,6 +389,7 @@
 
      close(1)
 
+     
   else if( record_local_boundary_reconst ) then
 
      write(fname,"('./DATA/boundary_points',i5.5)") myrank
@@ -492,7 +531,7 @@
   
   !the reason doing this is: some processors may have not any recording
   !points. so we need to exclude them when we do the writting
-  call build_commu_bg_record(nspec_bd_pnt_elastic, nspec_bd_pnt_acoustic)
+  call build_commu_bg_record(nspec_bd_pnt_elastic, nspec_bd_pnt_acoustic,  bg_record_elastic, bg_record_acoustic)
 
 #endif
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1012,7 +1051,7 @@
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !local
   deallocate(side_type)
-  deallocate(ispec_selected_bd_pnt)
+  !deallocate(ispec_selected_bd_pnt)
   deallocate(elastic_flag,acoustic_flag)
 
   deallocate(bd_pnt_elmnt_num)

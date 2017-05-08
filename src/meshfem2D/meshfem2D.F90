@@ -418,6 +418,8 @@ program meshfem2D
   integer :: i_source
   double precision :: tang1,tangN
 
+  integer :: istat
+
   ! ***
   ! *** read the parameter file
   ! ***
@@ -1092,8 +1094,9 @@ program meshfem2D
   endif
   print *
 
-  if(associated(nz_layer)) deallocate(nz_layer)
-  if(associated(elmnts)) deallocate(elmnts)
+  if(associated(nz_layer)) deallocate(nz_layer,STAT=istat)
+  if(associated(elmnts)) deallocate(elmnts,STAT=istat)
+
 
 end program meshfem2D
 

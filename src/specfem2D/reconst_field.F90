@@ -9,7 +9,7 @@
 subroutine compute_add_trac_f_viscoelastic(accel_elastic,it)
        
   use specfem_par, only: p_sv,nglob_elastic,&
-                         nspec_bd_pnt_elastic,&
+                         nspec_bd_pnt_elastic_supply,&
                          trac_f,m_xx,m_xz,m_zz,m_yx,m_yz,&
                          ispec_selected_elastic_source_reconst,&  !this should be located by a subroutine
                          hxis_trac_f_store,hgammas_trac_f_store,ibool,&
@@ -27,21 +27,21 @@ subroutine compute_add_trac_f_viscoelastic(accel_elastic,it)
   double precision :: xixd,xizd,gammaxd,gammazd
   double precision, dimension(NGLLX,NGLLZ) :: G_11,G_13,G_31,G_33,G_21,G_23
   double precision, dimension(3,NGLLX,NGLLZ) :: mid_temp
-  !logical :: switch1,switch2
+  logical :: switch1,switch2
   
-  !switch1 = .TRUE.
-  !switch2 = .FALSE.
+  switch1 = .TRUE.
+  switch2 = .TRUE.
   if (it < read_nt1_reconst .or. it > read_nt2_reconst ) return
   !there must be a subroutine to assign the trac_f for the time step 'it'
   !the time interpolation may be applied
   !call supply_pnt_reconst()
 
-  if( nspec_bd_pnt_elastic /= 0 ) then
+  if( nspec_bd_pnt_elastic_supply /= 0 ) then
 
 
-      do i_f_source=1,nspec_bd_pnt_elastic
+      do i_f_source=1,nspec_bd_pnt_elastic_supply
  
-         !if ( switch1 ) then
+         if ( switch1 ) then
 
          if( p_sv ) then ! P-SV calculation
 
@@ -70,8 +70,9 @@ subroutine compute_add_trac_f_viscoelastic(accel_elastic,it)
            enddo
 
          endif
-         !endif !switch for this term
-        !if( switch2 ) then
+         endif !switch for this term
+
+        if( switch2 ) then
 
          if( p_sv ) then !P-SV calculation
            !calcualte G_ik at all the GLL points inside each element
@@ -177,7 +178,7 @@ subroutine compute_add_trac_f_viscoelastic(accel_elastic,it)
 
          endif
 
-        !endif!whether to add the moment tensor term
+        endif!whether to add the moment tensor term
 
     enddo
 
@@ -189,11 +190,11 @@ end subroutine compute_add_trac_f_viscoelastic
 subroutine compute_add_pot_f_acoustic(potential_dot_dot_acoustic,it)
 
   use specfem_par, only: p_sv,nglob_acoustic,ibool,&
-                         nspec_bd_pnt_acoustic,&
+                         nspec_bd_pnt_acoustic_supply,&
                          xix,xiz,gammax,gammaz, &
                          !acoustic para
                          ispec_selected_acoustic_source_reconst,&
-                         nspec_bd_pnt_acoustic,&
+                         nspec_bd_pnt_acoustic_supply,&
                          hxis_pot_f_store,hgammas_pot_f_store,&
                          hpxis_pot_f_store,hpgammas_pot_f_store,& 
                          Grad_pot,Pot_x,Pot_z,&
@@ -213,9 +214,9 @@ subroutine compute_add_pot_f_acoustic(potential_dot_dot_acoustic,it)
 
   if (it < read_nt1_reconst .or. it > read_nt2_reconst ) return
 
-  if( nspec_bd_pnt_acoustic /= 0 ) then
+  if( nspec_bd_pnt_acoustic_supply /= 0 ) then
 
-    do i_pot_source = 1, nspec_bd_pnt_acoustic
+    do i_pot_source = 1, nspec_bd_pnt_acoustic_supply
        
        if( p_sv ) then
 
@@ -289,7 +290,12 @@ end subroutine compute_add_pot_f_acoustic
 
 subroutine setup_trac_f_sources()
  
-  use specfem_par, only: p_sv,nspec_bd_pnt_elastic, &
+#ifdef USE_MPI
+  use mpi
+#endif
+  
+  use specfem_par, only: myrank,p_sv,nspec_bd_pnt_elastic_supply,&
+                         nspec_bd_pnt_elastic_supply_total, booking_reconst_elastic,&
                          coord,ibool,nglob,nspec, &
                          trac_f, m_xx,m_xz,m_zz,m_yx,m_yz, &
                          hxis_trac_f,hgammas_trac_f,hxis_trac_f_store,hgammas_trac_f_store,&
@@ -305,51 +311,126 @@ subroutine setup_trac_f_sources()
  
   ! Local variables
   integer :: i,ios,temp_read,temp1_read,temp2_read,f_num
+  integer :: ispec_selected_elastic_source_reconst_temp
   character(len=150) dummystring
+  character(len=150) fname
   integer :: i_f_source
   integer :: iglob_trac_f_source !local or global variable?
   double precision, dimension(:), allocatable :: xi_trac_f,gamma_trac_f
-  integer, dimension(:), allocatable :: is_proc_source,nb_proc_source 
+  ! integer, dimension(:), allocatable :: is_proc_source,nb_proc_source 
   logical :: elastic_flag,acoustic_flag
-   
+  logical, dimension(:), allocatable :: in_element
+  integer, dimension(:), allocatable :: index_elastic
+  double precision, dimension(:), allocatable :: x_final_bd_pnt_elastic_total, z_final_bd_pnt_elastic_total
+  integer :: ierror
+
   elastic_flag=.TRUE.
   acoustic_flag=.FALSE.
 
   !calculate the total sources number
-   nspec_bd_pnt_elastic = 0
+   nspec_bd_pnt_elastic_supply_total = 0
+   nspec_bd_pnt_elastic_supply = 0
+
+#ifdef USE_MPI
+   fname = './OUTPUT_FILES/reconst_record/elastic_pnts_profile_total' 
+#else
+   fname = './OUTPUT_FILES/bg_record/elastic_pnts_profile' 
+#endif
+
    !count the total boundary points for 
-   open(unit=1,file='./OUTPUT_FILES/reconst_record/elastic_pnts_profile',iostat=ios,status='old',action='read')
+   open(unit=1,file=trim(fname),iostat=ios,status='old',action='read')
    if( ios /= 0 ) stop 'error reading elastic points profile'
    do while(ios == 0)
       read(1,"(a)",iostat=ios) dummystring
-      if(ios == 0) nspec_bd_pnt_elastic = nspec_bd_pnt_elastic + 1
+      if(ios == 0) nspec_bd_pnt_elastic_supply_total = nspec_bd_pnt_elastic_supply_total + 1
    enddo 
-   print *,"number of recording points in elastic region: ", nspec_bd_pnt_elastic
    close(1)
+   
+   print *,"total recording points in elastic region: ", nspec_bd_pnt_elastic_supply_total, ' from rank', myrank
+   
+   if( nspec_bd_pnt_elastic_supply_total /= 0 ) then
+      !this is a bit unfortune, we need to do the global compariso to get the real nspec_bd_pnt_elastic_supply and booking to acess to the data set
+
+      allocate(x_final_bd_pnt_elastic_total(nspec_bd_pnt_elastic_supply_total))
+      allocate(z_final_bd_pnt_elastic_total(nspec_bd_pnt_elastic_supply_total))
+
+      allocate(in_element(nspec_bd_pnt_elastic_supply_total))
+      allocate(index_elastic(nspec_bd_pnt_elastic_supply_total))
+      index_elastic = (/ (i, i=1,nspec_bd_pnt_elastic_supply_total) /)
+
+      !read the coordinates of the source points. The coordinate will be the key information
+      f_num = 111                                                                 
+
+      open(f_num,file=trim(fname),iostat=ios,status='old',action='read')
+      do i_f_source=1,nspec_bd_pnt_elastic_supply_total
+         read(f_num,111) temp_read,temp1_read,temp2_read, &
+              x_final_bd_pnt_elastic_total(i_f_source),z_final_bd_pnt_elastic_total(i_f_source)
+      enddo
+      close(f_num)
+
+      print *, 'nproc = ', nproc
+
+      write(fname,"('./OUTPUT_FILES/reconst_record/elastic_pnts_allocate',i5.5)") myrank
+
+      do i_f_source=1,nspec_bd_pnt_elastic_supply_total
+         call MPI_BARRIER(MPI_COMM_WORLD,ierror)
+         call locate_virtual_source_only_locate(elastic_flag,acoustic_flag,ibool,coord,nspec,nglob,&
+              x_final_bd_pnt_elastic_total(i_f_source),&
+              z_final_bd_pnt_elastic_total(i_f_source),ispec_selected_elastic_source_reconst_temp,&
+              myrank,nproc, in_element(i_f_source))
 
 
-                                                                              
-  if( nspec_bd_pnt_elastic /= 0 ) then
+         open(unit=1,file=trim(fname),iostat=ios,status='new',action='write')
+         write(1,*) 'finsh point: ', i_f_source,&
+              x_final_bd_pnt_elastic_total(i_f_source), z_final_bd_pnt_elastic_total(i_f_source),&
+              ' in rank ', myrank, ' is', in_element(i_f_source)
+         
+      enddo
 
-      allocate(x_final_bd_pnt_elastic(nspec_bd_pnt_elastic),z_final_bd_pnt_elastic(nspec_bd_pnt_elastic))
-      allocate(trac_f(3,nspec_bd_pnt_elastic))
-      trac_f = 0.0
+      close(1)
+
+      nspec_bd_pnt_elastic_supply = count(in_element)
+
+      print *,"number of recording points in elastic region: ", nspec_bd_pnt_elastic_supply, ' from rank', myrank
+
+      if( nspec_bd_pnt_elastic_supply /= 0 ) then
+         allocate(x_final_bd_pnt_elastic(nspec_bd_pnt_elastic_supply),z_final_bd_pnt_elastic(nspec_bd_pnt_elastic_supply))
+         x_final_bd_pnt_elastic = pack(x_final_bd_pnt_elastic_total,in_element)
+         z_final_bd_pnt_elastic = pack(z_final_bd_pnt_elastic_total,in_element)
+
+         allocate(booking_reconst_elastic(nspec_bd_pnt_elastic_supply))
+         booking_reconst_elastic    = pack(index_elastic,in_element)
+
+      endif
+
+      deallocate(x_final_bd_pnt_elastic_total, z_final_bd_pnt_elastic_total)
+      deallocate(in_element)
+      deallocate(index_elastic)
+endif
+
+   ! print *,"number of recording points in elastic region: ", nspec_bd_pnt_elastic_supply, ' from rank', myrank
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+  if( nspec_bd_pnt_elastic_supply /= 0 ) then
+
+      allocate(trac_f(3,nspec_bd_pnt_elastic_supply))
+      ! trac_f = 0.0
       
       if( p_sv ) then
-         allocate(m_xx(nspec_bd_pnt_elastic),m_xz(nspec_bd_pnt_elastic),m_zz(nspec_bd_pnt_elastic))
+         allocate(m_xx(nspec_bd_pnt_elastic_supply),m_xz(nspec_bd_pnt_elastic_supply),m_zz(nspec_bd_pnt_elastic_supply))
       else
-         allocate(m_yx(nspec_bd_pnt_elastic),m_yz(nspec_bd_pnt_elastic))
+         allocate(m_yx(nspec_bd_pnt_elastic_supply),m_yz(nspec_bd_pnt_elastic_supply))
       endif
       
 
-     !read the coordinates of the source points. The coordinate will be the key information
-     f_num = 111                                                                 
+     ! !read the coordinates of the source points. The coordinate will be the key information
+     ! f_num = 111                                                                 
 
-     open(f_num,file='./OUTPUT_FILES/reconst_record/elastic_pnts_profile',iostat=ios,status='old',action='read')
-     do i=1,nspec_bd_pnt_elastic
-        read(f_num,111) temp_read,temp1_read,temp2_read, x_final_bd_pnt_elastic(i),z_final_bd_pnt_elastic(i)
-     enddo                                                                    
-     close(f_num)                                                             
+     ! open(unit=1,file=trim(fname),iostat=ios,status='old',action='read')
+     ! do i=1,nspec_bd_pnt_elastic_supply
+     !    read(f_num,111) temp_read,temp1_read,temp2_read, x_final_bd_pnt_elastic(i),z_final_bd_pnt_elastic(i)
+     ! enddo                                                                    
+     ! close(f_num)                                                             
 
   
      !consistent with format in 'locate_recording_point.F90'
@@ -360,13 +441,13 @@ subroutine setup_trac_f_sources()
      allocate(hgammas_trac_f(NGLLZ))
      allocate(hpxis_trac_f(NGLLX))
      allocate(hpgammas_trac_f(NGLLZ))
-     allocate(hxis_trac_f_store(nspec_bd_pnt_elastic,NGLLX))
-     allocate(hgammas_trac_f_store(nspec_bd_pnt_elastic,NGLLZ))
-     allocate(hpxis_trac_f_store(nspec_bd_pnt_elastic,NGLLX))
-     allocate(hpgammas_trac_f_store(nspec_bd_pnt_elastic,NGLLZ))
-     allocate(ispec_selected_elastic_source_reconst(nspec_bd_pnt_elastic))
-     allocate(xi_trac_f(nspec_bd_pnt_elastic),gamma_trac_f(nspec_bd_pnt_elastic))
-     allocate(is_proc_source(nspec_bd_pnt_elastic),nb_proc_source(nspec_bd_pnt_elastic))
+     allocate(hxis_trac_f_store(nspec_bd_pnt_elastic_supply,NGLLX))
+     allocate(hgammas_trac_f_store(nspec_bd_pnt_elastic_supply,NGLLZ))
+     allocate(hpxis_trac_f_store(nspec_bd_pnt_elastic_supply,NGLLX))
+     allocate(hpgammas_trac_f_store(nspec_bd_pnt_elastic_supply,NGLLZ))
+     allocate(ispec_selected_elastic_source_reconst(nspec_bd_pnt_elastic_supply))
+     allocate(xi_trac_f(nspec_bd_pnt_elastic_supply),gamma_trac_f(nspec_bd_pnt_elastic_supply))
+     ! allocate(is_proc_source(nspec_bd_pnt_elastic_supply),nb_proc_source(nspec_bd_pnt_elastic_supply))
 
      
      print *, 'For wavefield reconstruction: here we locate the traction force sources'
@@ -374,17 +455,16 @@ subroutine setup_trac_f_sources()
      !the sources and receviers. Therefore, I think the spatial interploation is not necessary?
  
      !elastic
-      do i_f_source=1,nspec_bd_pnt_elastic
+      do i_f_source=1,nspec_bd_pnt_elastic_supply
 
 
         ! collocated force source: here we just take advantange of the available subroutine 'locate_source_force'
         ! the main purpose here is to calculate ispec_selected_elastic_source_reconst,xi_trac_f(i_f_source),
         ! gamma_trac_f
         call locate_virtual_source(elastic_flag,acoustic_flag,ibool,coord,nspec,nglob,xigll,zigll,&
-              x_final_bd_pnt_elastic(i_f_source),&
+             x_final_bd_pnt_elastic(i_f_source),&
              z_final_bd_pnt_elastic(i_f_source),ispec_selected_elastic_source_reconst(i_f_source),&
-             is_proc_source(i_f_source),nb_proc_source(i_f_source), &
-             nproc,myrank,xi_trac_f(i_f_source),gamma_trac_f(i_f_source),coorg,knods,ngnod,npgeo, &
+             myrank,nproc,xi_trac_f(i_f_source),gamma_trac_f(i_f_source),coorg,knods,ngnod,npgeo, &
              iglob_trac_f_source)
 
       enddo
@@ -392,7 +472,7 @@ subroutine setup_trac_f_sources()
 
       ! define and store Lagrange interpolators at all the sources
       !compute hxis_trac_f_store, hgammas_trac_f_store, which will be used in 'compute_add_trac_f_viscoelastic'
-      do i_f_source=1,nspec_bd_pnt_elastic
+      do i_f_source=1,nspec_bd_pnt_elastic_supply
 
          call lagrange_any(xi_trac_f(i_f_source),NGLLX,xigll,hxis_trac_f,hpxis_trac_f)
          call lagrange_any(gamma_trac_f(i_f_source),NGLLZ,zigll,hgammas_trac_f,hpgammas_trac_f)
@@ -405,7 +485,6 @@ subroutine setup_trac_f_sources()
      enddo
 
      deallocate(xi_trac_f,gamma_trac_f)
-     deallocate(is_proc_source,nb_proc_source)
 
   endif
 
@@ -414,7 +493,12 @@ end subroutine setup_trac_f_sources
 
 subroutine setup_pot_f_sources()
 
-  use specfem_par, only: p_sv,nspec_bd_pnt_acoustic, &
+#ifdef USE_MPI
+  use mpi
+#endif
+
+  use specfem_par, only: myrank,p_sv,nspec_bd_pnt_acoustic_supply,&
+                         nspec_bd_pnt_acoustic_supply_total, booking_reconst_acoustic,&
                          coord,ibool,nglob,nspec, &
                          Grad_pot,Pot_x,Pot_z, &
                          hxis_pot_f,hgammas_pot_f,hxis_pot_f_store,hgammas_pot_f_store,&
@@ -429,43 +513,107 @@ subroutine setup_pot_f_sources()
 
   ! Local variables
   integer :: i,ios,temp_read,temp1_read,temp2_read,f_num
+  integer :: ispec_selected_acoustic_source_reconst_temp
   character(len=150) dummystring
+  character(len=150) fname
   integer :: i_pot_source
   integer :: iglob_pot_f_source !local or global variable?
   double precision, dimension(:), allocatable :: xi_pot_f,gamma_pot_f
-  integer, dimension(:), allocatable :: is_proc_source,nb_proc_source 
+  ! integer, dimension(:), allocatable :: is_proc_source,nb_proc_source 
 
   logical :: elastic_flag,acoustic_flag
-   
+  logical, dimension(:), allocatable :: in_element
+  integer, dimension(:), allocatable :: index_acoustic
+  double precision, dimension(:), allocatable :: x_final_bd_pnt_acoustic_total, z_final_bd_pnt_acoustic_total
+
   elastic_flag=.FALSE.
   acoustic_flag=.TRUE.
 
-   nspec_bd_pnt_acoustic = 0
-   open(unit=1,file='./OUTPUT_FILES/reconst_record/acoustic_pnts_profile',iostat=ios,status='old',action='read')
+  nspec_bd_pnt_acoustic_supply = 0
+  nspec_bd_pnt_acoustic_supply_total = 0
+
+#ifdef USE_MPI
+  fname = './OUTPUT_FILES/reconst_record/acoustic_pnts_profile_total' 
+#else
+  fname = './OUTPUT_FILES/bg_record/acoustic_pnts_profile' 
+#endif
+
+   open(unit=1,file=trim(fname),iostat=ios,status='old',action='read')
    if( ios /= 0 ) stop 'error reading acoustic points profile'
    do while(ios == 0)
       read(1,"(a)",iostat=ios) dummystring
-      if(ios == 0) nspec_bd_pnt_acoustic = nspec_bd_pnt_acoustic + 1
+      if(ios == 0) nspec_bd_pnt_acoustic_supply_total = nspec_bd_pnt_acoustic_supply_total + 1
    enddo
 
-   print *,"number of recording points in acoustic region: ", nspec_bd_pnt_acoustic
    close(1)
 
 
+   if( nspec_bd_pnt_acoustic_supply_total /= 0) then 
+
+      allocate(x_final_bd_pnt_acoustic_total(nspec_bd_pnt_acoustic_supply_total))
+      allocate(z_final_bd_pnt_acoustic_total(nspec_bd_pnt_acoustic_supply_total))
+      allocate(in_element(nspec_bd_pnt_acoustic_supply_total))
+      allocate(index_acoustic(nspec_bd_pnt_acoustic_supply_total))
+      index_acoustic = (/ (i, i=1,nspec_bd_pnt_acoustic_supply_total) /)
+
+      !read the coordinates of the source points. The coordinate will be the key information
+      f_num = 111                                                                 
+
+      open(f_num,file=trim(fname),iostat=ios,status='old',action='read')
+      do i_pot_source=1,nspec_bd_pnt_acoustic_supply_total
+         read(f_num,111) temp_read,temp1_read,temp2_read,&
+              x_final_bd_pnt_acoustic_total(i_pot_source),z_final_bd_pnt_acoustic_total(i_pot_source)
+
+      enddo
+      
+      close(f_num)       
+
+111   format(i5,2x,i1,2x,i1,2x,2(es12.4,2x))
+
+      do i_pot_source=1,nspec_bd_pnt_acoustic_supply_total
+         call locate_virtual_source_only_locate(elastic_flag,acoustic_flag,ibool,coord,nspec,nglob,&
+              x_final_bd_pnt_acoustic_total(i_pot_source),&
+              z_final_bd_pnt_acoustic_total(i_pot_source),ispec_selected_acoustic_source_reconst_temp,&
+              myrank,nproc, in_element(i_pot_source))
+
+      enddo
+
+      nspec_bd_pnt_acoustic_supply = count(in_element)
+
+      if( nspec_bd_pnt_acoustic_supply /= 0 ) then
+         allocate(x_final_bd_pnt_acoustic(nspec_bd_pnt_acoustic_supply),z_final_bd_pnt_acoustic(nspec_bd_pnt_acoustic_supply))
+         x_final_bd_pnt_acoustic = pack(x_final_bd_pnt_acoustic_total,in_element)
+         z_final_bd_pnt_acoustic = pack(z_final_bd_pnt_acoustic_total,in_element)
+
+         allocate(booking_reconst_acoustic(nspec_bd_pnt_acoustic_supply))
+         booking_reconst_acoustic        = pack(index_acoustic,in_element)
+
+
+      endif
+
+      deallocate(x_final_bd_pnt_acoustic_total, z_final_bd_pnt_acoustic_total)
+      deallocate(in_element)
+      deallocate(index_acoustic)
+
+   endif
+  
+   print *,"number of recording points in acoustic region: ", nspec_bd_pnt_acoustic_supply
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   
+
    !we only allocate the variables for excitations in acoustic elements if P-SV case.
-   if( nspec_bd_pnt_acoustic /= 0 .and. p_sv ) then
+   if( nspec_bd_pnt_acoustic_supply /= 0 .and. p_sv ) then
 
-      allocate(x_final_bd_pnt_acoustic(nspec_bd_pnt_acoustic),z_final_bd_pnt_acoustic(nspec_bd_pnt_acoustic))
-      allocate(Grad_pot(nspec_bd_pnt_acoustic))
-      allocate(Pot_x(nspec_bd_pnt_acoustic),Pot_z(nspec_bd_pnt_acoustic))
+      allocate(Grad_pot(nspec_bd_pnt_acoustic_supply))
+      allocate(Pot_x(nspec_bd_pnt_acoustic_supply),Pot_z(nspec_bd_pnt_acoustic_supply))
 
-      f_num = 111
-      open(f_num,file='./OUTPUT_FILES/reconst_record/acoustic_pnts_profile',iostat=ios,status='old',action='read')
-      do i=1,nspec_bd_pnt_acoustic
-         read(f_num,111) temp_read,temp1_read,temp2_read, x_final_bd_pnt_acoustic(i),z_final_bd_pnt_acoustic(i)
-      enddo                                                                    
-      close(f_num)                                                             
-   111 format(i5,2x,i1,2x,i1,2x,2(es12.4,2x))
+      ! f_num = 111
+
+      ! open(f_num,file=trim(fname),iostat=ios,status='old',action='read')
+      ! do i=1,nspec_bd_pnt_acoustic_supply
+      !    read(f_num,111) temp_read,temp1_read,temp2_read, x_final_bd_pnt_acoustic(i),z_final_bd_pnt_acoustic(i)
+      ! enddo
+      ! close(f_num)                                                             
 
 
       !!acoustic
@@ -473,27 +621,26 @@ subroutine setup_pot_f_sources()
       allocate(hgammas_pot_f(NGLLZ))
       allocate(hpxis_pot_f(NGLLX))
       allocate(hpgammas_pot_f(NGLLZ))
-      allocate(hxis_pot_f_store(nspec_bd_pnt_acoustic,NGLLX))
-      allocate(hgammas_pot_f_store(nspec_bd_pnt_acoustic,NGLLZ))
-      allocate(hpxis_pot_f_store(nspec_bd_pnt_acoustic,NGLLX))
-      allocate(hpgammas_pot_f_store(nspec_bd_pnt_acoustic,NGLLZ))
-      allocate(ispec_selected_acoustic_source_reconst(nspec_bd_pnt_acoustic))
-      allocate(xi_pot_f(nspec_bd_pnt_acoustic),gamma_pot_f(nspec_bd_pnt_acoustic))
-      allocate(is_proc_source(nspec_bd_pnt_acoustic),nb_proc_source(nspec_bd_pnt_acoustic))
+      allocate(hxis_pot_f_store(nspec_bd_pnt_acoustic_supply,NGLLX))
+      allocate(hgammas_pot_f_store(nspec_bd_pnt_acoustic_supply,NGLLZ))
+      allocate(hpxis_pot_f_store(nspec_bd_pnt_acoustic_supply,NGLLX))
+      allocate(hpgammas_pot_f_store(nspec_bd_pnt_acoustic_supply,NGLLZ))
+      allocate(ispec_selected_acoustic_source_reconst(nspec_bd_pnt_acoustic_supply))
+      allocate(xi_pot_f(nspec_bd_pnt_acoustic_supply),gamma_pot_f(nspec_bd_pnt_acoustic_supply))
+      ! allocate(is_proc_source(nspec_bd_pnt_acoustic_supply),nb_proc_source(nspec_bd_pnt_acoustic_supply))
 
   
-      do i_pot_source=1,nspec_bd_pnt_acoustic
+      do i_pot_source=1,nspec_bd_pnt_acoustic_supply
 
         call locate_virtual_source(elastic_flag,acoustic_flag,ibool,coord,nspec,nglob,xigll,zigll,&
              x_final_bd_pnt_acoustic(i_pot_source),&
              z_final_bd_pnt_acoustic(i_pot_source),ispec_selected_acoustic_source_reconst(i_pot_source),&
-             is_proc_source(i_pot_source),nb_proc_source(i_pot_source), &
-             nproc,myrank,xi_pot_f(i_pot_source),gamma_pot_f(i_pot_source),coorg,knods,ngnod,npgeo, &
+             myrank,nproc,xi_pot_f(i_pot_source),gamma_pot_f(i_pot_source),coorg,knods,ngnod,npgeo, &
              iglob_pot_f_source)
 
       enddo
 
-     do i_pot_source=1,nspec_bd_pnt_acoustic
+     do i_pot_source=1,nspec_bd_pnt_acoustic_supply
 
         call lagrange_any(xi_pot_f(i_pot_source),NGLLX,xigll,hxis_pot_f,hpxis_pot_f)
         call lagrange_any(gamma_pot_f(i_pot_source),NGLLZ,zigll,hgammas_pot_f,hpgammas_pot_f)
@@ -506,7 +653,6 @@ subroutine setup_pot_f_sources()
     enddo
 
     deallocate(xi_pot_f,gamma_pot_f)
-    deallocate(is_proc_source,nb_proc_source)
 
   endif
 end subroutine setup_pot_f_sources

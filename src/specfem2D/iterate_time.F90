@@ -237,6 +237,7 @@ subroutine iterate_time()
       !by lcx: here we read the store boundary info to reconstruct the wavefield in the global model
       if( supply_reconst ) then
         call supply_pnt_reconst()
+        ! if( it == 2 ) stop 'very bad test' 
       endif
 
 ! *********************************************************
