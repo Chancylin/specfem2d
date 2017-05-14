@@ -125,7 +125,7 @@
    use specfem_par, only: elastic,acoustic,it,& !original para
                           npnt_local,num_pnt_elastic,num_pnt_acoustic,&
                           nspec_bd_pnt_elastic_clt, nspec_bd_pnt_acoustic_clt,&
-                          ispec_selected_bd_pnt,fname,f_num,&
+                          ispec_selected_bd_pnt,f_num,& !fname
                           ispec_bd_elmt_elastic_pure, ispec_bd_elmt_acoustic_pure,&
                           hxi_bd_store, hgammar_bd_store,&
                           stress_bd_elastic,vel_bd_elastic,grad_pot_bd_acoustic,pot_dot_bd_acoustic,&
@@ -160,7 +160,7 @@
   integer :: length_unf_3
   !MPI parameters
   !integer :: offset1, offset2
-  integer (kind=MPI_OFFSET_KIND) :: offset1, offset2
+  integer (kind=MPI_OFFSET_KIND) :: offset1, offset2, offset_time
   integer :: size,bd_info_type,ierror
   integer :: count
   !integer (kind=MPI_COUNT_KIND) :: count
@@ -257,103 +257,11 @@
   !is to save the info of all partition into a large binary file for each time
   !step.
 
-  !for acoustic
-
-  write(fname,"('./OUTPUT_FILES/bg_record/&
-       &acoustic_pnts/nt_',i6.6)")it
-
-
-  if( nspec_bd_pnt_acoustic /= 0 ) then
-
-
-#ifdef USE_MPI
-
-     call MPI_FILE_OPEN(bg_record_acoustic,fname,&
-          MPI_MODE_CREATE+MPI_MODE_WRONLY,MPI_INFO_NULL,f_num,ierror)
-     !how can we stop the code if the directory dosen't exist
-
-     call MPI_SIZEOF(grad_pot_bd_pnt_acoustic(1,1),size,ierror)
-     call MPI_TYPE_MATCH_SIZE(MPI_TYPECLASS_REAL,size,bd_info_type,ierror)
-
-     inquire (iolength = length_unf_2) grad_pot_bd_pnt_acoustic(:,1) 
-
-     !need to calculate the offset
-     offset1 = num_pnt_acoustic*length_unf_2
-     ! call MPI_FILE_SEEK(f_num,offset1,MPI_SEEK_SET,ierror)
-
-     count = 2*nspec_bd_pnt_acoustic
-
-     !MPI_FILE_WRITE_AT() should be more natural than MPI_FILE_WRITE_AT_ALL(),
-     !because each processor could do their own writting at this time step
-     call MPI_FILE_WRITE_AT(f_num, offset1, grad_pot_bd_pnt_acoustic, count,&
-          bd_info_type, MPI_STATUS_IGNORE, ierror)
-     ! call MPI_FILE_WRITE(f_num, grad_pot_bd_pnt_acoustic, count,&
-     !      bd_info_type, MPI_STATUS_IGNORE, ierror)
-
-     ! count = 3*nspec_bd_pnt_acoustic
-     ! print *,'count = ', count
-     ! call MPI_FILE_WRITE_AT_ALL(f_num, offset1, temp, count,&
-     !      bd_info_type, MPI_STATUS_IGNORE, ierror)
-
-     inquire (iolength = length_unf_3) pot_dot_bd_pnt_acoustic(1)
-
-     offset2 = nspec_bd_pnt_acoustic_clt*length_unf_2 &
-               + num_pnt_acoustic*length_unf_3
-
-     ! call MPI_FILE_SEEK(f_num,offset2,MPI_SEEK_SET,ierror)
-
-     count = nspec_bd_pnt_acoustic
-     call MPI_FILE_WRITE_AT(f_num, offset2, pot_dot_bd_pnt_acoustic, count,&
-          bd_info_type, MPI_STATUS_IGNORE, ierror)
-     ! call MPI_FILE_WRITE(f_num, pot_dot_bd_pnt_acoustic, count,&
-     !      bd_info_type, MPI_STATUS_IGNORE, ierror)
-
-     call MPI_FILE_CLOSE(f_num,ierror)
-#else
-     inquire (iolength = length_unf_2) grad_pot_bd_pnt_acoustic(:,1),pot_dot_bd_pnt_acoustic(1)
-
-     !formatted recording
-     !open(unit=f_num,file=trim(fname),status='new',&
-     !     action='write',iostat=ios) 
-
-
-     f_num=113
-     !unformatted recording
-     open(unit=f_num,file=trim(fname),access='direct',status='new',&
-          action='write',iostat=ios,recl=length_unf_2) 
-     if( ios /= 0 ) stop 'error saving values at recording points'
-
-     do kk = 1, nspec_bd_pnt_acoustic
-        !write(f_num,112) grad_pot_bd_pnt_acoustic(:,kk),pot_dot_bd_pnt_acoustic(kk)
-        write(f_num,rec=kk) grad_pot_bd_pnt_acoustic(:,kk),pot_dot_bd_pnt_acoustic(kk)
-     enddo
-
-     close(f_num)
-#endif
-
-!   else
-! #ifdef USE_MPI
-!      inquire (iolength = length_unf_2) grad_pot_bd_pnt_acoustic(:,1),pot_dot_bd_pnt_acoustic(1)
-!      offset1 = num_pnt_acoustic*length_unf_2
-!      count = 0
-!      !write something random, which doesn't matter?
-!      call MPI_FILE_WRITE_AT(f_num, offset1, 0.0, count,&
-!           MPI_REAL4, MPI_STATUS_IGNORE, ierror)
-! #endif
-
-  endif
-
-! #ifdef USE_MPI
-!   call MPI_FILE_CLOSE(f_num,ierror)
-! #else
-!   close(f_num)
-! #endif
-
 
   !for elastic 
 
-  write(fname,"('./OUTPUT_FILES/bg_record/&
-       &elastic_pnts/nt_',i6.6)")it
+  ! write(fname,"('./OUTPUT_FILES/bg_record/&
+  !      &elastic_pnts/nt_',i6.6)")it
 
 
   if( nspec_bd_pnt_elastic /= 0 ) then
@@ -378,8 +286,9 @@
 #ifdef USE_MPI
 !!!MPI writing
 
-     call MPI_FILE_OPEN(bg_record_elastic,fname,&
-          MPI_MODE_CREATE+MPI_MODE_WRONLY,MPI_INFO_NULL,f_num,ierror)
+     call MPI_FILE_OPEN(bg_record_elastic,'./OUTPUT_FILES/bg_record/elastic_pnts_data',&
+          MPI_MODE_CREATE+MPI_MODE_WRONLY,&
+          MPI_INFO_NULL,f_num,ierror)
 
      !create the MPI datatype corresponding to real(kind=CUSTOM_REAL)
      !bd_info_type is a handle referring to the MPI dataype created
@@ -389,32 +298,33 @@
      ! the scheme here: because we are not sure about the number of the recording
      ! points in different partitions, the most straightforward way is to make the
      !offset as the full length of the profile (i.e., all the recording points)
-     ! inquire (iolength = length_unf_1) trac_bd_pnt_elastic(:,1), vel_bd_pnt_elastic(:,1)!length in byte   6x4 = 24
 
-     inquire (iolength = length_unf_1) trac_bd_pnt_elastic(:,1)
-     offset1 = num_pnt_elastic*length_unf_1
+     inquire (iolength = length_unf_1) trac_bd_pnt_elastic(:,1) !size: 3X4
 
-     ! call MPI_FILE_SEEK(f_num,offset1,MPI_SEEK_SET,ierror)
+     
+     !we try to combine all the time-step data into a big file
+     !time interval; total points number; length of three component; 2 arrays: traction and velocity
+     offset_time = (it-1)*nspec_bd_pnt_elastic_clt*length_unf_1*2
+
+     !print *, 'offset of time step: ', offset_time
+     
+     offset1 = num_pnt_elastic*length_unf_1 + offset_time 
+
      
      count = 3*nspec_bd_pnt_elastic
      call MPI_FILE_WRITE_AT(f_num, offset1, trac_bd_pnt_elastic, count,&
           bd_info_type, MPI_STATUS_IGNORE, ierror)
-     ! call MPI_FILE_WRITE(f_num, trac_bd_pnt_elastic, count,&
-     !      bd_info_type, MPI_STATUS_IGNORE, ierror)
 
+     ! print *, 'time step: ', it, ' offset1 = ', offset1, ' from rank ', myrank
 
-     !need check the logic here
-     offset2 = nspec_bd_pnt_elastic_clt*length_unf_1 + offset1
-     ! offset2 = nspec_bd_pnt_elastic_clt*length_unf_1 &
-     !           + num_pnt_elastic*length_unf_1
-
-     ! call MPI_FILE_SEEK(f_num,offset1,MPI_SEEK_SET,ierror)
+     offset2 = nspec_bd_pnt_elastic_clt*length_unf_1 + offset1 
      
      count = 3*nspec_bd_pnt_elastic
      call MPI_FILE_WRITE_AT(f_num, offset2, vel_bd_pnt_elastic, count,&
           bd_info_type, MPI_STATUS_IGNORE, ierror)
-     ! call MPI_FILE_WRITE(f_num, vel_bd_pnt_elastic, count,&
-     !      bd_info_type, MPI_STATUS_IGNORE, ierror)
+
+     ! print *, 'time step: ', it, ' offset2 = ', offset2, ' from rank ', myrank
+
      call MPI_FILE_CLOSE(f_num,ierror)
 
      ! !print the value for the first point in rank 0 (5000, 5000)
@@ -478,11 +388,88 @@
 
   endif
 
+  !for acoustic
+
+  ! write(fname,"('./OUTPUT_FILES/bg_record/&
+  !      &acoustic_pnts/nt_',i6.6)")it
+
+
+  if( nspec_bd_pnt_acoustic /= 0 ) then
+
+
+#ifdef USE_MPI
+
+     call MPI_FILE_OPEN(bg_record_acoustic,'./OUTPUT_FILES/bg_record/acoustic_pnts_data',&
+          MPI_MODE_CREATE+MPI_MODE_WRONLY,&
+          MPI_INFO_NULL,f_num,ierror)
+     !how can we stop the code if the directory dosen't exist
+
+     call MPI_SIZEOF(grad_pot_bd_pnt_acoustic(1,1),size,ierror)
+     call MPI_TYPE_MATCH_SIZE(MPI_TYPECLASS_REAL,size,bd_info_type,ierror)
+
+     inquire (iolength = length_unf_2) grad_pot_bd_pnt_acoustic(:,1) 
+     inquire (iolength = length_unf_3) pot_dot_bd_pnt_acoustic(1)
+
+     offset_time = (it-1)*nspec_bd_pnt_acoustic_clt*(length_unf_2+length_unf_3)
+
+     !need to calculate the offset
+     offset1 = num_pnt_acoustic*length_unf_2 + offset_time
+     ! call MPI_FILE_SEEK(f_num,offset1,MPI_SEEK_SET,ierror)
+
+     count = 2*nspec_bd_pnt_acoustic
+
+     !MPI_FILE_WRITE_AT() should be more natural than MPI_FILE_WRITE_AT_ALL(),
+     !because each processor could do their own writting at this time step
+     call MPI_FILE_WRITE_AT(f_num, offset1, grad_pot_bd_pnt_acoustic, count,&
+          bd_info_type, MPI_STATUS_IGNORE, ierror)
+
+     offset2 = nspec_bd_pnt_acoustic_clt*length_unf_2 &
+               + num_pnt_acoustic*length_unf_3 &
+               + offset_time
+
+     ! call MPI_FILE_SEEK(f_num,offset2,MPI_SEEK_SET,ierror)
+
+     count = nspec_bd_pnt_acoustic
+     call MPI_FILE_WRITE_AT(f_num, offset2, pot_dot_bd_pnt_acoustic, count,&
+          bd_info_type, MPI_STATUS_IGNORE, ierror)
+     ! call MPI_FILE_WRITE(f_num, pot_dot_bd_pnt_acoustic, count,&
+     !      bd_info_type, MPI_STATUS_IGNORE, ierror)
+
+     call MPI_FILE_CLOSE(f_num,ierror)
+#else
+     inquire (iolength = length_unf_2) grad_pot_bd_pnt_acoustic(:,1),pot_dot_bd_pnt_acoustic(1)
+
+     !formatted recording
+     !open(unit=f_num,file=trim(fname),status='new',&
+     !     action='write',iostat=ios) 
+
+
+     f_num=113
+     !unformatted recording
+     open(unit=f_num,file=trim(fname),access='direct',status='new',&
+          action='write',iostat=ios,recl=length_unf_2) 
+     if( ios /= 0 ) stop 'error saving values at recording points'
+
+     do kk = 1, nspec_bd_pnt_acoustic
+        !write(f_num,112) grad_pot_bd_pnt_acoustic(:,kk),pot_dot_bd_pnt_acoustic(kk)
+        write(f_num,rec=kk) grad_pot_bd_pnt_acoustic(:,kk),pot_dot_bd_pnt_acoustic(kk)
+     enddo
+
+     close(f_num)
+#endif
+
+!   else
 ! #ifdef USE_MPI
-!   call MPI_FILE_CLOSE(f_num,ierror)
-! #else
-!   close(f_num)
+!      inquire (iolength = length_unf_2) grad_pot_bd_pnt_acoustic(:,1),pot_dot_bd_pnt_acoustic(1)
+!      offset1 = num_pnt_acoustic*length_unf_2
+!      count = 0
+!      !write something random, which doesn't matter?
+!      call MPI_FILE_WRITE_AT(f_num, offset1, 0.0, count,&
+!           MPI_REAL4, MPI_STATUS_IGNORE, ierror)
 ! #endif
+
+  endif
+
 
   !111 format(6(es12.4,2x)) !112 column
   !112 format(3(es12.4,2x)) !36 column

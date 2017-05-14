@@ -383,7 +383,7 @@
                          num_pnt_elastic,num_pnt_acoustic,&
                          nspec_bd_pnt_elastic_clt, nspec_bd_pnt_acoustic_clt,&
                          bg_record_elastic, bg_record_acoustic,&
-                         fname,f_num,&
+                         f_num,&
                          temp_record_elastic,temp_record_acoustic,&
                          nspec_bd_pnt_elastic,nspec_bd_pnt_acoustic,&
                          trac_f,m_xx,m_xz,m_zz,m_yx,m_yz, &
@@ -398,7 +398,7 @@
   integer :: length_unf_2
 #ifdef USE_MPI
   !MPI parameters
-  integer (kind=MPI_OFFSET_KIND) :: offset1, offset2
+  integer (kind=MPI_OFFSET_KIND) :: offset1, offset2, offset_time
   integer :: size,bd_info_type,ierror
   integer :: count
 #else
@@ -411,14 +411,14 @@
 
   !for elastic 
 
-  write(fname,"('./OUTPUT_FILES/reconst_record/&
-       &elastic_pnts/nt_',i6.6)")it
+  ! write(fname,"('./OUTPUT_FILES/reconst_record/&
+  !      &elastic_pnts/nt_',i6.6)")it
 
   if( nspec_bd_pnt_elastic /= 0 )then
 
 #ifdef USE_MPI
 
-     call MPI_FILE_OPEN(bg_record_elastic,fname,&
+     call MPI_FILE_OPEN(bg_record_elastic,'./OUTPUT_FILES/reconst_record/elastic_pnts_data',&
           MPI_MODE_CREATE+MPI_MODE_WRONLY,MPI_INFO_NULL,f_num,ierror)
 
      !create the MPI datatype corresponding to real(kind=CUSTOM_REAL)
@@ -437,7 +437,10 @@
         temp_record_elastic(3,:) = m_zz
 
         inquire (iolength = length_unf_1) trac_f((/1,3/),1) !e.g., length_unf_1 = 4X2
-        offset1 = num_pnt_elastic*length_unf_1
+
+        offset_time = (it-1)*nspec_bd_pnt_elastic_clt*size*5 !2 for traction plus 3 for moment tensor
+     
+        offset1 = num_pnt_elastic*length_unf_1 + offset_time
 
         count = 2*nspec_bd_pnt_elastic
         call MPI_FILE_WRITE_AT(f_num, offset1, trac_f((/1,3/),:), count,&
@@ -445,7 +448,8 @@
 
         !I don't like the usage of 'size' here, making the code unclear in terms of logic
         offset2 = nspec_bd_pnt_elastic_clt*length_unf_1 &
-             +  num_pnt_elastic*size*3 !size = 4
+             +  num_pnt_elastic*size*3 & !size = 4
+             +  offset_time
 
         count = nspec_bd_pnt_elastic*3
 
@@ -473,11 +477,13 @@
 
      else
 
+        offset_time = (it-1)*nspec_bd_pnt_elastic_clt*size*3 !1 for traction plus 2 for moment tensor
+
         temp_record_elastic(1,:) = m_yx
         temp_record_elastic(2,:) = m_yz
 
         inquire (iolength = length_unf_1) trac_f(2,1)  !length_unf_1 = 4
-        offset1 = num_pnt_elastic*length_unf_1
+        offset1 = num_pnt_elastic*length_unf_1 + offset_time
 
         count = nspec_bd_pnt_elastic
         call MPI_FILE_WRITE_AT(f_num, offset1, trac_f(2,:), count,&
@@ -485,7 +491,8 @@
 
         !I don't like the usage of 'size' here, making the code unclear in terms of logic
         offset2 = nspec_bd_pnt_elastic_clt*length_unf_1 &
-             +  num_pnt_elastic*size*2
+             +  num_pnt_elastic*size*2 &
+             +  offset_time
 
         count = nspec_bd_pnt_elastic*2
 
@@ -549,12 +556,12 @@
   !for acoustic
   if( nspec_bd_pnt_acoustic /= 0 )then
 
-     write(fname,"('./OUTPUT_FILES/reconst_record/&
-          &acoustic_pnts/nt_',i6.6)")it
+     ! write(fname,"('./OUTPUT_FILES/reconst_record/&
+     !      &acoustic_pnts/nt_',i6.6)")it
 
 #ifdef USE_MPI
 
-     call MPI_FILE_OPEN(bg_record_acoustic,fname,&
+     call MPI_FILE_OPEN(bg_record_acoustic,'./OUTPUT_FILES/bg_record/acoustic_pnts_data',&
           MPI_MODE_CREATE+MPI_MODE_WRONLY,MPI_INFO_NULL,f_num,ierror)
 
      !create the MPI datatype corresponding to real(kind=CUSTOM_REAL)
@@ -564,11 +571,14 @@
 
      if( p_sv ) then
 
+        offset_time = (it-1)*nspec_bd_pnt_acoustic_clt*size*3 ! 1 for grad_pot and 2 for pot_x _z
+
         temp_record_acoustic(1,:) = Pot_x
         temp_record_acoustic(2,:) = Pot_z
         
         inquire (iolength = length_unf_2) Grad_pot(1) !length_unf_2 = 4 
-        offset1 = num_pnt_acoustic*length_unf_2
+        offset1 = num_pnt_acoustic*length_unf_2 &
+                + offset_time
         
         count = nspec_bd_pnt_acoustic
 
@@ -577,7 +587,8 @@
 
 
         offset2 = nspec_bd_pnt_acoustic_clt*length_unf_2 &
-             + num_pnt_acoustic*length_unf_2*2
+             + num_pnt_acoustic*length_unf_2*2 &
+             + offset_time
 
         count = nspec_bd_pnt_acoustic*2
         

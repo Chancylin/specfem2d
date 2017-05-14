@@ -523,11 +523,13 @@
   print *, 'offset: nspec_bd_pnt_elastic_clt = ', nspec_bd_pnt_elastic_clt, &
         ' from rank ', myrank
 
-  ! !for test
-  ! print *, 'offset: nspec_bd_pnt_elastic = ', nspec_bd_pnt_elastic, &
-  !      ' num_pnt_elastic = ', num_pnt_elastic, ' from rank ', myrank
-  ! print *, 'offset: nspec_bd_pnt_acoustic = ', nspec_bd_pnt_acoustic, &
-  !      ' num_pnt_acoustic = ', num_pnt_acoustic, ' from rank ', myrank
+  !for test
+  print *, 'offset: nspec_bd_pnt_elastic = ', nspec_bd_pnt_elastic, &
+       ' num_pnt_elastic = ', num_pnt_elastic, ' from rank ', myrank
+  print *, 'offset: nspec_bd_pnt_acoustic = ', nspec_bd_pnt_acoustic, &
+       ' num_pnt_acoustic = ', num_pnt_acoustic, ' from rank ', myrank
+  
+  ! stop 'bad testing'
   
   !the reason doing this is: some processors may have not any recording
   !points. so we need to exclude them when we do the writting

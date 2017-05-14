@@ -225,8 +225,8 @@ subroutine time_interplt_supply()
   include "constants.h"
 
   integer :: nt1_record,nt2_record
-  integer :: i,f_num_1,f_num_2
-  character(len=150) :: fname_1,fname_2
+  integer :: i,f_num_1!,f_num_2
+  ! character(len=150) :: fname_1,fname_2
 
   ! real(kind=CUSTOM_REAL), dimension(3) :: trac_bd_pnt_t1,vel_bd_pnt_t1,trac_bd_pnt_t2,vel_bd_pnt_t2
   ! real(kind=CUSTOM_REAL), dimension(2) :: grad_pot_bd_pnt_t1, grad_pot_bd_pnt_t2
@@ -239,7 +239,7 @@ subroutine time_interplt_supply()
 #ifdef USE_MPI
   !integer :: size,bd_info_type_elastic,bd_info_type_acoustic,ierror
   integer :: size,bd_info_type,ierror
-  ! integer(kind=MPI_OFFSET_KIND) :: offset
+  integer(kind=MPI_OFFSET_KIND) :: offset_time
 #else
   integer :: length_unf_1
   integer :: length_unf_2
@@ -288,47 +288,79 @@ subroutine time_interplt_supply()
         call MPI_TYPE_MATCH_SIZE(MPI_TYPECLASS_REAL,size,bd_info_type,ierror)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        write(fname_1,"('./OUTPUT_FILES/bg_record/&
-             &elastic_pnts/nt_',i6.6)")nt1_record
+        ! write(fname_1,"('./OUTPUT_FILES/bg_record/&
+        !      &elastic_pnts/nt_',i6.6)")nt1_record
 
-        call MPI_FILE_OPEN(MPI_COMM_SELF, fname_1, &
+        ! print *,'t1 = ', nt1_record, ' t2 = ', nt2_record
+        
+        call MPI_FILE_OPEN(MPI_COMM_SELF, './OUTPUT_FILES/bg_record/elastic_pnts_data', &
              MPI_MODE_RDONLY, MPI_INFO_NULL, f_num_1, ierror)
-        call MPI_FILE_READ(f_num_1, trac_bd_pnt_t1, 3*nspec_bd_pnt_elastic_supply,&
+
+        offset_time = (nt1_record - 1)*nspec_bd_pnt_elastic_supply*size*6
+        
+        ! print *,'t1, read traction at ', offset_time
+        call MPI_FILE_READ_AT(f_num_1, offset_time, trac_bd_pnt_t1, 3*nspec_bd_pnt_elastic_supply,&
              bd_info_type, MPI_STATUS_IGNORE, ierror)
         ! call MPI_FILE_GET_POSITION(f_num_1, offset, ierror)
         ! print *, '1st reading, offset: ', offset, ' from rank ', myrank
 
-        call MPI_FILE_READ(f_num_1, vel_bd_pnt_t1, 3*nspec_bd_pnt_elastic_supply,&
+        offset_time = offset_time + 3*nspec_bd_pnt_elastic_supply*size
+        
+        ! print *,'t1, read velocity at ', offset_time
+        call MPI_FILE_READ_AT(f_num_1, offset_time, vel_bd_pnt_t1, 3*nspec_bd_pnt_elastic_supply,&
              bd_info_type, MPI_STATUS_IGNORE, ierror)
         ! call MPI_FILE_GET_POSITION(f_num_1, offset, ierror)
         ! print *, '2nd reading, offset: ', offset, ' from rank ', myrank
 
+        ! call MPI_FILE_CLOSE(f_num_1,ierror)
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        ! write(fname_2,"('./OUTPUT_FILES/bg_record/&
+        !      &elastic_pnts/nt_',i6.6)")nt2_record
+
+        ! call MPI_FILE_OPEN(MPI_COMM_SELF, './OUTPUT_FILES/bg_record/elastic_pnts_data', &
+        !      MPI_MODE_RDONLY, MPI_INFO_NULL, f_num_2, ierror)
+        
+        offset_time = (nt2_record - 1)*nspec_bd_pnt_elastic_supply*size*6
+
+        ! print *,'t2, read traction at ', offset_time
+        call MPI_FILE_READ_AT(f_num_1, offset_time, trac_bd_pnt_t2, 3*nspec_bd_pnt_elastic_supply,&
+             bd_info_type, MPI_STATUS_IGNORE, ierror)
+
+        offset_time = offset_time + 3*nspec_bd_pnt_elastic_supply*size
+
+        ! print *,'t2, read velocity at ', offset_time
+        call MPI_FILE_READ_AT(f_num_1, offset_time, vel_bd_pnt_t2, 3*nspec_bd_pnt_elastic_supply,&
+             bd_info_type, MPI_STATUS_IGNORE, ierror)
+
         call MPI_FILE_CLOSE(f_num_1,ierror)
-
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        write(fname_2,"('./OUTPUT_FILES/bg_record/&
-             &elastic_pnts/nt_',i6.6)")nt2_record
+        !using another faster way, loop over the component, but not points
 
-        call MPI_FILE_OPEN(MPI_COMM_SELF, fname_2, &
-             MPI_MODE_RDONLY, MPI_INFO_NULL, f_num_2, ierror)
-        call MPI_FILE_READ(f_num_2, trac_bd_pnt_t2, 3*nspec_bd_pnt_elastic_supply,&
-             bd_info_type, MPI_STATUS_IGNORE, ierror)
-        call MPI_FILE_READ(f_num_2, vel_bd_pnt_t2, 3*nspec_bd_pnt_elastic_supply,&
-             bd_info_type, MPI_STATUS_IGNORE, ierror)
+!         do i=1,nspec_bd_pnt_elastic_supply
+! !!!linear interpolation in time space
+!            trac_bd_pnt_elastic(:,i) = (trac_bd_pnt_t2(:,i) - trac_bd_pnt_t1(:,i)) * &
+!                 (it*deltat_read - nt1_record*deltat_record)/deltat_record + &
+!                 trac_bd_pnt_t1(:,i)
+!            !note that velocity is recorded as prediction at half time step
+!            vel_bd_pnt_elastic(:,i) = (vel_bd_pnt_t2(:,i) - vel_bd_pnt_t1(:,i)) * &
+!                 (it*deltat_read - nt1_record*deltat_record + diff_deltat)/deltat_record + &
+!                 vel_bd_pnt_t1(:,i)
 
-        call MPI_FILE_CLOSE(f_num_2,ierror)
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        do i=1,nspec_bd_pnt_elastic_supply
+!         enddo
+
+        do i=1,3
 !!!linear interpolation in time space
-           trac_bd_pnt_elastic(:,i) = (trac_bd_pnt_t2(:,i) - trac_bd_pnt_t1(:,i)) * &
+           trac_bd_pnt_elastic(i,:) = (trac_bd_pnt_t2(i,:) - trac_bd_pnt_t1(i,:)) * &
                 (it*deltat_read - nt1_record*deltat_record)/deltat_record + &
-                trac_bd_pnt_t1(:,i)
+                trac_bd_pnt_t1(i,:)
            !note that velocity is recorded as prediction at half time step
-           vel_bd_pnt_elastic(:,i) = (vel_bd_pnt_t2(:,i) - vel_bd_pnt_t1(:,i)) * &
+           vel_bd_pnt_elastic(i,:) = (vel_bd_pnt_t2(i,:) - vel_bd_pnt_t1(i,:)) * &
                 (it*deltat_read - nt1_record*deltat_record + diff_deltat)/deltat_record + &
-                vel_bd_pnt_t1(:,i)
+                vel_bd_pnt_t1(i,:)
 
         enddo
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         deallocate(trac_bd_pnt_t1,vel_bd_pnt_t1)
         deallocate(trac_bd_pnt_t2,vel_bd_pnt_t2)
@@ -344,61 +376,66 @@ subroutine time_interplt_supply()
         call MPI_TYPE_MATCH_SIZE(MPI_TYPECLASS_REAL,size,bd_info_type,ierror)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        write(fname_1,"('./OUTPUT_FILES/bg_record/&
-             &acoustic_pnts/nt_',i6.6)")nt1_record
+        ! write(fname_1,"('./OUTPUT_FILES/bg_record/&
+        !      &acoustic_pnts/nt_',i6.6)")nt1_record
 
-        call MPI_FILE_OPEN(MPI_COMM_SELF, fname_1, &
+        call MPI_FILE_OPEN(MPI_COMM_SELF, './OUTPUT_FILES/bg_record/acoustic_pnts_data', &
              MPI_MODE_RDONLY, MPI_INFO_NULL, f_num_1, ierror)
-        call MPI_FILE_READ(f_num_1, grad_pot_bd_pnt_t1, 2*nspec_bd_pnt_acoustic_supply,&
+        offset_time = (nt1_record - 1)*nspec_bd_pnt_acoustic_supply*size*3
+       
+        call MPI_FILE_READ_AT(f_num_1, offset_time, grad_pot_bd_pnt_t1, 2*nspec_bd_pnt_acoustic_supply,&
              bd_info_type, MPI_STATUS_IGNORE, ierror)
         
-        call MPI_FILE_READ(f_num_1, pot_dot_bd_pnt_t1, nspec_bd_pnt_acoustic_supply,&
+        offset_time = offset_time + nspec_bd_pnt_acoustic_supply*size*2
+        call MPI_FILE_READ(f_num_1, offset_time, pot_dot_bd_pnt_t1, nspec_bd_pnt_acoustic_supply,&
+             bd_info_type, MPI_STATUS_IGNORE, ierror)
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        ! write(fname_2,"('./OUTPUT_FILES/bg_record/&
+        !      &acoustic_pnts/nt_',i6.6)")nt2_record
+
+        ! call MPI_FILE_OPEN(MPI_COMM_SELF, fname_2, &
+        !      MPI_MODE_RDONLY, MPI_INFO_NULL, f_num_2, ierror)
+
+        offset_time = (nt2_record - 1)*nspec_bd_pnt_acoustic_supply*size*3
+        call MPI_FILE_READ_AT(f_num_1, offset_time, grad_pot_bd_pnt_t2, 2*nspec_bd_pnt_acoustic_supply,&
+             bd_info_type, MPI_STATUS_IGNORE, ierror)
+
+        offset_time = offset_time + nspec_bd_pnt_acoustic_supply*size*2
+        call MPI_FILE_READ_AT(f_num_1, offset_time, pot_dot_bd_pnt_t2, nspec_bd_pnt_acoustic_supply,&
              bd_info_type, MPI_STATUS_IGNORE, ierror)
 
         call MPI_FILE_CLOSE(f_num_1,ierror)
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        write(fname_2,"('./OUTPUT_FILES/bg_record/&
-             &acoustic_pnts/nt_',i6.6)")nt2_record
-
-        call MPI_FILE_OPEN(MPI_COMM_SELF, fname_2, &
-             MPI_MODE_RDONLY, MPI_INFO_NULL, f_num_2, ierror)
-        call MPI_FILE_READ(f_num_2, grad_pot_bd_pnt_t2, 2*nspec_bd_pnt_acoustic_supply,&
-             bd_info_type, MPI_STATUS_IGNORE, ierror)
-        call MPI_FILE_READ(f_num_2, pot_dot_bd_pnt_t2, nspec_bd_pnt_acoustic_supply,&
-             bd_info_type, MPI_STATUS_IGNORE, ierror)
-
-        call MPI_FILE_CLOSE(f_num_2,ierror)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        do i= 1,nspec_bd_pnt_acoustic_supply
+        ! do i= 1,nspec_bd_pnt_acoustic_supply
 
-           grad_pot_bd_pnt_acoustic(:,i) = (grad_pot_bd_pnt_t2(:,i) - grad_pot_bd_pnt_t1(:,i)) * &
-                (it*deltat_read - nt1_record*deltat_record)/deltat_record + &
-                grad_pot_bd_pnt_t1(:,i)
+        !    grad_pot_bd_pnt_acoustic(:,i) = (grad_pot_bd_pnt_t2(:,i) - grad_pot_bd_pnt_t1(:,i)) * &
+        !         (it*deltat_read - nt1_record*deltat_record)/deltat_record + &
+        !         grad_pot_bd_pnt_t1(:,i)
 
-           pot_dot_bd_pnt_acoustic(i) = (pot_dot_bd_pnt_t2(i) - pot_dot_bd_pnt_t1(i)) * &
-                (it*deltat_read - nt1_record*deltat_record + diff_deltat)/deltat_record + &
-                pot_dot_bd_pnt_t1(i)
+        !    pot_dot_bd_pnt_acoustic(i) = (pot_dot_bd_pnt_t2(i) - pot_dot_bd_pnt_t1(i)) * &
+        !         (it*deltat_read - nt1_record*deltat_record + diff_deltat)/deltat_record + &
+        !         pot_dot_bd_pnt_t1(i)
 
-        enddo
+        ! enddo
+
+        !need to check whether this form could work (without loop)
+        grad_pot_bd_pnt_acoustic = (grad_pot_bd_pnt_t2 - grad_pot_bd_pnt_t1) * &
+             (it*deltat_read - nt1_record*deltat_record)/deltat_record + &
+             grad_pot_bd_pnt_t1
+
+        pot_dot_bd_pnt_acoustic = (pot_dot_bd_pnt_t2 - pot_dot_bd_pnt_t1) * &
+             (it*deltat_read - nt1_record*deltat_record + diff_deltat)/deltat_record + &
+             pot_dot_bd_pnt_t1
+
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         deallocate(grad_pot_bd_pnt_t1,pot_dot_bd_pnt_t1)
         deallocate(grad_pot_bd_pnt_t2,pot_dot_bd_pnt_t2)
 
      endif
 
-
-     ! if( nspec_bd_pnt_elastic_supply /= 0 ) then
-     !    call MPI_SIZEOF(trac_bd_pnt_elastic(1,1),size,ierror)
-     !    print *, 'size = ', size, ' from rank ', myrank
-     !    call MPI_TYPE_MATCH_SIZE(MPI_TYPECLASS_REAL,size,bd_info_type_elastic,ierror)
-     ! endif
-
-     ! if( nspec_bd_pnt_acoustic_supply /= 0 ) then
-     !    call MPI_SIZEOF(grad_pot_bd_pnt_acoustic(1,1),size,ierror)
-     !    print *, 'size = ', size, ' from rank ', myrank
-     !    call MPI_TYPE_MATCH_SIZE(MPI_TYPECLASS_REAL,size,bd_info_type_acoustic,ierror)
-     ! endif
      
   endif !endif for myrank == 0
 
@@ -620,10 +657,11 @@ subroutine time_interplt_supply_reconst()
   include "constants.h"
 
   integer :: nt1_record_reconst,nt2_record_reconst
-  integer :: f_num_1,f_num_2
-  character(len=150) :: fname_1,fname_2
+  integer :: f_num_1!,f_num_2
+  ! character(len=150) :: fname_1,fname_2
  
   !integer (kind=MPI_OFFSET_KIND) :: offset1, offset2
+  integer (kind=MPI_OFFSET_KIND) :: offset_time
   integer :: size,bd_info_type,ierror
   integer :: count
   
@@ -683,22 +721,26 @@ subroutine time_interplt_supply_reconst()
         call MPI_TYPE_MATCH_SIZE(MPI_TYPECLASS_REAL,size,bd_info_type,ierror)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        write(fname_1,"('./OUTPUT_FILES/reconst_record/&
-             &elastic_pnts/nt_',i6.6)")nt1_record_reconst
+        ! write(fname_1,"('./OUTPUT_FILES/reconst_record/&
+        !      &elastic_pnts/nt_',i6.6)")nt1_record_reconst
 
-        call MPI_FILE_OPEN(MPI_COMM_SELF, fname_1, &
+        offset_time = (nt1_record_reconst - 1)*nspec_bd_pnt_elastic_supply_total*size*5 !2 for traction plus 3 for moment tensor
+
+        call MPI_FILE_OPEN(MPI_COMM_SELF, './OUTPUT_FILES/reconst_record/elastic_pnts_data', &
              MPI_MODE_RDONLY, MPI_INFO_NULL, f_num_1, ierror)
 
         count = 2*nspec_bd_pnt_elastic_supply_total
         ! call MPI_FILE_READ(f_num_1, trac_f_t1((/1,3/),:), count,&
         !      bd_info_type, MPI_STATUS_IGNORE, ierror)
         
-        call MPI_FILE_READ(f_num_1, trac_f_read_temp, count,&
+        call MPI_FILE_READ_AT(f_num_1, offset_time, trac_f_read_temp, count,&
              bd_info_type, MPI_STATUS_IGNORE, ierror)
 
 
+        offset_time = offset_time + 2*nspec_bd_pnt_elastic_supply_total*size
+
         count = 3*nspec_bd_pnt_elastic_supply_total
-        call MPI_FILE_READ(f_num_1, temp_record_elastic, count,&
+        call MPI_FILE_READ_AT(f_num_1, offset_time, temp_record_elastic, count,&
              bd_info_type, MPI_STATUS_IGNORE, ierror)
 
         ! inquire (iolength = length_unf_1) trac_f_t1((/1,3/),1) !e.g., length_unf_1 = 4X2
@@ -719,7 +761,7 @@ subroutine time_interplt_supply_reconst()
         ! call MPI_FILE_READ_AT_ALL(f_num_1, offset2, temp_record_elastic, count,&
              ! bd_info_type, MPI_STATUS_IGNORE, ierror)
         
-        call MPI_FILE_CLOSE(f_num_1,ierror)
+        ! call MPI_FILE_CLOSE(f_num_1,ierror)
 
         trac_f_t1(1,:) = trac_f_read_temp(1,:)
         trac_f_t1(3,:) = trac_f_read_temp(2,:)
@@ -727,23 +769,25 @@ subroutine time_interplt_supply_reconst()
         m_xz_t1 = temp_record_elastic(2,:) 
         m_zz_t1 = temp_record_elastic(3,:) 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        write(fname_2,"('./OUTPUT_FILES/reconst_record/&
-             &elastic_pnts/nt_',i6.6)")nt2_record_reconst
+        ! write(fname_2,"('./OUTPUT_FILES/reconst_record/&
+        !      &elastic_pnts/nt_',i6.6)")nt2_record_reconst
 
-        call MPI_FILE_OPEN(MPI_COMM_SELF, fname_2, &
-             MPI_MODE_RDONLY, MPI_INFO_NULL, f_num_2, ierror)
+        offset_time = (nt2_record_reconst - 1)*nspec_bd_pnt_elastic_supply_total*size*5 !2 for traction plus 3 for moment tensor
+        ! call MPI_FILE_OPEN(MPI_COMM_SELF, fname_2, &
+        !      MPI_MODE_RDONLY, MPI_INFO_NULL, f_num_2, ierror)
         
         count = 2*nspec_bd_pnt_elastic_supply_total
 
         ! call MPI_FILE_READ(f_num_2, trac_f_t2((/1,3/),:), count,&
         !      bd_info_type, MPI_STATUS_IGNORE, ierror)
         
-        call MPI_FILE_READ(f_num_2, trac_f_read_temp, count,&
+        call MPI_FILE_READ_AT(f_num_1, offset_time, trac_f_read_temp, count,&
              bd_info_type, MPI_STATUS_IGNORE, ierror)
 
+        offset_time = offset_time + 2*nspec_bd_pnt_elastic_supply_total*size
 
         count = 3*nspec_bd_pnt_elastic_supply_total
-        call MPI_FILE_READ(f_num_2, temp_record_elastic, count,&
+        call MPI_FILE_READ_AT(f_num_1, offset_time, temp_record_elastic, count,&
              bd_info_type, MPI_STATUS_IGNORE, ierror)
 
         ! inquire (iolength = length_unf_1) trac_f_t2((/1,3/),1) !e.g., length_unf_1 = 4X2
@@ -764,7 +808,7 @@ subroutine time_interplt_supply_reconst()
         !      bd_info_type, MPI_STATUS_IGNORE, ierror)
 
         
-        call MPI_FILE_CLOSE(f_num_2,ierror)
+        call MPI_FILE_CLOSE(f_num_1,ierror)
 
         trac_f_t2(1,:) = trac_f_read_temp(1,:)
         trac_f_t2(3,:) = trac_f_read_temp(2,:)
@@ -869,20 +913,22 @@ subroutine time_interplt_supply_reconst()
         call MPI_TYPE_MATCH_SIZE(MPI_TYPECLASS_REAL,size,bd_info_type,ierror)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        write(fname_1,"('./OUTPUT_FILES/reconst_record/&
-             &elastic_pnts/nt_',i6.6)")nt1_record_reconst
+        ! write(fname_1,"('./OUTPUT_FILES/reconst_record/&
+        !      &elastic_pnts/nt_',i6.6)")nt1_record_reconst
 
+        offset_time = (nt1_record_reconst - 1)*nspec_bd_pnt_elastic_supply_total*size*3 !1 for traction plus 2 for moment tensor
 
-        call MPI_FILE_OPEN(MPI_COMM_SELF, fname_1, &
+        call MPI_FILE_OPEN(MPI_COMM_SELF, './OUTPUT_FILES/reconst_record/elastic_pnts_data', &
              MPI_MODE_RDONLY, MPI_INFO_NULL, f_num_1, ierror)
 
         count = nspec_bd_pnt_elastic_supply_total
-        call MPI_FILE_READ(f_num_1, trac_f_read_temp, count,&
+        call MPI_FILE_READ_AT(f_num_1, offset_time, trac_f_read_temp, count,&
              bd_info_type, MPI_STATUS_IGNORE, ierror)
 
-
+        offset_time = offset_time + nspec_bd_pnt_elastic_supply_total*size
+        
         count = 2*nspec_bd_pnt_elastic_supply_total
-        call MPI_FILE_READ(f_num_1, temp_record_elastic, count,&
+        call MPI_FILE_READ_AT(f_num_1, offset_time, temp_record_elastic, count,&
              bd_info_type, MPI_STATUS_IGNORE, ierror)
 
         ! call MPI_FILE_OPEN(bg_supply_elastic, fname_1, &
@@ -905,25 +951,27 @@ subroutine time_interplt_supply_reconst()
         ! call MPI_FILE_READ_AT_ALL(f_num_1, offset2, temp_record_elastic, count,&
         !      bd_info_type, MPI_STATUS_IGNORE, ierror)
 
-        call MPI_FILE_CLOSE(f_num_1,ierror)
+        ! call MPI_FILE_CLOSE(f_num_1,ierror)
 
         trac_f_t1(2,:) = trac_f_read_temp(1,:)
         m_yx_t1 = temp_record_elastic(1,:) 
         m_yz_t1 = temp_record_elastic(2,:) 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        write(fname_2,"('./OUTPUT_FILES/reconst_record/&
-             &elastic_pnts/nt_',i6.6)")nt2_record_reconst
-
-        call MPI_FILE_OPEN(MPI_COMM_SELF, fname_2, &
-             MPI_MODE_RDONLY, MPI_INFO_NULL, f_num_2, ierror)
+        ! write(fname_2,"('./OUTPUT_FILES/reconst_record/&
+        !      &elastic_pnts/nt_',i6.6)")nt2_record_reconst
+        offset_time = (nt2_record_reconst - 1)*nspec_bd_pnt_elastic_supply_total*size*3 !1 for traction plus 2 for moment tensor
+        
+        ! call MPI_FILE_OPEN(MPI_COMM_SELF, fname_2, &
+        !      MPI_MODE_RDONLY, MPI_INFO_NULL, f_num_2, ierror)
 
         count = nspec_bd_pnt_elastic_supply_total
-        call MPI_FILE_READ(f_num_2, trac_f_read_temp, count,&
+        call MPI_FILE_READ_AT(f_num_1, offset_time, trac_f_read_temp, count,&
              bd_info_type, MPI_STATUS_IGNORE, ierror)
 
+        offset_time = offset_time + nspec_bd_pnt_elastic_supply_total*size
 
         count = 2*nspec_bd_pnt_elastic_supply_total
-        call MPI_FILE_READ(f_num_2, temp_record_elastic, count,&
+        call MPI_FILE_READ_AT(f_num_1, offset_time, temp_record_elastic, count,&
              bd_info_type, MPI_STATUS_IGNORE, ierror)
 
 
@@ -947,7 +995,7 @@ subroutine time_interplt_supply_reconst()
         ! call MPI_FILE_READ_AT_ALL(f_num_2, offset2, temp_record_elastic, count,&
         !      bd_info_type, MPI_STATUS_IGNORE, ierror)
 
-        call MPI_FILE_CLOSE(f_num_2,ierror)
+        call MPI_FILE_CLOSE(f_num_1,ierror)
 
         trac_f_t2(2,:) = trac_f_read_temp(1,:)
         m_yx_t2 = temp_record_elastic(1,:) 
@@ -1049,18 +1097,22 @@ subroutine time_interplt_supply_reconst()
      call MPI_SIZEOF(Grad_pot_t1(1),size,ierror)
      call MPI_TYPE_MATCH_SIZE(MPI_TYPECLASS_REAL,size,bd_info_type,ierror)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-     write(fname_1,"('./OUTPUT_FILES/reconst_record/&
-          &acoustic_pnts/nt_',i6.6)")nt1_record_reconst
+     ! write(fname_1,"('./OUTPUT_FILES/reconst_record/&
+     !      &acoustic_pnts/nt_',i6.6)")nt1_record_reconst
 
-     call MPI_FILE_OPEN(MPI_COMM_SELF, fname_1, &
+     offset_time = (nt1_record_reconst - 1)*nspec_bd_pnt_acoustic_supply_total*size*3 !1 for grad_pot plus 2 for pot_x _z
+     
+     call MPI_FILE_OPEN(MPI_COMM_SELF, './OUTPUT_FILES/bg_record/acoustic_pnts_data', &
           MPI_MODE_RDONLY, MPI_INFO_NULL, f_num_1, ierror)
 
      count = nspec_bd_pnt_acoustic_supply_total
-     call MPI_FILE_READ(f_num_1, Grad_pot_t1,  count,&
+     call MPI_FILE_READ_AT(f_num_1, offset_time, Grad_pot_t1,  count,&
           bd_info_type, MPI_STATUS_IGNORE, ierror)
 
+     offset_time = offset_time + nspec_bd_pnt_acoustic_supply_total*size
+     
      count = 2*nspec_bd_pnt_acoustic_supply_total
-     call MPI_FILE_READ(f_num_1, temp_record_acoustic, count,&
+     call MPI_FILE_READ_AT(f_num_1, offset_time, temp_record_acoustic, count,&
           bd_info_type, MPI_STATUS_IGNORE, ierror)
 
      ! call MPI_FILE_OPEN(bg_supply_acoustic, fname_1, &
@@ -1083,23 +1135,26 @@ subroutine time_interplt_supply_reconst()
      ! call MPI_FILE_READ_AT_ALL(f_num_1, offset2, temp_record_acoustic, count,&
      !      bd_info_type, MPI_STATUS_IGNORE, ierror)
 
-     call MPI_FILE_CLOSE(f_num_1,ierror)
+     ! call MPI_FILE_CLOSE(f_num_1,ierror)
 
      Pot_x_t1(:) = temp_record_acoustic(1,:) 
      Pot_z_t1(:) = temp_record_acoustic(2,:) 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-     write(fname_2,"('./OUTPUT_FILES/reconst_record/&
-          &acoustic_pnts/nt_',i6.6)")nt2_record_reconst
+     ! write(fname_2,"('./OUTPUT_FILES/reconst_record/&
+     !      &acoustic_pnts/nt_',i6.6)")nt2_record_reconst
 
-     call MPI_FILE_OPEN(MPI_COMM_SELF, fname_2, &
-          MPI_MODE_RDONLY, MPI_INFO_NULL, f_num_2, ierror)
+     offset_time = (nt2_record_reconst - 1)*nspec_bd_pnt_acoustic_supply_total*size*3 !1 for grad_pot plus 2 for pot_x _z
+     ! call MPI_FILE_OPEN(MPI_COMM_SELF, fname_2, &
+     !      MPI_MODE_RDONLY, MPI_INFO_NULL, f_num_2, ierror)
 
      count = nspec_bd_pnt_acoustic_supply_total
-     call MPI_FILE_READ(f_num_2, Grad_pot_t2, count,&
+     call MPI_FILE_READ_AT(f_num_1, offset_time, Grad_pot_t2, count,&
           bd_info_type, MPI_STATUS_IGNORE, ierror)
 
+     offset_time = offset_time + nspec_bd_pnt_acoustic_supply_total*size
+
      count = 2*nspec_bd_pnt_acoustic_supply_total
-     call MPI_FILE_READ(f_num_2, temp_record_acoustic, count,&
+     call MPI_FILE_READ_AT(f_num_1, offset_time, temp_record_acoustic, count,&
           bd_info_type, MPI_STATUS_IGNORE, ierror)
 
      ! call MPI_FILE_OPEN(bg_supply_acoustic, fname_2, &
@@ -1122,7 +1177,7 @@ subroutine time_interplt_supply_reconst()
      ! call MPI_FILE_READ_AT_ALL(f_num_2, offset2, temp_record_acoustic, count,&
      !      bd_info_type, MPI_STATUS_IGNORE, ierror)
 
-     call MPI_FILE_CLOSE(f_num_2,ierror)
+     call MPI_FILE_CLOSE(f_num_1,ierror)
 
      Pot_x_t2(:) = temp_record_acoustic(1,:) 
      Pot_z_t2(:) = temp_record_acoustic(2,:) 
