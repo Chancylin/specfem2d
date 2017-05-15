@@ -70,6 +70,7 @@ subroutine supply_bd_pnt()
      call MPI_BCAST(nspec_bd_pnt_acoustic_supply, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierror)
 
      print *, 'nspec_bd_pnt_elastic_supply = ', nspec_bd_pnt_elastic_supply, ' from rank ', myrank
+     print *, 'nspec_bd_pnt_acoustic_supply = ', nspec_bd_pnt_acoustic_supply, ' from rank ', myrank
 #else
 
      !count the total boundary points for 
@@ -236,6 +237,7 @@ subroutine time_interplt_supply()
   real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: trac_bd_pnt_t1,vel_bd_pnt_t1,trac_bd_pnt_t2,vel_bd_pnt_t2
   real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: grad_pot_bd_pnt_t1, grad_pot_bd_pnt_t2
   real(kind=CUSTOM_REAL), dimension(:), allocatable :: pot_dot_bd_pnt_t1, pot_dot_bd_pnt_t2 
+  ! character(len=150) :: newfile
 #ifdef USE_MPI
   !integer :: size,bd_info_type_elastic,bd_info_type_acoustic,ierror
   integer :: size,bd_info_type,ierror
@@ -382,12 +384,13 @@ subroutine time_interplt_supply()
         call MPI_FILE_OPEN(MPI_COMM_SELF, './OUTPUT_FILES/bg_record/acoustic_pnts_data', &
              MPI_MODE_RDONLY, MPI_INFO_NULL, f_num_1, ierror)
         offset_time = (nt1_record - 1)*nspec_bd_pnt_acoustic_supply*size*3
+
        
         call MPI_FILE_READ_AT(f_num_1, offset_time, grad_pot_bd_pnt_t1, 2*nspec_bd_pnt_acoustic_supply,&
              bd_info_type, MPI_STATUS_IGNORE, ierror)
         
         offset_time = offset_time + nspec_bd_pnt_acoustic_supply*size*2
-        call MPI_FILE_READ(f_num_1, offset_time, pot_dot_bd_pnt_t1, nspec_bd_pnt_acoustic_supply,&
+        call MPI_FILE_READ_AT(f_num_1, offset_time, pot_dot_bd_pnt_t1, nspec_bd_pnt_acoustic_supply,&
              bd_info_type, MPI_STATUS_IGNORE, ierror)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -408,8 +411,15 @@ subroutine time_interplt_supply()
         call MPI_FILE_CLOSE(f_num_1,ierror)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        ! write(newfile,"('./OUTPUT_FILES/bg_record/&
+        !      &acoustic_pnts/nt_',i6.6)")nt1_record
+        
+        ! open(unit=2,file=trim(newfile),status='unknown',action='write')
+        
         ! do i= 1,nspec_bd_pnt_acoustic_supply
 
+        !    ! write(2,111) grad_pot_bd_pnt_t1(:,i), pot_dot_bd_pnt_t1(i)
+           
         !    grad_pot_bd_pnt_acoustic(:,i) = (grad_pot_bd_pnt_t2(:,i) - grad_pot_bd_pnt_t1(:,i)) * &
         !         (it*deltat_read - nt1_record*deltat_record)/deltat_record + &
         !         grad_pot_bd_pnt_t1(:,i)
@@ -420,14 +430,20 @@ subroutine time_interplt_supply()
 
         ! enddo
 
+        ! close(2)
+        ! 111 format(6(es12.4,2x)) !112 column
         !need to check whether this form could work (without loop)
         grad_pot_bd_pnt_acoustic = (grad_pot_bd_pnt_t2 - grad_pot_bd_pnt_t1) * &
              (it*deltat_read - nt1_record*deltat_record)/deltat_record + &
              grad_pot_bd_pnt_t1
 
-        pot_dot_bd_pnt_acoustic = (pot_dot_bd_pnt_t2 - pot_dot_bd_pnt_t1) * &
+        ! grad_pot_bd_pnt_acoustic(2,:) = (grad_pot_bd_pnt_t2(2,:) - grad_pot_bd_pnt_t1(2,:)) * &
+        !      (it*deltat_read - nt1_record*deltat_record)/deltat_record + &
+        !      grad_pot_bd_pnt_t1(2,:)
+        
+        pot_dot_bd_pnt_acoustic(:) = (pot_dot_bd_pnt_t2(:) - pot_dot_bd_pnt_t1(:)) * &
              (it*deltat_read - nt1_record*deltat_record + diff_deltat)/deltat_record + &
-             pot_dot_bd_pnt_t1
+             pot_dot_bd_pnt_t1(:)
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1102,7 +1118,7 @@ subroutine time_interplt_supply_reconst()
 
      offset_time = (nt1_record_reconst - 1)*nspec_bd_pnt_acoustic_supply_total*size*3 !1 for grad_pot plus 2 for pot_x _z
      
-     call MPI_FILE_OPEN(MPI_COMM_SELF, './OUTPUT_FILES/bg_record/acoustic_pnts_data', &
+     call MPI_FILE_OPEN(MPI_COMM_SELF, './OUTPUT_FILES/reconst_record/acoustic_pnts_data', &
           MPI_MODE_RDONLY, MPI_INFO_NULL, f_num_1, ierror)
 
      count = nspec_bd_pnt_acoustic_supply_total

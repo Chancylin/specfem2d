@@ -561,7 +561,7 @@
 
 #ifdef USE_MPI
 
-     call MPI_FILE_OPEN(bg_record_acoustic,'./OUTPUT_FILES/bg_record/acoustic_pnts_data',&
+     call MPI_FILE_OPEN(bg_record_acoustic,'./OUTPUT_FILES/reconst_record/acoustic_pnts_data',&
           MPI_MODE_CREATE+MPI_MODE_WRONLY,MPI_INFO_NULL,f_num,ierror)
 
      !create the MPI datatype corresponding to real(kind=CUSTOM_REAL)
