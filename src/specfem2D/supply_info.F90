@@ -701,7 +701,7 @@ subroutine time_interplt_supply_reconst()
   
   ! trac_f_t1 = 0.0
   ! trac_f_t2 = 0.0
-
+  
   nt1_record_reconst = floor(it * deltat_read_reconst / deltat_record_reconst)
   if(nt1_record_reconst < record_nt1_reconst ) nt1_record_reconst = record_nt1_reconst
   if(nt1_record_reconst >=  record_nt2_reconst ) nt1_record_reconst = record_nt2_reconst - 1
@@ -719,7 +719,6 @@ subroutine time_interplt_supply_reconst()
 
   if( nspec_bd_pnt_elastic_supply /= 0 ) then
 
-
      if( p_sv ) then
 
         allocate(temp_record_elastic(3,nspec_bd_pnt_elastic_supply_total))
@@ -727,6 +726,9 @@ subroutine time_interplt_supply_reconst()
         allocate(m_xz_t1(nspec_bd_pnt_elastic_supply_total),m_xz_t2(nspec_bd_pnt_elastic_supply_total))
         allocate(m_zz_t1(nspec_bd_pnt_elastic_supply_total),m_zz_t2(nspec_bd_pnt_elastic_supply_total))
 
+        allocate(m_xx_total(nspec_bd_pnt_elastic_supply_total),&
+             m_xz_total(nspec_bd_pnt_elastic_supply_total),m_zz_total(nspec_bd_pnt_elastic_supply_total))
+        
         allocate(trac_f_read_temp(2,nspec_bd_pnt_elastic_supply_total))
 
         
@@ -852,10 +854,10 @@ subroutine time_interplt_supply_reconst()
              m_zz_t1
 
 
-       trac_f((/1,3/),:) = trac_f_total((/1,3/),booking_reconst_elastic)  
-       m_xx   = m_xx_total(booking_reconst_elastic)
-       m_xz   = m_xz_total(booking_reconst_elastic)
-       m_zz   = m_zz_total(booking_reconst_elastic)
+        trac_f((/1,3/),:) = trac_f_total((/1,3/),booking_reconst_elastic)  
+        m_xx   = m_xx_total(booking_reconst_elastic)
+        m_xz   = m_xz_total(booking_reconst_elastic)
+        m_zz   = m_zz_total(booking_reconst_elastic)
 #else
         !the serial mode really needs to rewrite since the format of recording could be inconsistent with the previous reading way (no MPI)
         
@@ -912,6 +914,7 @@ subroutine time_interplt_supply_reconst()
         deallocate(m_xx_t1,m_xx_t2)
         deallocate(m_xz_t1,m_xz_t2)
         deallocate(m_zz_t1,m_zz_t2)
+        deallocate(m_xx_total,m_xz_total,m_zz_total)
         deallocate(temp_record_elastic)
         deallocate(trac_f_read_temp)
 
@@ -921,6 +924,8 @@ subroutine time_interplt_supply_reconst()
         allocate(temp_record_elastic(2,nspec_bd_pnt_elastic_supply_total))
         allocate(m_yx_t1(nspec_bd_pnt_elastic_supply_total),m_yx_t2(nspec_bd_pnt_elastic_supply_total))
         allocate(m_yz_t1(nspec_bd_pnt_elastic_supply_total),m_yz_t2(nspec_bd_pnt_elastic_supply_total))
+        allocate(m_yx_total(nspec_bd_pnt_elastic_supply_total),&
+             m_yz_total(nspec_bd_pnt_elastic_supply_total))
 
 #ifdef USE_MPI
 
@@ -1086,6 +1091,7 @@ subroutine time_interplt_supply_reconst()
 
         deallocate(m_yx_t1,m_yx_t2)
         deallocate(m_yz_t1,m_yz_t2)
+        deallocate(m_yx_total,m_yz_total)
         deallocate(temp_record_elastic)
         deallocate(trac_f_read_temp)
      endif

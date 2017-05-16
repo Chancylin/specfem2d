@@ -118,9 +118,7 @@
 
  subroutine write_bd_pnts()
 
-#ifdef USE_MPI
    use mpi
-#endif
    
    use specfem_par, only: elastic,acoustic,it,& !original para
                           npnt_local,num_pnt_elastic,num_pnt_acoustic,&
