@@ -65,12 +65,12 @@ subroutine supply_bd_pnt()
 
      endif
 
-     print *, 'start broadcasting '
+     ! print *, 'start broadcasting '
      call MPI_BCAST(nspec_bd_pnt_elastic_supply, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierror)
      call MPI_BCAST(nspec_bd_pnt_acoustic_supply, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierror)
 
-     print *, 'nspec_bd_pnt_elastic_supply = ', nspec_bd_pnt_elastic_supply, ' from rank ', myrank
-     print *, 'nspec_bd_pnt_acoustic_supply = ', nspec_bd_pnt_acoustic_supply, ' from rank ', myrank
+     ! print *, 'nspec_bd_pnt_elastic_supply = ', nspec_bd_pnt_elastic_supply, ' from rank ', myrank
+     ! print *, 'nspec_bd_pnt_acoustic_supply = ', nspec_bd_pnt_acoustic_supply, ' from rank ', myrank
 #else
 
      !count the total boundary points for 

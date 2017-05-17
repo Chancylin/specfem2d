@@ -94,8 +94,8 @@
      !geometry bounda
      iglob = ibool(2,2,ispec)
 
-     if((dble(coord(1,iglob)) > box_l) .and. (dble(coord(1,iglob)) < box_r) &
-         .and. dble(coord(2,iglob)) > box_b .and. dble(coord(2,iglob)) < box_t )then
+     ! if((dble(coord(1,iglob)) > box_l) .and. (dble(coord(1,iglob)) < box_r) &
+     !     .and. dble(coord(2,iglob)) > box_b .and. dble(coord(2,iglob)) < box_t )then
 
 ! loop only on points inside the element
 ! exclude edges to ensure this point is not shared with other elements
@@ -119,7 +119,7 @@
            enddo
         enddo
 
-       endif !geometry bound
+       ! endif !geometry bound
      endif
 ! end of loop on all the spectral elements
   enddo

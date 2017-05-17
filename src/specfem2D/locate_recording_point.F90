@@ -252,7 +252,8 @@
         enddo !end the loop for all elements
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        ! we add the global communication to solve the allocating problem when the recording point is at the interface of different partitions
+        ! we add the global communication to solve the allocating problem when
+        ! the recording point is at the interface of different partitions
 #ifdef USE_MPI
         ! global minimum distance computed over all processes
         call MPI_ALLREDUCE (distmin_squared, dist_glob_squared, 1, MPI_DOUBLE_PRECISION, MPI_MIN, MPI_COMM_WORLD, ierror)
@@ -520,16 +521,18 @@
   call MPI_ALLREDUCE(nspec_bd_pnt_acoustic, nspec_bd_pnt_acoustic_clt, 1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, ierror)
   
   
-  print *, 'offset: nspec_bd_pnt_elastic_clt = ', nspec_bd_pnt_elastic_clt, &
-        ' from rank ', myrank
-
-  !for test
-  print *, 'offset: nspec_bd_pnt_elastic = ', nspec_bd_pnt_elastic, &
-       ' num_pnt_elastic = ', num_pnt_elastic, ' from rank ', myrank
-  print *, 'offset: nspec_bd_pnt_acoustic = ', nspec_bd_pnt_acoustic, &
-       ' num_pnt_acoustic = ', num_pnt_acoustic, ' from rank ', myrank
-  
-  ! stop 'bad testing'
+  if( myrank == 0 ) then
+     print *, 'offset: nspec_bd_pnt_elastic_clt = ', nspec_bd_pnt_elastic_clt, &
+          ' from rank ', myrank
+     print *, 'offset: nspec_bd_pnt_acoustic_clt = ', nspec_bd_pnt_acoustic_clt, &
+          ' from rank ', myrank
+  endif
+  ! !for test
+  ! print *, 'offset: nspec_bd_pnt_elastic = ', nspec_bd_pnt_elastic, &
+  !      ' num_pnt_elastic = ', num_pnt_elastic, ' from rank ', myrank
+  ! print *, 'offset: nspec_bd_pnt_acoustic = ', nspec_bd_pnt_acoustic, &
+  !      ' num_pnt_acoustic = ', num_pnt_acoustic, ' from rank ', myrank
+  ! ! stop 'bad testing'
   
   !the reason doing this is: some processors may have not any recording
   !points. so we need to exclude them when we do the writting
