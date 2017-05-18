@@ -2,7 +2,7 @@
 #PBS -S /bin/bash
 
 ## job name and output file
-#PBS -N go_mesher_solver_earth_like_hybrid_psv
+#PBS -N go_mesher_solver_earth_like_hybrid_psv_offset_test
 #PBS -j oe
 #PBS -o job.o
 #PBS -q sandy
@@ -40,6 +40,10 @@ echo 'runing step 1'
 cp $mesh_dir/local_hete/Par_file ./DATA/
 cp $mesh_dir/local_hete/SOURCE ./DATA/
 cp $mesh_dir/local_hete/STATIONS ./DATA/
+
+#change the nproc in Par_file. Make sure line 19 is for the nproc
+awk -F'=' '{if (NR==19) {OFS="="; $2=nproc}; print}' nproc=" $nproc"  ./DATA/Par_file > ./DATA/temp_par 
+mv ./DATA/temp_par ./DATA/Par_file
 
 rm ./DATA/boundary_points*
 
@@ -93,6 +97,10 @@ cp $mesh_dir/global_homo/STATIONS ./DATA/
 #make directory to store the bd_info
 mkdir -p ./OUTPUT_FILES/bg_record/
 mkdir -p ./OUTPUT_FILES/bg_record/
+
+#change the nproc in Par_file. Make sure line 19 is for the nproc
+awk -F'=' '{if (NR==19) {OFS="="; $2=nproc}; print}' nproc=" $nproc"  ./DATA/Par_file > ./DATA/temp_par 
+mv ./DATA/temp_par ./DATA/Par_file
 
 #set the switch
 sed -i '2,2c\F' ./DATA/switch_solver
@@ -159,6 +167,10 @@ echo 'runing step 3'
 cp $mesh_dir/local_hete/Par_file ./DATA/
 cp $mesh_dir/local_hete/SOURCE ./DATA/
 cp $mesh_dir/local_hete/STATIONS ./DATA/
+
+#change the nproc in Par_file. Make sure line 19 is for the nproc
+awk -F'=' '{if (NR==19) {OFS="="; $2=nproc}; print}' nproc=" $nproc"  ./DATA/Par_file > ./DATA/temp_par 
+mv ./DATA/temp_par ./DATA/Par_file
 
 #make directory to store the bd_info
 mkdir -p ./OUTPUT_FILES/reconst_record/
@@ -227,6 +239,10 @@ echo 'runing step 4'
 cp $mesh_dir/global_homo/Par_file ./DATA/
 cp $mesh_dir/global_homo/SOURCE ./DATA/
 cp $mesh_dir/global_homo/STATIONS ./DATA/
+
+#change the nproc in Par_file. Make sure line 19 is for the nproc
+awk -F'=' '{if (NR==19) {OFS="="; $2=nproc}; print}' nproc=" $nproc"  ./DATA/Par_file > ./DATA/temp_par 
+mv ./DATA/temp_par ./DATA/Par_file
 
 #set the switch
 sed -i '2,2c\F' ./DATA/switch_solver

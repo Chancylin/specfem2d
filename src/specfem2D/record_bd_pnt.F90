@@ -302,7 +302,7 @@
      
      !we try to combine all the time-step data into a big file
      !time interval; total points number; length of three component; 2 arrays: traction and velocity
-     offset_time = (it-1)*nspec_bd_pnt_elastic_clt*length_unf_1*2
+     offset_time = (it-record_nt1)*nspec_bd_pnt_elastic_clt*length_unf_1*2
 
      !print *, 'offset of time step: ', offset_time
      
@@ -408,7 +408,7 @@
      inquire (iolength = length_unf_2) grad_pot_bd_pnt_acoustic(:,1) 
      inquire (iolength = length_unf_3) pot_dot_bd_pnt_acoustic(1)
 
-     offset_time = (it-1)*nspec_bd_pnt_acoustic_clt*(length_unf_2+length_unf_3)
+     offset_time = (it-record_nt1)*nspec_bd_pnt_acoustic_clt*(length_unf_2+length_unf_3)
 
      !need to calculate the offset
      offset1 = num_pnt_acoustic*length_unf_2 + offset_time

@@ -438,7 +438,7 @@
 
         inquire (iolength = length_unf_1) trac_f((/1,3/),1) !e.g., length_unf_1 = 4X2
 
-        offset_time = (it-1)*nspec_bd_pnt_elastic_clt*size*5 !2 for traction plus 3 for moment tensor
+        offset_time = (it-record_nt1_reconst)*nspec_bd_pnt_elastic_clt*size*5 !2 for traction plus 3 for moment tensor
      
         offset1 = num_pnt_elastic*length_unf_1 + offset_time
 
@@ -477,7 +477,7 @@
 
      else
 
-        offset_time = (it-1)*nspec_bd_pnt_elastic_clt*size*3 !1 for traction plus 2 for moment tensor
+        offset_time = (it-record_nt1_reconst)*nspec_bd_pnt_elastic_clt*size*3 !1 for traction plus 2 for moment tensor
 
         temp_record_elastic(1,:) = m_yx
         temp_record_elastic(2,:) = m_yz
@@ -571,7 +571,7 @@
 
      if( p_sv ) then
 
-        offset_time = (it-1)*nspec_bd_pnt_acoustic_clt*size*3 ! 1 for grad_pot and 2 for pot_x _z
+        offset_time = (it-record_nt1_reconst)*nspec_bd_pnt_acoustic_clt*size*3 ! 1 for grad_pot and 2 for pot_x _z
 
         temp_record_acoustic(1,:) = Pot_x
         temp_record_acoustic(2,:) = Pot_z
