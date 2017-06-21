@@ -503,6 +503,9 @@ integer i,j,ispec,k,iglob,irec,i_source,ispecabs, irecloc
      close(55)
   endif
 
+!-----by lcx: here we export the GLL points at the boundaries
+  if( export_gll_pnt_local ) call export_gll_pnt_bd()
+!-----
 !
 !-----   plot the GLL mesh in a Gnuplot file
 !
@@ -513,10 +516,6 @@ integer i,j,ispec,k,iglob,irec,i_source,ispecabs, irecloc
     if(myrank == 0) write(IOUT,*) 'Assigning an external velocity and density model...'
     call read_external_model()
   endif
-
-!-----by lcx: here we export the GLL points at the boundaries
-  if( export_gll_pnt_local ) call export_gll_pnt_bd()
-!-----
 
 !
 !----  perform basic checks on parameters read

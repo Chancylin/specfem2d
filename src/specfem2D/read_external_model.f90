@@ -53,7 +53,8 @@
                          QKappa_attenuationext,Qmu_attenuationext, &
                          c11ext,c13ext,c15ext,c33ext,c35ext,c55ext,c12ext,c23ext,c25ext, &
                          MODEL,ATTENUATION_VISCOELASTIC_SOLID,p_sv,&
-                         inputname,ios,tomo_material, myrank
+                         inputname,ios,tomo_material, myrank, &
+                         supply_local_bkgd_boundary, record_local_boundary_reconst
 
   implicit none
   include "constants.h"
@@ -127,8 +128,19 @@
 
 
   else if(trim(MODEL)=='external') then
-    call define_external_model(coord,kmato,ibool,rhoext,vpext,vsext,QKappa_attenuationext,Qmu_attenuationext,gravityext,Nsqext, &
-                               c11ext,c13ext,c15ext,c33ext,c35ext,c55ext,c12ext,c23ext,c25ext,nspec,nglob)
+
+     if( supply_local_bkgd_boundary .or. record_local_boundary_reconst ) then
+       !read the velocity model for local model when do local simulation
+       call define_external_model_CMB(coord,kmato,ibool,rhoext,vpext,vsext,QKappa_attenuationext,Qmu_attenuationext,&
+                                      gravityext,Nsqext, &
+                                      c11ext,c13ext,c15ext,c33ext,c35ext,c55ext,c12ext,c23ext,c25ext,nspec,nglob)
+       else
+       !for global simulation, using the whole model
+       call define_external_model(coord,kmato,ibool,rhoext,vpext,vsext,QKappa_attenuationext,Qmu_attenuationext,&
+                                      gravityext,Nsqext,&
+                                      c11ext,c13ext,c15ext,c33ext,c35ext,c55ext,c12ext,c23ext,c25ext,nspec,nglob)
+     endif
+
   else if(trim(MODEL)=='tomo') then
     call define_external_model_from_tomo_file()
   endif

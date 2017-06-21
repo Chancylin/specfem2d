@@ -349,7 +349,8 @@ subroutine setup_trac_f_sources()
    print *,"total recording points in elastic region: ", nspec_bd_pnt_elastic_supply_total, ' from rank', myrank
    
    if( nspec_bd_pnt_elastic_supply_total /= 0 ) then
-      !this is a bit unfortune, we need to do the global compariso to get the real nspec_bd_pnt_elastic_supply and booking to acess to the data set
+      !this is a bit unfortune, we need to do the global compariso to get the
+      !real nspec_bd_pnt_elastic_supply and booking to acess to the data set
 
       allocate(x_final_bd_pnt_elastic_total(nspec_bd_pnt_elastic_supply_total))
       allocate(z_final_bd_pnt_elastic_total(nspec_bd_pnt_elastic_supply_total))

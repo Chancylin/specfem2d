@@ -379,7 +379,7 @@
    use mpi
 #endif
    
-  use specfem_par, only: it,p_sv,& !original para
+  use specfem_par, only: it,p_sv,myrank, & !original para
                          num_pnt_elastic,num_pnt_acoustic,&
                          nspec_bd_pnt_elastic_clt, nspec_bd_pnt_acoustic_clt,&
                          bg_record_elastic, bg_record_acoustic,&
@@ -399,12 +399,16 @@
 #ifdef USE_MPI
   !MPI parameters
   integer (kind=MPI_OFFSET_KIND) :: offset1, offset2, offset_time
-  integer :: size,bd_info_type,ierror
+  integer :: bd_info_type,ierror,size
   integer :: count
 #else
   integer :: k
   integer :: ios
 #endif
+  !integer(8) :: number_offset
+  !INTEGER(8).   [2147550720]
+  !integer(8) :: number_offset = 2147*10E6 + 550720
+  !number_offset = 
 
   if (it < record_nt1_reconst .or. it > record_nt2_reconst ) return
 
@@ -438,7 +442,7 @@
 
         inquire (iolength = length_unf_1) trac_f((/1,3/),1) !e.g., length_unf_1 = 4X2
 
-        offset_time = (it-record_nt1_reconst)*nspec_bd_pnt_elastic_clt*size*5 !2 for traction plus 3 for moment tensor
+        offset_time = (it-record_nt1_reconst)*nspec_bd_pnt_elastic_clt*size*5_8 !2 for traction plus 3 for moment tensor
      
         offset1 = num_pnt_elastic*length_unf_1 + offset_time
 
@@ -451,6 +455,16 @@
              +  num_pnt_elastic*size*3 & !size = 4
              +  offset_time
 
+        if( it == record_nt1_reconst .and. myrank == 3 ) then
+           print *, 'largest number of offset2 is ', huge(offset2)
+        endif
+        
+        !test about offset
+        if( it > 40000 .and. it < 40100 .and. myrank == 3 ) then
+           print *,'it = ', it
+           print *,'offset_time = ', offset_time, ' offset1 = ', offset1
+        endif
+        
         count = nspec_bd_pnt_elastic*3
 
         call MPI_FILE_WRITE_AT(f_num, offset2, temp_record_elastic, count,&
@@ -477,7 +491,7 @@
 
      else
 
-        offset_time = (it-record_nt1_reconst)*nspec_bd_pnt_elastic_clt*size*3 !1 for traction plus 2 for moment tensor
+        offset_time = (it-record_nt1_reconst)*nspec_bd_pnt_elastic_clt*size*3_8 !1 for traction plus 2 for moment tensor
 
         temp_record_elastic(1,:) = m_yx
         temp_record_elastic(2,:) = m_yz
@@ -571,7 +585,7 @@
 
      if( p_sv ) then
 
-        offset_time = (it-record_nt1_reconst)*nspec_bd_pnt_acoustic_clt*size*3 ! 1 for grad_pot and 2 for pot_x _z
+        offset_time = (it-record_nt1_reconst)*nspec_bd_pnt_acoustic_clt*size*3_8 ! 1 for grad_pot and 2 for pot_x _z
 
         temp_record_acoustic(1,:) = Pot_x
         temp_record_acoustic(2,:) = Pot_z

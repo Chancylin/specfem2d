@@ -240,7 +240,7 @@ subroutine time_interplt_supply()
   ! character(len=150) :: newfile
 #ifdef USE_MPI
   !integer :: size,bd_info_type_elastic,bd_info_type_acoustic,ierror
-  integer :: size,bd_info_type,ierror
+  integer :: bd_info_type,ierror,size
   integer(kind=MPI_OFFSET_KIND) :: offset_time
 #else
   integer :: length_unf_1
@@ -298,7 +298,7 @@ subroutine time_interplt_supply()
         call MPI_FILE_OPEN(MPI_COMM_SELF, './OUTPUT_FILES/bg_record/elastic_pnts_data', &
              MPI_MODE_RDONLY, MPI_INFO_NULL, f_num_1, ierror)
 
-        offset_time = (nt1_record - record_nt1)*nspec_bd_pnt_elastic_supply*size*6
+        offset_time = (nt1_record - record_nt1)*nspec_bd_pnt_elastic_supply*size*6_8
         
         ! print *,'t1, read traction at ', offset_time
         call MPI_FILE_READ_AT(f_num_1, offset_time, trac_bd_pnt_t1, 3*nspec_bd_pnt_elastic_supply,&
@@ -368,7 +368,7 @@ subroutine time_interplt_supply()
 
         call MPI_FILE_OPEN(MPI_COMM_SELF, './OUTPUT_FILES/bg_record/acoustic_pnts_data', &
              MPI_MODE_RDONLY, MPI_INFO_NULL, f_num_1, ierror)
-        offset_time = (nt1_record - record_nt1)*nspec_bd_pnt_acoustic_supply*size*3
+        offset_time = (nt1_record - record_nt1)*nspec_bd_pnt_acoustic_supply*size*3_8
 
        
         call MPI_FILE_READ_AT(f_num_1, offset_time, grad_pot_bd_pnt_t1, 2*nspec_bd_pnt_acoustic_supply,&
@@ -385,7 +385,7 @@ subroutine time_interplt_supply()
         ! call MPI_FILE_OPEN(MPI_COMM_SELF, fname_2, &
         !      MPI_MODE_RDONLY, MPI_INFO_NULL, f_num_2, ierror)
 
-        offset_time = (nt2_record - record_nt1)*nspec_bd_pnt_acoustic_supply*size*3
+        offset_time = (nt2_record - record_nt1)*nspec_bd_pnt_acoustic_supply*size*3_8
         call MPI_FILE_READ_AT(f_num_1, offset_time, grad_pot_bd_pnt_t2, 2*nspec_bd_pnt_acoustic_supply,&
              bd_info_type, MPI_STATUS_IGNORE, ierror)
 
@@ -626,7 +626,7 @@ subroutine time_interplt_supply_reconst()
  
   !integer (kind=MPI_OFFSET_KIND) :: offset1, offset2
   integer (kind=MPI_OFFSET_KIND) :: offset_time
-  integer :: size,bd_info_type,ierror
+  integer :: bd_info_type,ierror,size
   integer :: count
   
   real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: trac_f_t1,trac_f_t2
@@ -691,7 +691,7 @@ subroutine time_interplt_supply_reconst()
         !      &elastic_pnts/nt_',i6.6)")nt1_record_reconst
 
         !2 for traction plus 3 for moment tensor
-        offset_time = (nt1_record_reconst - record_nt1_reconst)*nspec_bd_pnt_elastic_supply_total*size*5
+        offset_time = (nt1_record_reconst - record_nt1_reconst)*nspec_bd_pnt_elastic_supply_total*size*5_8
 
         call MPI_FILE_OPEN(MPI_COMM_SELF, './OUTPUT_FILES/reconst_record/elastic_pnts_data', &
              MPI_MODE_RDONLY, MPI_INFO_NULL, f_num_1, ierror)
@@ -719,7 +719,7 @@ subroutine time_interplt_supply_reconst()
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
         !2 for traction plus 3 for moment tensor
-        offset_time = (nt2_record_reconst - record_nt1_reconst)*nspec_bd_pnt_elastic_supply_total*size*5
+        offset_time = (nt2_record_reconst - record_nt1_reconst)*nspec_bd_pnt_elastic_supply_total*size*5_8
         
         count = 2*nspec_bd_pnt_elastic_supply_total
 
@@ -844,7 +844,7 @@ subroutine time_interplt_supply_reconst()
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
         !1 for traction plus 2 for moment tensor
-        offset_time = (nt1_record_reconst - record_nt1_reconst)*nspec_bd_pnt_elastic_supply_total*size*3
+        offset_time = (nt1_record_reconst - record_nt1_reconst)*nspec_bd_pnt_elastic_supply_total*size*3_8
 
         call MPI_FILE_OPEN(MPI_COMM_SELF, './OUTPUT_FILES/reconst_record/elastic_pnts_data', &
              MPI_MODE_RDONLY, MPI_INFO_NULL, f_num_1, ierror)
@@ -865,7 +865,7 @@ subroutine time_interplt_supply_reconst()
         m_yz_t1 = temp_record_elastic(2,:) 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         !1 for traction plus 2 for moment tensor
-        offset_time = (nt2_record_reconst - record_nt1_reconst)*nspec_bd_pnt_elastic_supply_total*size*3
+        offset_time = (nt2_record_reconst - record_nt1_reconst)*nspec_bd_pnt_elastic_supply_total*size*3_8
 
         count = nspec_bd_pnt_elastic_supply_total
         call MPI_FILE_READ_AT(f_num_1, offset_time, trac_f_read_temp, count,&
@@ -982,7 +982,7 @@ subroutine time_interplt_supply_reconst()
      call MPI_TYPE_MATCH_SIZE(MPI_TYPECLASS_REAL,size,bd_info_type,ierror)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-     offset_time = (nt1_record_reconst - record_nt1_reconst)*nspec_bd_pnt_acoustic_supply_total*size*3
+     offset_time = (nt1_record_reconst - record_nt1_reconst)*nspec_bd_pnt_acoustic_supply_total*size*3_8
      !1 for grad_pot plus 2 for pot_x _z
      
      call MPI_FILE_OPEN(MPI_COMM_SELF, './OUTPUT_FILES/reconst_record/acoustic_pnts_data', &
@@ -1003,7 +1003,7 @@ subroutine time_interplt_supply_reconst()
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
      !1 for grad_pot plus 2 for pot_x _z
-     offset_time = (nt2_record_reconst - record_nt1_reconst)*nspec_bd_pnt_acoustic_supply_total*size*3
+     offset_time = (nt2_record_reconst - record_nt1_reconst)*nspec_bd_pnt_acoustic_supply_total*size*3_8
 
      count = nspec_bd_pnt_acoustic_supply_total
      call MPI_FILE_READ_AT(f_num_1, offset_time, Grad_pot_t2, count,&
