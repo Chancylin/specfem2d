@@ -297,13 +297,24 @@ subroutine setup_trac_f_sources()
   use specfem_par, only: myrank,p_sv,nspec_bd_pnt_elastic_supply,&
                          nspec_bd_pnt_elastic_supply_total, booking_reconst_elastic,&
                          coord,ibool,nglob,nspec, &
-                         trac_f, m_xx,m_xz,m_zz,m_yx,m_yz, &
                          hxis_trac_f,hgammas_trac_f,hxis_trac_f_store,hgammas_trac_f_store,&
                          hpxis_trac_f,hpgammas_trac_f,hpxis_trac_f_store,hpgammas_trac_f_store,&
                          x_final_bd_pnt_elastic,z_final_bd_pnt_elastic,ispec_selected_elastic_source_reconst, &
                          !is_proc_trac_f_source,nb_proc_trac_f_source, & !does this really matter?
                          xigll,zigll,npgeo, &
-                         nproc,myrank,coorg,knods,ngnod 
+                         nproc,myrank,coorg,knods,ngnod,&
+                         num_step_input,supply_reconst_elastic,&
+                         o_rank_elastic,o_nproc_elastic,&
+                         trac_f, m_xx,m_xz,m_zz,m_yx,m_yz, &
+                         data_to_supply_elastic,&
+                         one_time_slice_elastic_1,one_time_slice_elastic_2,&
+                         trac_f_t1,trac_f_t2,trac_f_total,&
+                         m_xx_t1,m_xz_t1,m_zz_t1,m_yx_t1,m_yz_t1,&
+                         m_xx_t2,m_xz_t2,m_zz_t2,m_yx_t2,m_yz_t2,&
+                         m_xx_total,m_xz_total,m_zz_total,m_yx_total,m_yz_total
+
+
+                         
 
   implicit none
  
@@ -323,6 +334,7 @@ subroutine setup_trac_f_sources()
   integer, dimension(:), allocatable :: index_elastic
   double precision, dimension(:), allocatable :: x_final_bd_pnt_elastic_total, z_final_bd_pnt_elastic_total
   integer :: ierror
+  integer :: key = 1
 
   elastic_flag=.TRUE.
   acoustic_flag=.FALSE.
@@ -363,10 +375,12 @@ subroutine setup_trac_f_sources()
       f_num = 111                                                                 
 
       open(f_num,file=trim(fname),iostat=ios,status='old',action='read')
+
       do i_f_source=1,nspec_bd_pnt_elastic_supply_total
          read(f_num,111) temp_read,temp1_read,temp2_read, &
               x_final_bd_pnt_elastic_total(i_f_source),z_final_bd_pnt_elastic_total(i_f_source)
       enddo
+
       close(f_num)
 
       print *, 'nproc = ', nproc
@@ -385,14 +399,13 @@ subroutine setup_trac_f_sources()
          write(1,*) 'finsh point: ', i_f_source,&
               x_final_bd_pnt_elastic_total(i_f_source), z_final_bd_pnt_elastic_total(i_f_source),&
               ' in rank ', myrank, ' is', in_element(i_f_source)
-         
+
       enddo
 
       close(1)
 
       nspec_bd_pnt_elastic_supply = count(in_element)
 
-      print *,"number of recording points in elastic region: ", nspec_bd_pnt_elastic_supply, ' from rank', myrank
 
       if( nspec_bd_pnt_elastic_supply /= 0 ) then
          allocate(x_final_bd_pnt_elastic(nspec_bd_pnt_elastic_supply),z_final_bd_pnt_elastic(nspec_bd_pnt_elastic_supply))
@@ -407,19 +420,70 @@ subroutine setup_trac_f_sources()
       deallocate(x_final_bd_pnt_elastic_total, z_final_bd_pnt_elastic_total)
       deallocate(in_element)
       deallocate(index_elastic)
-endif
+   endif
 
-   ! print *,"number of recording points in elastic region: ", nspec_bd_pnt_elastic_supply, ' from rank', myrank
+   print *,"number of recording points in elastic region: ", nspec_bd_pnt_elastic_supply, ' from rank', myrank
+
+   !build the communicator
+   call MPI_COMM_SPLIT(MPI_COMM_WORLD,nspec_bd_pnt_elastic_supply,key,supply_reconst_elastic,ierror)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   if( nspec_bd_pnt_elastic_supply /= 0 ) then
 
-      allocate(trac_f(3,nspec_bd_pnt_elastic_supply))
-      ! trac_f = 0.0
-      
+     call MPI_COMM_SIZE(supply_reconst_elastic, o_nproc_elastic, ierror)
+     call MPI_COMM_RANK(supply_reconst_elastic, o_rank_elastic, ierror)
+
+     !arrays needed for 'root' processor
+     if( o_rank_elastic == 0 )then
+       
+        if( p_sv )then
+
+           allocate(data_to_supply_elastic(5,nspec_bd_pnt_elastic_supply_total,num_step_input))
+
+           !two time points for time interpolation
+           allocate(one_time_slice_elastic_1(5,nspec_bd_pnt_elastic_supply_total),&
+                one_time_slice_elastic_2(5,nspec_bd_pnt_elastic_supply_total))
+           
+           allocate(trac_f_t1(3,nspec_bd_pnt_elastic_supply_total),trac_f_t2(3,nspec_bd_pnt_elastic_supply_total))
+           allocate(m_xx_t1(nspec_bd_pnt_elastic_supply_total),m_xx_t2(nspec_bd_pnt_elastic_supply_total))
+           allocate(m_xz_t1(nspec_bd_pnt_elastic_supply_total),m_xz_t2(nspec_bd_pnt_elastic_supply_total))
+           allocate(m_zz_t1(nspec_bd_pnt_elastic_supply_total),m_zz_t2(nspec_bd_pnt_elastic_supply_total))
+
+        else
+           allocate(data_to_supply_elastic(3,nspec_bd_pnt_elastic_supply_total,num_step_input))
+
+           !two time points for time interpolation
+           allocate(one_time_slice_elastic_1(3,nspec_bd_pnt_elastic_supply_total),&
+                one_time_slice_elastic_2(3,nspec_bd_pnt_elastic_supply_total))
+
+           allocate(trac_f_t1(3,nspec_bd_pnt_elastic_supply_total),trac_f_t2(3,nspec_bd_pnt_elastic_supply_total))
+           allocate(m_yx_t1(nspec_bd_pnt_elastic_supply_total),m_yx_t2(nspec_bd_pnt_elastic_supply_total))
+           allocate(m_yz_t1(nspec_bd_pnt_elastic_supply_total),m_yz_t2(nspec_bd_pnt_elastic_supply_total))
+
+
+        endif
+
+     endif
+     
+     !arrays needed for each 'excitation' processor
       if( p_sv ) then
-         allocate(m_xx(nspec_bd_pnt_elastic_supply),m_xz(nspec_bd_pnt_elastic_supply),m_zz(nspec_bd_pnt_elastic_supply))
+
+         allocate(trac_f_total(3,nspec_bd_pnt_elastic_supply_total))
+         allocate(trac_f(3,nspec_bd_pnt_elastic_supply))
+
+         allocate(m_xx_total(nspec_bd_pnt_elastic_supply_total),m_xz_total(nspec_bd_pnt_elastic_supply_total),&
+              m_zz_total(nspec_bd_pnt_elastic_supply_total))
+      
+         allocate(m_xx(nspec_bd_pnt_elastic_supply),m_xz(nspec_bd_pnt_elastic_supply),&
+              m_zz(nspec_bd_pnt_elastic_supply))
+
       else
+         
+         allocate(trac_f_total(3,nspec_bd_pnt_elastic_supply_total))
+         allocate(trac_f(3,nspec_bd_pnt_elastic_supply))
+
+         allocate(m_yx_total(nspec_bd_pnt_elastic_supply_total),m_yz_total(nspec_bd_pnt_elastic_supply_total))
+         
          allocate(m_yx(nspec_bd_pnt_elastic_supply),m_yz(nspec_bd_pnt_elastic_supply))
       endif
       
@@ -507,7 +571,15 @@ subroutine setup_pot_f_sources()
                          x_final_bd_pnt_acoustic,z_final_bd_pnt_acoustic,ispec_selected_acoustic_source_reconst,&
                          !is_proc_pot_f_source,nb_proc_pot_f_source, & !does this really matter?
                          xigll,zigll,npgeo, &
-                         nproc,myrank,coorg,knods,ngnod 
+                         num_step_input,supply_reconst_acoustic,&
+                         o_rank_acoustic,o_nproc_acoustic,&
+                         nproc,myrank,coorg,knods,ngnod,&
+                         data_to_supply_acoustic,&
+                         one_time_slice_acoustic_1,one_time_slice_acoustic_2,&
+                         Grad_pot_t1,Pot_x_t1,Pot_z_t1,&
+                         Grad_pot_t2,Pot_x_t2,Pot_z_t2,&
+                         Grad_pot_total,Pot_x_total,Pot_z_total
+
 
   implicit none
   include "constants.h"
@@ -526,6 +598,8 @@ subroutine setup_pot_f_sources()
   logical, dimension(:), allocatable :: in_element
   integer, dimension(:), allocatable :: index_acoustic
   double precision, dimension(:), allocatable :: x_final_bd_pnt_acoustic_total, z_final_bd_pnt_acoustic_total
+  integer :: ierror
+  integer :: key = 1
 
   elastic_flag=.FALSE.
   acoustic_flag=.TRUE.
@@ -599,11 +673,40 @@ subroutine setup_pot_f_sources()
    endif
   
    print *,"number of recording points in acoustic region: ", nspec_bd_pnt_acoustic_supply
+
+   call MPI_COMM_SPLIT(MPI_COMM_WORLD,nspec_bd_pnt_acoustic_supply,key,supply_reconst_acoustic,ierror)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    
 
    !we only allocate the variables for excitations in acoustic elements if P-SV case.
    if( nspec_bd_pnt_acoustic_supply /= 0 .and. p_sv ) then
+
+      call MPI_COMM_SIZE(supply_reconst_acoustic, o_nproc_acoustic, ierror)
+      call MPI_COMM_RANK(supply_reconst_acoustic, o_rank_acoustic, ierror)
+
+      !arrays needed for 'root' processor
+      if( o_rank_acoustic == 0 .and. p_sv )then
+
+         allocate(data_to_supply_acoustic(3,nspec_bd_pnt_acoustic_supply_total,num_step_input))
+
+         !two time points for time interpolation
+         allocate(one_time_slice_acoustic_1(3,nspec_bd_pnt_acoustic_supply_total),&
+              one_time_slice_acoustic_2(3,nspec_bd_pnt_acoustic_supply_total))
+
+
+         allocate(Grad_pot_t1(nspec_bd_pnt_acoustic_supply_total))
+         allocate(Pot_x_t1(nspec_bd_pnt_acoustic_supply_total),&
+              Pot_z_t1(nspec_bd_pnt_acoustic_supply_total))
+         
+         allocate(Grad_pot_t2(nspec_bd_pnt_acoustic_supply_total))
+         allocate(Pot_x_t2(nspec_bd_pnt_acoustic_supply_total),&
+              Pot_z_t2(nspec_bd_pnt_acoustic_supply_total))
+
+      endif
+      
+      allocate(Grad_pot_total(nspec_bd_pnt_acoustic_supply_total))
+      allocate(Pot_x_total(nspec_bd_pnt_acoustic_supply_total),&
+           Pot_z_total(nspec_bd_pnt_acoustic_supply_total))
 
       allocate(Grad_pot(nspec_bd_pnt_acoustic_supply))
       allocate(Pot_x(nspec_bd_pnt_acoustic_supply),Pot_z(nspec_bd_pnt_acoustic_supply))

@@ -8,7 +8,7 @@ echo $current_dir
 SEM_dir='/home/lcx/specfem2d_devep/specfem2d'
 cd $SEM_dir
 
-mesh_dir='./DATA/quick_test'
+mesh_dir='./DATA/conceptual_model'
 
 #Step 2
 echo 'runing step 2'
@@ -23,10 +23,10 @@ mkdir -p ./OUTPUT_FILES/bg_record/
 
 #set the switch
 sed -i '2,2c\F' ./DATA/switch_solver
-sed -i '4,4c\T' ./DATA/switch_solver
-sed -i '8,8c\F' ./DATA/switch_solver
-sed -i '12,12c\F' ./DATA/switch_solver
-sed -i '16,16c\F' ./DATA/switch_solver
+sed -i '6,6c\T' ./DATA/switch_solver
+sed -i '10,10c\F' ./DATA/switch_solver
+sed -i '14,14c\F' ./DATA/switch_solver
+sed -i '18,18c\F' ./DATA/switch_solver
 
 echo 'do the meshing'
 mpirun.mpich -np $nproc ./bin/xmeshfem2D > ./OUTPUT_FILES/output_mesher_step2

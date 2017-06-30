@@ -324,6 +324,17 @@ module specfem_par
   
   integer :: f_num
   character (len=100) :: fname
+  !!for MPI_GATHERV
+  integer :: num_step_output, step_count, write_time_count
+  integer :: o_rank_elastic, o_rank_acoustic, o_nproc_elastic, o_nproc_acoustic
+  integer, dimension(:), allocatable :: num_to_gather_elastic, data_gather_count_elastic, gather_offset_elastic, &
+       num_to_gather_acoustic, data_gather_count_acoustic, gather_offset_acoustic 
+  real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: data_assemble_elastic, one_time_slice_elastic, &
+       data_assemble_acoustic, one_time_slice_acoustic
+  real(kind=CUSTOM_REAL), dimension(:,:,:), allocatable :: data_to_save_elastic,data_to_save_acoustic
+
+
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   !these are the variables for every GLL points of the elements
   real(kind=CUSTOM_REAL), dimension(:,:,:,:), allocatable :: stress_bd_elastic, vel_bd_elastic 
@@ -334,6 +345,15 @@ module specfem_par
   real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: stress_bd_pnt_elastic, vel_bd_pnt_elastic, trac_bd_pnt_elastic
   real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: grad_pot_bd_pnt_acoustic
   real(kind=CUSTOM_REAL), dimension(:), allocatable :: pot_dot_bd_pnt_acoustic
+  !!!array dumping
+  integer :: num_step_input
+  real(kind=CUSTOM_REAL), dimension(:,:,:), allocatable :: data_to_supply_elastic,data_to_supply_acoustic
+  real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: one_time_slice_elastic_1, one_time_slice_elastic_2,&
+       one_time_slice_acoustic_1,one_time_slice_acoustic_2
+  real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: trac_bd_pnt_t1,vel_bd_pnt_t1,trac_bd_pnt_t2,vel_bd_pnt_t2
+  real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: grad_pot_bd_pnt_t1, grad_pot_bd_pnt_t2
+  real(kind=CUSTOM_REAL), dimension(:), allocatable :: pot_dot_bd_pnt_t1, pot_dot_bd_pnt_t2 
+
 
 
   !lcx: parameters for reconstructing wavefield
@@ -357,8 +377,7 @@ module specfem_par
   !!acoustic
   real(kind=CUSTOM_REAL), dimension(:), allocatable :: grad_pot_x_reconst,grad_pot_z_reconst
   real(kind=CUSTOM_REAL), dimension(:), allocatable :: Grad_pot,Pot_x,Pot_z
-  real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: temp_record_elastic
-  real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: temp_record_acoustic
+
   !!!supplying part
   logical :: supply_reconst
   integer, dimension(:), allocatable :: ispec_selected_elastic_source_reconst,ispec_selected_acoustic_source_reconst 
@@ -372,6 +391,18 @@ module specfem_par
 
   integer, dimension(:), allocatable :: booking_reconst_elastic,booking_reconst_acoustic 
   integer :: nspec_bd_pnt_elastic_supply_total, nspec_bd_pnt_acoustic_supply_total
+  !use root processor to read the dataset
+  real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: trac_f_t1,trac_f_t2
+  real(kind=CUSTOM_REAL), dimension(:), allocatable :: m_xx_t1,m_xz_t1,m_zz_t1,m_zx_t1,m_yx_t1,m_yz_t1
+  real(kind=CUSTOM_REAL), dimension(:), allocatable :: m_xx_t2,m_xz_t2,m_zz_t2,m_zx_t2,m_yx_t2,m_yz_t2
+
+  real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: trac_f_total
+  real(kind=CUSTOM_REAL), dimension(:), allocatable :: m_xx_total,m_xz_total,m_zz_total,m_zx_total,m_yx_total,m_yz_total
+
+  real(kind=CUSTOM_REAL), dimension(:), allocatable :: Grad_pot_t1,Pot_x_t1,Pot_z_t1
+  real(kind=CUSTOM_REAL), dimension(:), allocatable :: Grad_pot_t2,Pot_x_t2,Pot_z_t2
+  real(kind=CUSTOM_REAL), dimension(:), allocatable :: Grad_pot_total,Pot_x_total,Pot_z_total
+
   !parameters for MPI
   ! logical, dimension(:), allocatable :: found_element
   integer :: num_pnt_elastic, num_pnt_acoustic
@@ -379,7 +410,7 @@ module specfem_par
   integer :: bg_record_elastic, bg_record_acoustic
   integer :: nspec_bd_pnt_elastic_clt, nspec_bd_pnt_acoustic_clt
 
-  integer :: bg_supply_elastic, bg_supply_acoustic
+  integer :: supply_reconst_elastic, supply_reconst_acoustic
   integer :: nspec_bd_pnt_elastic_supply_clt, nspec_bd_pnt_acoustic_supply_clt
   !-------------------------------------------------------------------
 

@@ -211,7 +211,7 @@
             dux_dxl,dux_dzl)
 
    use specfem_par, only: p_sv,ispec_bd_elmt_acoustic_i,ispec_bd_elmt_acoustic_j,ispec_bd_elmt_acoustic,&
-                          grad_pot_x_reconst,grad_pot_z_reconst,Grad_pot,&
+                          Grad_pot,&
                           nx_bd_pnt_acoustic,nz_bd_pnt_acoustic, &
                           it,record_nt1_reconst,record_nt2_reconst,&
                           side_type_acoustic,nspec_bd_pnt_acoustic,wzgll,wxgll,&
@@ -236,8 +236,9 @@
        if ( ispec_bd_elmt_acoustic(ispec_bd_pnt_acoustic) == ispec .and. ispec_bd_elmt_acoustic_i(ispec_bd_pnt_acoustic) == i &
             .and. ispec_bd_elmt_acoustic_j(ispec_bd_pnt_acoustic) == j ) then
        
-         grad_pot_x_reconst(ispec_bd_pnt_acoustic) = dux_dxl
-         grad_pot_z_reconst(ispec_bd_pnt_acoustic) = dux_dzl
+          !grad_pot_x_reconst and grad_pot_z_reconst should be removed
+         !grad_pot_x_reconst(ispec_bd_pnt_acoustic) = dux_dxl
+         !grad_pot_z_reconst(ispec_bd_pnt_acoustic) = dux_dzl
 
         ! Grad_pot(ispec_bd_pnt_acoustic) = grad_pot_x_reconst(ispec_bd_pnt_acoustic)&
         !         *nx_bd_pnt_acoustic(ispec_bd_pnt_acoustic)&
@@ -379,27 +380,31 @@
    use mpi
 #endif
    
-  use specfem_par, only: it,p_sv,myrank, & !original para
-                         num_pnt_elastic,num_pnt_acoustic,&
+  use specfem_par, only: it,p_sv, & !original para
                          nspec_bd_pnt_elastic_clt, nspec_bd_pnt_acoustic_clt,&
                          bg_record_elastic, bg_record_acoustic,&
                          f_num,&
-                         temp_record_elastic,temp_record_acoustic,&
                          nspec_bd_pnt_elastic,nspec_bd_pnt_acoustic,&
                          trac_f,m_xx,m_xz,m_zz,m_yx,m_yz, &
                          Grad_pot,Pot_x,Pot_z, &
-                         record_nt1_reconst,record_nt2_reconst !control time step for recording
+                         record_nt1_reconst,record_nt2_reconst,& !control time step for recording
+                         bg_record_acoustic, bg_record_elastic,&
+                         num_step_output,step_count,write_time_count,&
+                         o_rank_elastic,o_rank_acoustic,&
+                         num_to_gather_elastic,data_gather_count_elastic,gather_offset_elastic,&
+                         num_to_gather_acoustic,data_gather_count_acoustic,gather_offset_acoustic,&
+                         data_assemble_elastic,one_time_slice_elastic,data_to_save_elastic,&
+                         data_assemble_acoustic,one_time_slice_acoustic,data_to_save_acoustic
+
  
  
   implicit none
   include "constants.h"
 
-  integer :: length_unf_1
-  integer :: length_unf_2
 #ifdef USE_MPI
   !MPI parameters
-  integer (kind=MPI_OFFSET_KIND) :: offset1, offset2, offset_time
-  integer :: bd_info_type,ierror,size
+  integer (kind=MPI_OFFSET_KIND) :: offset
+  integer :: bd_info_type,ierror,size_elastic,size_acoustic
   integer :: count
 #else
   integer :: k
@@ -412,7 +417,7 @@
 
   if (it < record_nt1_reconst .or. it > record_nt2_reconst ) return
 
-
+  step_count = step_count + 1
   !for elastic 
 
   ! write(fname,"('./OUTPUT_FILES/reconst_record/&
@@ -422,13 +427,11 @@
 
 #ifdef USE_MPI
 
-     call MPI_FILE_OPEN(bg_record_elastic,'./OUTPUT_FILES/reconst_record/elastic_pnts_data',&
-          MPI_MODE_CREATE+MPI_MODE_WRONLY,MPI_INFO_NULL,f_num,ierror)
 
      !create the MPI datatype corresponding to real(kind=CUSTOM_REAL)
      !bd_info_type is a handle referring to the MPI dataype created
-     call MPI_SIZEOF(trac_f(1,1),size,ierror)
-     call MPI_TYPE_MATCH_SIZE(MPI_TYPECLASS_REAL,size,bd_info_type,ierror)
+     call MPI_SIZEOF(trac_f(1,1),size_elastic,ierror)
+     call MPI_TYPE_MATCH_SIZE(MPI_TYPECLASS_REAL,size_elastic,bd_info_type,ierror)
 
 
      if( p_sv ) then
@@ -436,98 +439,95 @@
         !use temp_record to contain m_xx, m_xz and m_zz will make it easier for writing
         !but one should realize that the reason we can just MPI write temp_record_elastic
         !into file, mainly because Fortran is column-major
-        temp_record_elastic(1,:) = m_xx
-        temp_record_elastic(2,:) = m_xz
-        temp_record_elastic(3,:) = m_zz
+        
+        data_assemble_elastic(1,:) = trac_f(1,:)
+        data_assemble_elastic(2,:) = trac_f(3,:)
+        
+        data_assemble_elastic(3,:) = m_xx
+        data_assemble_elastic(4,:) = m_xz
+        data_assemble_elastic(5,:) = m_zz
 
-        inquire (iolength = length_unf_1) trac_f((/1,3/),1) !e.g., length_unf_1 = 4X2
+        !gather info from all processor every time step
+        call MPI_GATHERV(data_assemble_elastic, num_to_gather_elastic(o_rank_elastic+1)*5, bd_info_type, one_time_slice_elastic,&
+             data_gather_count_elastic*5, gather_offset_elastic*5, bd_info_type, 0, bg_record_elastic, ierror)
 
-        offset_time = (it-record_nt1_reconst)*nspec_bd_pnt_elastic_clt*size*5_8 !2 for traction plus 3 for moment tensor
+        if( o_rank_elastic == 0 )then
+           data_to_save_elastic(:,:,step_count) = one_time_slice_elastic
+        endif
+        
+
+        ! inquire (iolength = length_unf_1) trac_f((/1,3/),1) !e.g., length_unf_1 = 4X2
+
+        ! offset_time = (it-record_nt1_reconst)*nspec_bd_pnt_elastic_clt*size*5_8 !2 for traction plus 3 for moment tensor
      
-        offset1 = num_pnt_elastic*length_unf_1 + offset_time
+        ! offset1 = num_pnt_elastic*length_unf_1 + offset_time
 
-        count = 2*nspec_bd_pnt_elastic
-        call MPI_FILE_WRITE_AT(f_num, offset1, trac_f((/1,3/),:), count,&
-             bd_info_type, MPI_STATUS_IGNORE, ierror)
-
-        !I don't like the usage of 'size' here, making the code unclear in terms of logic
-        offset2 = nspec_bd_pnt_elastic_clt*length_unf_1 &
-             +  num_pnt_elastic*size*3 & !size = 4
-             +  offset_time
-
-        if( it == record_nt1_reconst .and. myrank == 3 ) then
-           print *, 'largest number of offset2 is ', huge(offset2)
-        endif
-        
-        !test about offset
-        if( it > 40000 .and. it < 40100 .and. myrank == 3 ) then
-           print *,'it = ', it
-           print *,'offset_time = ', offset_time, ' offset1 = ', offset1
-        endif
-        
-        count = nspec_bd_pnt_elastic*3
-
-        call MPI_FILE_WRITE_AT(f_num, offset2, temp_record_elastic, count,&
-             bd_info_type, MPI_STATUS_IGNORE, ierror)
-
-
-        ! offset2 = nspec_bd_pnt_elastic_clt*length_unf_1 &
-        !      + nspec_bd_pnt_elastic_clt*size &
-        !      +  num_pnt_elastic*size
-
-
-        ! call MPI_FILE_WRITE_AT(f_num, offset2, m_xz, count,&
+        ! count = 2*nspec_bd_pnt_elastic
+        ! call MPI_FILE_WRITE_AT(f_num, offset1, trac_f((/1,3/),:), count,&
         !      bd_info_type, MPI_STATUS_IGNORE, ierror)
 
-
+        ! !I don't like the usage of 'size' here, making the code unclear in terms of logic
         ! offset2 = nspec_bd_pnt_elastic_clt*length_unf_1 &
-        !      + nspec_bd_pnt_elastic_clt*size &
-        !      + nspec_bd_pnt_elastic_clt*size &
-        !      +  num_pnt_elastic*size
+        !      +  num_pnt_elastic*size*3 & !size = 4
+        !      +  offset_time
+        
+        ! count = nspec_bd_pnt_elastic*3
 
-        ! call MPI_FILE_WRITE_AT(f_num, offset2, m_zz, count,&
+        ! call MPI_FILE_WRITE_AT(f_num, offset2, temp_record_elastic, count,&
         !      bd_info_type, MPI_STATUS_IGNORE, ierror)
 
 
      else
 
-        offset_time = (it-record_nt1_reconst)*nspec_bd_pnt_elastic_clt*size*3_8 !1 for traction plus 2 for moment tensor
 
-        temp_record_elastic(1,:) = m_yx
-        temp_record_elastic(2,:) = m_yz
+        data_assemble_elastic(1,:) = trac_f(2,:)
+        
+        data_assemble_elastic(2,:) = m_yx
+        data_assemble_elastic(3,:) = m_yz
 
-        inquire (iolength = length_unf_1) trac_f(2,1)  !length_unf_1 = 4
-        offset1 = num_pnt_elastic*length_unf_1 + offset_time
+        !gather info from all processor every time step
+        call MPI_GATHERV(data_assemble_elastic, num_to_gather_elastic(o_rank_elastic+1)*3, bd_info_type, one_time_slice_elastic,&
+             data_gather_count_elastic*3, gather_offset_elastic*3, bd_info_type, 0, bg_record_elastic, ierror)
 
-        count = nspec_bd_pnt_elastic
-        call MPI_FILE_WRITE_AT(f_num, offset1, trac_f(2,:), count,&
-             bd_info_type, MPI_STATUS_IGNORE, ierror)
-
-        !I don't like the usage of 'size' here, making the code unclear in terms of logic
-        offset2 = nspec_bd_pnt_elastic_clt*length_unf_1 &
-             +  num_pnt_elastic*size*2 &
-             +  offset_time
-
-        count = nspec_bd_pnt_elastic*2
-
-        call MPI_FILE_WRITE_AT(f_num, offset2, temp_record_elastic, count,&
-             bd_info_type, MPI_STATUS_IGNORE, ierror)
+        if( o_rank_elastic == 0 )then
+           data_to_save_elastic(:,:,step_count) = one_time_slice_elastic
+        endif
 
 
-        ! offset2 = nspec_bd_pnt_elastic_clt*length_unf_1 &
-        !      + nspec_bd_pnt_elastic_clt*size &
-        !      +  num_pnt_elastic*size
+        ! offset_time = (it-record_nt1_reconst)*nspec_bd_pnt_elastic_clt*size*3_8 !1 for traction plus 2 for moment tensor
 
+        ! temp_record_elastic(1,:) = m_yx
+        ! temp_record_elastic(2,:) = m_yz
 
-        ! call MPI_FILE_WRITE_AT(f_num, offset2, m_yz, count,&
+        ! inquire (iolength = length_unf_1) trac_f(2,1)  !length_unf_1 = 4
+        ! offset1 = num_pnt_elastic*length_unf_1 + offset_time
+
+        ! count = nspec_bd_pnt_elastic
+        ! call MPI_FILE_WRITE_AT(f_num, offset1, trac_f(2,:), count,&
         !      bd_info_type, MPI_STATUS_IGNORE, ierror)
+
+        ! !I don't like the usage of 'size' here, making the code unclear in terms of logic
+        ! offset2 = nspec_bd_pnt_elastic_clt*length_unf_1 &
+        !      +  num_pnt_elastic*size*2 &
+        !      +  offset_time
+
+        ! count = nspec_bd_pnt_elastic*2
+
+        ! call MPI_FILE_WRITE_AT(f_num, offset2, temp_record_elastic, count,&
+        !      bd_info_type, MPI_STATUS_IGNORE, ierror)
+
+
+        ! ! offset2 = nspec_bd_pnt_elastic_clt*length_unf_1 &
+        ! !      + nspec_bd_pnt_elastic_clt*size &
+        ! !      +  num_pnt_elastic*size
+
+
+        ! ! call MPI_FILE_WRITE_AT(f_num, offset2, m_yz, count,&
+        ! !      bd_info_type, MPI_STATUS_IGNORE, ierror)
 
 
      endif
 
-     ! call MPI_FILE_WRITE(f_num, vel_bd_pnt_elastic, count,&
-     !      bd_info_type, MPI_STATUS_IGNORE, ierror)
-     call MPI_FILE_CLOSE(f_num,ierror)
 
 #else
      f_num=113
@@ -575,39 +575,48 @@
 
 #ifdef USE_MPI
 
-     call MPI_FILE_OPEN(bg_record_acoustic,'./OUTPUT_FILES/reconst_record/acoustic_pnts_data',&
-          MPI_MODE_CREATE+MPI_MODE_WRONLY,MPI_INFO_NULL,f_num,ierror)
 
      !create the MPI datatype corresponding to real(kind=CUSTOM_REAL)
      !bd_info_type is a handle referring to the MPI dataype created
-     call MPI_SIZEOF(Grad_pot(1),size,ierror)
-     call MPI_TYPE_MATCH_SIZE(MPI_TYPECLASS_REAL,size,bd_info_type,ierror)
+     call MPI_SIZEOF(Grad_pot(1),size_acoustic,ierror)
+     call MPI_TYPE_MATCH_SIZE(MPI_TYPECLASS_REAL,size_acoustic,bd_info_type,ierror)
 
      if( p_sv ) then
 
-        offset_time = (it-record_nt1_reconst)*nspec_bd_pnt_acoustic_clt*size*3_8 ! 1 for grad_pot and 2 for pot_x _z
 
-        temp_record_acoustic(1,:) = Pot_x
-        temp_record_acoustic(2,:) = Pot_z
+        data_assemble_acoustic(1,:) = Grad_pot
+
+        data_assemble_acoustic(2,:) = Pot_x
+        data_assemble_acoustic(3,:) = Pot_z
+
+        call MPI_GATHERV(data_assemble_acoustic, num_to_gather_acoustic(o_rank_acoustic+1)*3, &
+             bd_info_type, one_time_slice_acoustic, &
+             data_gather_count_acoustic*3, gather_offset_acoustic*3, &
+             bd_info_type, 0, bg_record_acoustic, ierror)
+
+        ! offset_time = (it-record_nt1_reconst)*nspec_bd_pnt_acoustic_clt*size*3_8 ! 1 for grad_pot and 2 for pot_x _z
+
+        ! temp_record_acoustic(1,:) = Pot_x
+        ! temp_record_acoustic(2,:) = Pot_z
         
-        inquire (iolength = length_unf_2) Grad_pot(1) !length_unf_2 = 4 
-        offset1 = num_pnt_acoustic*length_unf_2 &
-                + offset_time
+        ! inquire (iolength = length_unf_2) Grad_pot(1) !length_unf_2 = 4 
+        ! offset1 = num_pnt_acoustic*length_unf_2 &
+        !         + offset_time
         
-        count = nspec_bd_pnt_acoustic
+        ! count = nspec_bd_pnt_acoustic
 
-        call MPI_FILE_WRITE_AT(f_num, offset1, Grad_pot, count,&
-             bd_info_type, MPI_STATUS_IGNORE, ierror)
+        ! call MPI_FILE_WRITE_AT(f_num, offset1, Grad_pot, count,&
+        !      bd_info_type, MPI_STATUS_IGNORE, ierror)
 
 
-        offset2 = nspec_bd_pnt_acoustic_clt*length_unf_2 &
-             + num_pnt_acoustic*length_unf_2*2 &
-             + offset_time
+        ! offset2 = nspec_bd_pnt_acoustic_clt*length_unf_2 &
+        !      + num_pnt_acoustic*length_unf_2*2 &
+        !      + offset_time
 
-        count = nspec_bd_pnt_acoustic*2
+        ! count = nspec_bd_pnt_acoustic*2
         
-        call MPI_FILE_WRITE_AT(f_num, offset2, temp_record_acoustic, count,&
-             bd_info_type, MPI_STATUS_IGNORE, ierror)
+        ! call MPI_FILE_WRITE_AT(f_num, offset2, temp_record_acoustic, count,&
+        !      bd_info_type, MPI_STATUS_IGNORE, ierror)
 
 
         ! offset2 = nspec_bd_pnt_acoustic_clt*length_unf_2 &
@@ -619,10 +628,14 @@
         !      bd_info_type, MPI_STATUS_IGNORE, ierror)
         
      ! else  ! actually, nothing needs to do if SH case
+
+        if( o_rank_acoustic == 0 )then
+           data_to_save_acoustic(:,:,step_count) = one_time_slice_acoustic
+        endif
+
         
      endif
      
-     call MPI_FILE_CLOSE(f_num,ierror)
 #else
 
      if( p_sv ) then !only need to do the recording if P-SV case
@@ -648,5 +661,70 @@
 #endif
 
   endif
+
+  !do the writing
+  
+  if( step_count == num_step_output .or. it == record_nt2_reconst ) then
+     
+     if( nspec_bd_pnt_elastic /= 0 .and. o_rank_elastic == 0 )then
+
+        call MPI_FILE_OPEN(MPI_COMM_SELF,'./OUTPUT_FILES/reconst_record/elastic_pnts_data',&
+             MPI_MODE_CREATE+MPI_MODE_WRONLY,&
+             MPI_INFO_NULL,f_num,ierror)
+
+
+        if( p_sv )then
+
+           count = step_count * nspec_bd_pnt_elastic_clt * 5
+           offset = write_time_count*num_step_output &
+                *nspec_bd_pnt_elastic_clt*5_8*size_elastic
+
+        else
+           count = step_count * nspec_bd_pnt_elastic_clt * 3
+           offset = write_time_count*num_step_output &
+                *nspec_bd_pnt_elastic_clt*3_8*size_elastic
+        endif
+
+
+        call MPI_FILE_WRITE_AT(f_num, offset, data_to_save_elastic, count,&
+             bd_info_type, MPI_STATUS_IGNORE, ierror)
+
+        call MPI_FILE_CLOSE(f_num,ierror)
+        
+        
+     endif
+
+
+     if( nspec_bd_pnt_acoustic /= 0 .and. o_rank_acoustic == 0 )then
+
+        if( p_sv )then
+
+           call MPI_FILE_OPEN(MPI_COMM_SELF,'./OUTPUT_FILES/reconst_record/acoustic_pnts_data',&
+                MPI_MODE_CREATE+MPI_MODE_WRONLY,&
+                MPI_INFO_NULL,f_num,ierror)
+
+           count = step_count * nspec_bd_pnt_acoustic_clt * 3
+           offset = write_time_count*num_step_output &
+                *nspec_bd_pnt_acoustic_clt*3_8*size_acoustic
+
+           call MPI_FILE_WRITE_AT(f_num, offset, data_to_save_acoustic, count,&
+                bd_info_type, MPI_STATUS_IGNORE, ierror)
+
+           call MPI_FILE_CLOSE(f_num,ierror)
+
+
+
+        endif
+        
+     endif
+
+     write_time_count = write_time_count + 1
+
+     !step counter is reset to zero for a new round of recording
+     step_count = 0 
+
+     
+  endif
+  
 
  end subroutine write_bd_pnts_reconst

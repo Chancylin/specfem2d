@@ -37,8 +37,15 @@
                            trac_bd_pnt_elastic_reconst,trac_f,&
                            m_xx,m_xz,m_zz,m_zx,m_xx_reconst,m_xz_reconst,m_zz_reconst,m_zx_reconst,&
                            m_yx,m_yz,m_yx_reconst,m_yz_reconst,&
-                           Grad_pot,grad_pot_x_reconst,grad_pot_z_reconst,Pot_x,Pot_z,& 
-                           temp_record_elastic,temp_record_acoustic
+                           Grad_pot,Pot_x,Pot_z,& 
+                           !use MPI_GATHERV
+                           step_count,write_time_count,num_step_output,&
+                           o_rank_elastic,o_rank_acoustic,&
+                           o_nproc_elastic,o_nproc_acoustic,&
+                           num_to_gather_elastic,data_gather_count_elastic,gather_offset_elastic,&
+                           num_to_gather_acoustic,data_gather_count_acoustic,gather_offset_acoustic,&
+                           data_assemble_elastic,one_time_slice_elastic,data_to_save_elastic,&
+                           data_assemble_acoustic,one_time_slice_acoustic,data_to_save_acoustic
 
   implicit none
   include "constants.h"
@@ -538,6 +545,165 @@
   !points. so we need to exclude them when we do the writting
   call build_commu_bg_record(nspec_bd_pnt_elastic, nspec_bd_pnt_acoustic,  bg_record_elastic, bg_record_acoustic)
 
+  !counter for information saving
+  write_time_count = 0
+
+  step_count = 0
+
+  if( nspec_bd_pnt_elastic /= 0 )then
+     
+     call MPI_COMM_SIZE(bg_record_elastic, o_nproc_elastic, ierror)
+     call MPI_COMM_RANK(bg_record_elastic, o_rank_elastic, ierror)
+
+     ! print *, 'nproc_elastic = ', o_nproc_elastic
+     ! print *, 'rank_elastic: ', o_rank_elastic, ' at processor ', myrank 
+     
+     allocate(num_to_gather_elastic(o_nproc_elastic))
+
+     call MPI_ALLGATHER(nspec_bd_pnt_elastic, 1, MPI_INTEGER, num_to_gather_elastic, 1, MPI_INTEGER,&
+          bg_record_elastic, ierror)
+
+
+
+     allocate(data_gather_count_elastic(o_nproc_elastic))
+     allocate(gather_offset_elastic(o_nproc_elastic))
+     !be careful that now the root receiving the data is the rank 0 in this new communicator but not the MPI_COMM_WORLD
+     call MPI_GATHER(nspec_bd_pnt_elastic, 1, MPI_INTEGER, data_gather_count_elastic, 1, MPI_INTEGER,&
+          0, bg_record_elastic, ierror)
+     
+     
+     call MPI_GATHER(num_pnt_elastic, 1, MPI_INTEGER, gather_offset_elastic, 1, MPI_INTEGER,&
+          0, bg_record_elastic, ierror)
+
+
+
+     !allocate the array container for each process during all the simulation time
+     !then we can concatenate all the info into one_time_slice
+     if( record_local_bkgd_boundary )then
+        
+        allocate(data_assemble_elastic(6,nspec_bd_pnt_elastic))
+        
+     else if( record_local_boundary_reconst )then
+
+        if( p_sv )then
+           allocate(data_assemble_elastic(5,nspec_bd_pnt_elastic))
+        else
+           allocate(data_assemble_elastic(3,nspec_bd_pnt_elastic))
+        endif
+        
+     endif
+
+     data_assemble_elastic = 0.0
+     
+
+     
+     if( o_rank_elastic == 0 )then
+
+        print *, 'gather_offset_elastic = ', gather_offset_elastic
+        print *, 'num_to_gather_elastic = ', num_to_gather_elastic
+        !this will be the parameters for MPI_GATHERV to gather all the bd_info
+        !is this needed in the slave processors?
+        ! allocate(data_gather_count_elastic(o_nproc_elastic))
+        ! allocate(gather_offset_elastic(o_nproc_elastic))
+        
+        !use an array to hold the one-time slice of all information
+        !only for the root among the processors which need to write
+        if( record_local_bkgd_boundary )then
+           
+           allocate(one_time_slice_elastic(6,nspec_bd_pnt_elastic_clt))
+           allocate(data_to_save_elastic(6,nspec_bd_pnt_elastic_clt,num_step_output))
+           
+        else if( record_local_boundary_reconst )then
+           
+           if( p_sv )then
+              allocate(one_time_slice_elastic(5,nspec_bd_pnt_elastic_clt))
+              allocate(data_to_save_elastic(5,nspec_bd_pnt_elastic_clt,num_step_output))
+           else
+              allocate(one_time_slice_elastic(3,nspec_bd_pnt_elastic_clt))
+              allocate(data_to_save_elastic(3,nspec_bd_pnt_elastic_clt,num_step_output))
+           endif
+           
+        endif
+
+        one_time_slice_elastic = 0.0
+        
+     endif
+
+     
+  endif
+  
+
+  if( nspec_bd_pnt_acoustic /= 0 )then
+     
+     call MPI_COMM_SIZE(bg_record_acoustic, o_nproc_acoustic, ierror)
+     call MPI_COMM_RANK(bg_record_acoustic, o_rank_acoustic, ierror)
+     
+     ! print *, 'nproc_acoutic = ', o_nproc_acoustic
+     ! print *, 'rank_acoustic: ', o_rank_acoustic, ' at processor ', myrank 
+
+     allocate(num_to_gather_acoustic(o_nproc_acoustic))
+     call MPI_ALLGATHER(nspec_bd_pnt_acoustic, 1, MPI_INTEGER, num_to_gather_acoustic, 1, MPI_INTEGER,&
+          bg_record_acoustic, ierror)
+
+
+     allocate(data_gather_count_acoustic(o_nproc_acoustic))
+     allocate(gather_offset_acoustic(o_nproc_acoustic))
+     !be careful that now the root receiving the data is the rank 0 in this new communicator but not the MPI_COMM_WORLD
+     call MPI_GATHER(nspec_bd_pnt_acoustic, 1, MPI_INTEGER, data_gather_count_acoustic, 1, MPI_INTEGER,&
+          0, bg_record_acoustic, ierror)
+     
+     
+     call MPI_GATHER(num_pnt_acoustic, 1, MPI_INTEGER, gather_offset_acoustic, 1, MPI_INTEGER,&
+          0, bg_record_acoustic, ierror)
+
+
+
+     if( record_local_bkgd_boundary )then
+        
+        allocate(data_assemble_acoustic(3,nspec_bd_pnt_acoustic))
+
+        data_assemble_acoustic = 0.0
+        
+     else if( record_local_boundary_reconst )then
+
+        if( p_sv )then
+           allocate(data_assemble_acoustic(3,nspec_bd_pnt_acoustic))
+           data_assemble_acoustic = 0.0
+        endif
+        
+     endif
+
+
+     if( o_rank_acoustic == 0 )then
+
+        print *, 'gather_offset_acoustic = ', gather_offset_acoustic
+        print *, 'num_to_gather_acoustic = ', num_to_gather_acoustic
+        !this info will be used for MPI_GATHERV
+        ! allocate(data_gather_count_acoustic(o_nproc_acoustic))
+        ! allocate(gather_offset_acoustic(o_nproc_acoustic))
+
+        !this will be one-time slice to receive all data at one time step
+        if( record_local_bkgd_boundary )then
+           
+           allocate(one_time_slice_acoustic(3,nspec_bd_pnt_acoustic_clt))
+           one_time_slice_acoustic = 0.0
+           allocate(data_to_save_acoustic(3,nspec_bd_pnt_acoustic_clt,num_step_output))
+           
+        else if( record_local_boundary_reconst )then
+
+           if( p_sv )then
+              allocate(one_time_slice_acoustic(3,nspec_bd_pnt_acoustic_clt))
+              one_time_slice_acoustic = 0.0
+              allocate(data_to_save_acoustic(3,nspec_bd_pnt_acoustic_clt,num_step_output))
+           endif
+
+        endif
+        
+     endif
+
+     
+  endif
+  
 #endif
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -569,21 +735,6 @@
         z_final_bd_pnt_elastic = pack(z_final_bd_pnt,elastic_flag)
         ispec_bd_elmt_elastic  = pack(ispec_selected_bd_pnt,elastic_flag)
 
-        ! old algorithm, no using array operation
-        ! i = 1
-        ! do ipnt=1,npnt_local
-        !   if(elastic(ispec_selected_bd_pnt(ipnt)))then
-        !     ispec_bd_elmt_elastic(i) = ispec_selected_bd_pnt(ipnt)  !this is the element index in the global model
-            
-        !   !here we also record the coordinate for the point
-        !     nx_bd_pnt_elastic(i) = nx_pnt(ipnt)
-        !     nz_bd_pnt_elastic(i) = nz_pnt(ipnt)
-        !     x_final_bd_pnt_elastic(i) = x_final_bd_pnt(ipnt)
-        !     z_final_bd_pnt_elastic(i) = z_final_bd_pnt(ipnt)
-        !     i = i+1
-        !   endif
-        
-        ! enddo
      endif
 
      if ( nspec_bd_pnt_acoustic /= 0 ) then
@@ -593,21 +744,6 @@
         z_final_bd_pnt_acoustic = pack(z_final_bd_pnt,acoustic_flag)
         ispec_bd_elmt_acoustic  = pack(ispec_selected_bd_pnt,acoustic_flag)
 
-        ! old algorithm, no using array operation
-        ! j = 1
-        ! do ipnt=1,npnt
-        
-        !   if(acoustic(ispec_selected_bd_pnt(ipnt)))then
-        !     ispec_bd_elmt_acoustic(j) = ispec_selected_bd_pnt(ipnt)
-
-        !     nx_bd_pnt_acoustic(j) = nx_pnt(ipnt)
-        !     nz_bd_pnt_acoustic(j) = nz_pnt(ipnt)
-        !     x_final_bd_pnt_acoustic(j) = x_final_bd_pnt(ipnt)
-        !     z_final_bd_pnt_acoustic(j) = z_final_bd_pnt(ipnt)
-
-        !     j = j+1
-        !   endif
-        ! enddo
      endif
 
   endif
@@ -952,7 +1088,7 @@
         !P-SV and SH cases will record different boundary information
         if( p_sv ) then
            !temporary array for MPI writing   
-           allocate(temp_record_elastic(3,nspec_bd_pnt_elastic))
+           !allocate(temp_record_elastic(3,nspec_bd_pnt_elastic))
 
            allocate(m_xx(nspec_bd_pnt_elastic))
            allocate(m_xz(nspec_bd_pnt_elastic))
@@ -964,7 +1100,7 @@
            allocate(m_zx_reconst(nspec_bd_pnt_elastic))
         else
 
-           allocate(temp_record_elastic(2,nspec_bd_pnt_elastic))
+           !allocate(temp_record_elastic(2,nspec_bd_pnt_elastic))
            !should we also separate the allocation of memory for P-SV and SH cases
            allocate(m_yx(nspec_bd_pnt_elastic))
            allocate(m_yz(nspec_bd_pnt_elastic))
@@ -978,9 +1114,9 @@
         !acoustic
         if( p_sv ) then
            allocate(Grad_pot(nspec_bd_pnt_acoustic))
-           allocate(grad_pot_x_reconst(nspec_bd_pnt_acoustic),grad_pot_z_reconst(nspec_bd_pnt_acoustic))
+           !allocate(grad_pot_x_reconst(nspec_bd_pnt_acoustic),grad_pot_z_reconst(nspec_bd_pnt_acoustic))
            allocate(Pot_x(nspec_bd_pnt_acoustic),Pot_z(nspec_bd_pnt_acoustic))
-           allocate(temp_record_acoustic(2,nspec_bd_pnt_acoustic))
+           !allocate(temp_record_acoustic(2,nspec_bd_pnt_acoustic))
         endif
      endif
 
