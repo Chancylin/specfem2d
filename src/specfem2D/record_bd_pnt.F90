@@ -120,7 +120,7 @@
 
    use mpi
    
-   use specfem_par, only: elastic,acoustic,it,& !original para
+   use specfem_par, only: elastic,acoustic,it,myrank,& !original para
                           npnt_local,&
                           nspec_bd_pnt_elastic_clt, nspec_bd_pnt_acoustic_clt,&
                           ispec_selected_bd_pnt,f_num,& !fname
@@ -152,7 +152,7 @@
   !integer :: offset1, offset2
   integer (kind=MPI_OFFSET_KIND) :: offset
   integer :: size_elastic,size_acoustic,bd_info_type,ierror
-  integer :: count
+  integer (kind=MPI_OFFSET_KIND) :: count
   !integer (kind=MPI_COUNT_KIND) :: count
   ! real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: temp
   !integer :: k,kk
@@ -377,11 +377,12 @@
              MPI_MODE_CREATE+MPI_MODE_WRONLY,&
              MPI_INFO_NULL,f_num,ierror)
 
-        count = step_count * nspec_bd_pnt_elastic_clt * 6
+        count = step_count * nspec_bd_pnt_elastic_clt * 6_8
         offset = write_time_count*num_step_output &
                  *nspec_bd_pnt_elastic_clt*6_8*size_elastic
 
-        ! print *, 'step_count = ', step_count, ' offset = ', offset, ' from processor ', myrank
+         print *, 'step_count = ', step_count, ' count = ', count, &
+               ' offset = ', offset, ' from processor ', myrank
 
         call MPI_FILE_WRITE_AT(f_num, offset, data_to_save_elastic, count,&
              bd_info_type, MPI_STATUS_IGNORE, ierror)
@@ -396,7 +397,7 @@
              MPI_MODE_CREATE+MPI_MODE_WRONLY,&
              MPI_INFO_NULL,f_num,ierror)
 
-        count = step_count * nspec_bd_pnt_acoustic_clt * 3
+        count = step_count * nspec_bd_pnt_acoustic_clt * 3_8
         offset = write_time_count*num_step_output &
                  *nspec_bd_pnt_acoustic_clt*3_8*size_acoustic
 

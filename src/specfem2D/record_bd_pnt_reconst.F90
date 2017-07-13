@@ -405,7 +405,7 @@
   !MPI parameters
   integer (kind=MPI_OFFSET_KIND) :: offset
   integer :: bd_info_type,ierror,size_elastic,size_acoustic
-  integer :: count
+  integer (kind=MPI_OFFSET_KIND) :: count
 #else
   integer :: k
   integer :: ios
@@ -675,12 +675,12 @@
 
         if( p_sv )then
 
-           count = step_count * nspec_bd_pnt_elastic_clt * 5
+           count = step_count * nspec_bd_pnt_elastic_clt * 5_8
            offset = write_time_count*num_step_output &
                 *nspec_bd_pnt_elastic_clt*5_8*size_elastic
 
         else
-           count = step_count * nspec_bd_pnt_elastic_clt * 3
+           count = step_count * nspec_bd_pnt_elastic_clt * 3_8
            offset = write_time_count*num_step_output &
                 *nspec_bd_pnt_elastic_clt*3_8*size_elastic
         endif
@@ -703,7 +703,7 @@
                 MPI_MODE_CREATE+MPI_MODE_WRONLY,&
                 MPI_INFO_NULL,f_num,ierror)
 
-           count = step_count * nspec_bd_pnt_acoustic_clt * 3
+           count = step_count * nspec_bd_pnt_acoustic_clt * 3_8
            offset = write_time_count*num_step_output &
                 *nspec_bd_pnt_acoustic_clt*3_8*size_acoustic
 

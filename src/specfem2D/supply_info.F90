@@ -263,7 +263,8 @@ subroutine time_interplt_supply()
   ! character(len=150) :: newfile
 #ifdef USE_MPI
   !integer :: size,bd_info_type_elastic,bd_info_type_acoustic,ierror
-  integer :: bd_info_type,ierror,size,count
+  integer :: bd_info_type,ierror,size
+  integer(kind=MPI_OFFSET_KIND) :: count
   integer(kind=MPI_OFFSET_KIND) :: offset
 #else
   integer :: length_unf_1
@@ -741,9 +742,9 @@ subroutine time_interplt_supply_reconst()
   integer :: f_num
  
   integer (kind=MPI_OFFSET_KIND) :: offset
-  integer (kind=MPI_COUNT_KIND) :: count_type
+  integer (kind=MPI_OFFSET_KIND) :: count, count_type
   integer :: bd_info_type,ierror,size
-  integer :: count,slice_1,slice_2
+  integer :: slice_1,slice_2
   
 #ifdef USE_MPI
 #else

@@ -10,8 +10,8 @@
 ###########################################################
 # USER PARAMETERS
 
-## 256 CPUs ( 16*16 ), walltime 4 hour
-#PBS -l nodes=6:ppn=8,walltime=8:00:00
+## 48 CPUs ( 3*16 ), walltime 4 hour
+#PBS -l nodes=6:ppn=8,walltime=4:00:00
 
 ###########################################################
 module purge
@@ -44,10 +44,10 @@ rm ./DATA/boundary_points*
 
 #set the switch
 sed -i '2,2c\T' ./DATA/switch_solver
-sed -i '4,4c\F' ./DATA/switch_solver
-sed -i '8,8c\F' ./DATA/switch_solver
-sed -i '12,12c\F' ./DATA/switch_solver
-sed -i '16,16c\F' ./DATA/switch_solver
+sed -i '6,6c\F' ./DATA/switch_solver
+sed -i '10,10c\F' ./DATA/switch_solver
+sed -i '14,14c\F' ./DATA/switch_solver
+sed -i '18,18c\F' ./DATA/switch_solver
 
 #run mesh
 echo 'do the meshing'
@@ -98,10 +98,10 @@ mv ./DATA/temp_par ./DATA/Par_file
 
 #set the switch
 sed -i '2,2c\F' ./DATA/switch_solver
-sed -i '4,4c\T' ./DATA/switch_solver
-sed -i '8,8c\F' ./DATA/switch_solver
-sed -i '12,12c\F' ./DATA/switch_solver
-sed -i '16,16c\F' ./DATA/switch_solver
+sed -i '6,6c\T' ./DATA/switch_solver
+sed -i '10,10c\F' ./DATA/switch_solver
+sed -i '14,14c\F' ./DATA/switch_solver
+sed -i '18,18c\F' ./DATA/switch_solver
 
 echo 'do the meshing'
 mpirun -np $nproc ./bin/xmeshfem2D > ./OUTPUT_FILES/output_mesher_step2

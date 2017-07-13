@@ -385,7 +385,7 @@ subroutine setup_trac_f_sources()
 
       print *, 'nproc = ', nproc
 
-      write(fname,"('./OUTPUT_FILES/reconst_record/elastic_pnts_allocate',i5.5)") myrank
+      !write(fname,"('./OUTPUT_FILES/reconst_record/elastic_pnts_allocate',i5.5)") myrank
 
       do i_f_source=1,nspec_bd_pnt_elastic_supply_total
          call MPI_BARRIER(MPI_COMM_WORLD,ierror)
@@ -395,14 +395,14 @@ subroutine setup_trac_f_sources()
               myrank,nproc, in_element(i_f_source))
 
 
-         open(unit=1,file=trim(fname),iostat=ios,status='new',action='write')
-         write(1,*) 'finsh point: ', i_f_source,&
-              x_final_bd_pnt_elastic_total(i_f_source), z_final_bd_pnt_elastic_total(i_f_source),&
-              ' in rank ', myrank, ' is', in_element(i_f_source)
+         !open(unit=1,file=trim(fname),iostat=ios,status='new',action='write')
+         !write(1,*) 'finsh point: ', i_f_source,&
+         !     x_final_bd_pnt_elastic_total(i_f_source), z_final_bd_pnt_elastic_total(i_f_source),&
+         !     ' in rank ', myrank, ' is', in_element(i_f_source)
 
       enddo
 
-      close(1)
+      !close(1)
 
       nspec_bd_pnt_elastic_supply = count(in_element)
 

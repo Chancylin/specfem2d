@@ -5,20 +5,20 @@
 #PBS -N go_mesher_solver_earth_like_hybrid_psv_offset_test
 #PBS -j oe
 #PBS -o job.o
-#PBS -q sandy
+##PBS -q sandy
 
 ###########################################################
 # USER PARAMETERS
 
 ## 256 CPUs ( 16*16 ), walltime 4 hour
-#PBS -l nodes=2:ppn=16,walltime=4:00:00
+#PBS -l nodes=6:ppn=8,walltime=8:00:00
 
 ###########################################################
 module purge
 module load intel/12.1.3
 module load openmpi/1.4.4-intel-v12.1
 
-nproc=32
+nproc=48
 #warning, if you have processors more than 99, you may 
 #want to change the 'cat' processing to get the correct
 #format of the file name so it could combine all the files
@@ -27,7 +27,7 @@ current_dir=$PWD
 echo $current_dir
 SEM_dir='/scratch/l/liuqy/lcx/specfem2d_self_couple/specfem2d'
 cd $SEM_dir
-mesh_dir='./DATA/earth_like_model'
+mesh_dir='./DATA/earth_model_ak135'
 
 #obtain job information
 cat $PBS_NODEFILE > OUTPUT_FILES/compute_nodes
@@ -49,10 +49,10 @@ rm ./DATA/boundary_points*
 
 #set the switch
 sed -i '2,2c\T' ./DATA/switch_solver
-sed -i '4,4c\F' ./DATA/switch_solver
-sed -i '8,8c\F' ./DATA/switch_solver
-sed -i '12,12c\F' ./DATA/switch_solver
-sed -i '16,16c\F' ./DATA/switch_solver
+sed -i '6,6c\F' ./DATA/switch_solver
+sed -i '10,10c\F' ./DATA/switch_solver
+sed -i '14,14c\F' ./DATA/switch_solver
+sed -i '18,18c\F' ./DATA/switch_solver
 
 #run mesh
 echo 'do the meshing'
@@ -104,10 +104,10 @@ mv ./DATA/temp_par ./DATA/Par_file
 
 #set the switch
 sed -i '2,2c\F' ./DATA/switch_solver
-sed -i '4,4c\T' ./DATA/switch_solver
-sed -i '8,8c\F' ./DATA/switch_solver
-sed -i '12,12c\F' ./DATA/switch_solver
-sed -i '16,16c\F' ./DATA/switch_solver
+sed -i '6,6c\T' ./DATA/switch_solver
+sed -i '10,10c\F' ./DATA/switch_solver
+sed -i '14,14c\F' ./DATA/switch_solver
+sed -i '18,18c\F' ./DATA/switch_solver
 
 echo 'do the meshing'
 mpirun -np $nproc ./bin/xmeshfem2D > ./OUTPUT_FILES/output_mesher_step2
@@ -178,10 +178,10 @@ mkdir -p ./OUTPUT_FILES/reconst_record/
 
 #set the switch
 sed -i '2,2c\F' ./DATA/switch_solver
-sed -i '4,4c\F' ./DATA/switch_solver
-sed -i '8,8c\T' ./DATA/switch_solver
-sed -i '12,12c\T' ./DATA/switch_solver
-sed -i '16,16c\F' ./DATA/switch_solver
+sed -i '6,6c\F' ./DATA/switch_solver
+sed -i '10,10c\T' ./DATA/switch_solver
+sed -i '14,14c\T' ./DATA/switch_solver
+sed -i '18,18c\F' ./DATA/switch_solver
 
 echo 'do the meshing'
 mpirun -np $nproc ./bin/xmeshfem2D > ./OUTPUT_FILES/output_mesher_step3
@@ -246,10 +246,10 @@ mv ./DATA/temp_par ./DATA/Par_file
 
 #set the switch
 sed -i '2,2c\F' ./DATA/switch_solver
-sed -i '4,4c\F' ./DATA/switch_solver
-sed -i '8,8c\F' ./DATA/switch_solver
-sed -i '12,12c\F' ./DATA/switch_solver
-sed -i '16,16c\T' ./DATA/switch_solver
+sed -i '6,6c\F' ./DATA/switch_solver
+sed -i '10,10c\F' ./DATA/switch_solver
+sed -i '14,14c\F' ./DATA/switch_solver
+sed -i '18,18c\T' ./DATA/switch_solver
 
 echo 'do the meshing'
 mpirun -np $nproc ./bin/xmeshfem2D > ./OUTPUT_FILES/output_mesher_step4

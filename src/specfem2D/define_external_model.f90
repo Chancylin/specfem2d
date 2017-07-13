@@ -1227,11 +1227,17 @@
   integer, parameter :: IREGION_MANTLE_BELOW_d670 = 2
   integer, parameter :: IREGION_OUTER_CORE = 3
   integer, parameter :: IREGION_INNER_CORE = 4
+  integer, parameter :: IREGION_HETE = 5
 
   integer :: i,j,ispec,iglob,ii
 
   double precision :: x,z,r,frac
 
+! low velocity pertubation percentage
+  double precision :: pertub_vp, pertub_vs, pertub_rho
+  pertub_vs = 0.05
+  pertub_vp = 0.01
+  pertub_rho = 0.01
 
   print *,'we assign the velocity model to the global model'
 ! remove gravity
@@ -2078,62 +2084,84 @@
   if(material_element(ispec) /= IREGION_MANTLE_CRUST_ABOVE_d670 .and. &
      material_element(ispec) /= IREGION_MANTLE_BELOW_d670 .and. &
      material_element(ispec) /= IREGION_OUTER_CORE .and. &
-     material_element(ispec) /= IREGION_INNER_CORE) stop 'wrong flag number in external model'
+     material_element(ispec) /= IREGION_INNER_CORE .and. &
+     material_element(ispec) /= IREGION_HETE ) stop 'wrong flag number in external model'
 
     do j = 1,NGLLZ
       do i = 1,NGLLX
 
-   iglob = ibool(i,j,ispec)
+         iglob = ibool(i,j,ispec)
 
-   x = coord(1,iglob)
-   z = coord(2,iglob)
+         x = coord(1,iglob)
+         z = coord(2,iglob)
 
-! compute the radius
-  r = sqrt(x**2 + z**2)
+         ! compute the radius
+         r = sqrt(x**2 + z**2)
 
-  ii = 1
-  do while(r >= radius_ak135(ii) .and. ii /= NR_AK135F_NO_MUD)
-    ii = ii + 1
-  enddo
+         ii = 1
+         do while(r >= radius_ak135(ii) .and. ii /= NR_AK135F_NO_MUD)
+            ii = ii + 1
+         enddo
 
 ! make sure we stay in the right region and never take a point above
 ! and a point below the ICB or the CMB and interpolate between them,
 ! which would lead to a wrong value (keeping in mind that we interpolate
 ! between points i-1 and i below)
-  if(material_element(ispec) == IREGION_INNER_CORE .and. ii > 24) ii = 24
+         if(material_element(ispec) == IREGION_INNER_CORE .and. ii > 24) ii = 24
 
-  if(material_element(ispec) == IREGION_OUTER_CORE .and. ii < 26) ii = 26
-  if(material_element(ispec) == IREGION_OUTER_CORE .and. ii > 69) ii = 69
+         if(material_element(ispec) == IREGION_OUTER_CORE .and. ii < 26) ii = 26
+         if(material_element(ispec) == IREGION_OUTER_CORE .and. ii > 69) ii = 69
 
-  if((material_element(ispec) == IREGION_MANTLE_CRUST_ABOVE_d670 .or. &
-      material_element(ispec) == IREGION_MANTLE_BELOW_d670) .and. ii < 71) ii = 71
+         if((material_element(ispec) == IREGION_MANTLE_CRUST_ABOVE_d670 .or. &
+              material_element(ispec) == IREGION_MANTLE_BELOW_d670) .and. ii < 71) ii = 71
 
-  if(ii == 1) then
-    rho(i,j,ispec) = density_ak135(1)
-    vp(i,j,ispec) = vp_ak135(1)
-    vs(i,j,ispec) = vs_ak135(1)
-    Qmu_attenuation(i,j,ispec) = Qmu_ak135(1)
-    Qkappa_attenuation(i,j,ispec) = Qkappa_ak135(1)
-  else
+         !heterogeneity must locate on the top of CMB
+         if(material_element(ispec) == IREGION_HETE .and. &
+              ii < 71) ii = 71
 
-! interpolate from radius_ak135(ii-1) to r using the values at ii-1 and ii
-    frac = (r-radius_ak135(ii-1))/(radius_ak135(ii)-radius_ak135(ii-1))
+         if(ii == 1) then
+            rho(i,j,ispec) = density_ak135(1)
+            vp(i,j,ispec) = vp_ak135(1)
+            vs(i,j,ispec) = vs_ak135(1)
+            Qmu_attenuation(i,j,ispec) = Qmu_ak135(1)
+            Qkappa_attenuation(i,j,ispec) = Qkappa_ak135(1)
 
-    rho(i,j,ispec) = density_ak135(ii-1) + frac * (density_ak135(ii)-density_ak135(ii-1))
-    vp(i,j,ispec) = vp_ak135(ii-1) + frac * (vp_ak135(ii)-vp_ak135(ii-1))
-    vs(i,j,ispec) = vs_ak135(ii-1) + frac * (vs_ak135(ii)-vs_ak135(ii-1))
-    Qmu_attenuation(i,j,ispec) = Qmu_ak135(ii-1) + frac * (Qmu_ak135(ii)-Qmu_ak135(ii-1))
-    Qkappa_attenuation(i,j,ispec) = Qkappa_ak135(ii-1) + frac * (Qkappa_ak135(ii)-Qkappa_ak135(ii-1))
+         else if( material_element(ispec) == IREGION_HETE )then
 
-  endif
+            frac = (r-radius_ak135(ii-1))/(radius_ak135(ii)-radius_ak135(ii-1))
+
+            rho(i,j,ispec) = density_ak135(ii-1) + frac * (density_ak135(ii)-density_ak135(ii-1))
+            vp(i,j,ispec) = vp_ak135(ii-1) + frac * (vp_ak135(ii)-vp_ak135(ii-1))
+            vs(i,j,ispec) = vs_ak135(ii-1) + frac * (vs_ak135(ii)-vs_ak135(ii-1))
+            Qmu_attenuation(i,j,ispec) = Qmu_ak135(ii-1) + frac * (Qmu_ak135(ii)-Qmu_ak135(ii-1))
+            Qkappa_attenuation(i,j,ispec) = Qkappa_ak135(ii-1) + frac * (Qkappa_ak135(ii)-Qkappa_ak135(ii-1))
+
+            !if heterogeneity, add the low velocity pertubation
+            vp(i,j,ispec) =  vp(i,j,ispec)*(1-pertub_vp)
+            vs(i,j,ispec) =  vs(i,j,ispec)*(1-pertub_vs)
+            !density pertubation should be very small for LLSVPs
+            rho(i,j,ispec) = rho(i,j,ispec)*(1+pertub_rho)
+
+         else
+
+            ! interpolate from radius_ak135(ii-1) to r using the values at ii-1 and ii
+            frac = (r-radius_ak135(ii-1))/(radius_ak135(ii)-radius_ak135(ii-1))
+
+            rho(i,j,ispec) = density_ak135(ii-1) + frac * (density_ak135(ii)-density_ak135(ii-1))
+            vp(i,j,ispec) = vp_ak135(ii-1) + frac * (vp_ak135(ii)-vp_ak135(ii-1))
+            vs(i,j,ispec) = vs_ak135(ii-1) + frac * (vs_ak135(ii)-vs_ak135(ii-1))
+            Qmu_attenuation(i,j,ispec) = Qmu_ak135(ii-1) + frac * (Qmu_ak135(ii)-Qmu_ak135(ii-1))
+            Qkappa_attenuation(i,j,ispec) = Qkappa_ak135(ii-1) + frac * (Qkappa_ak135(ii)-Qkappa_ak135(ii-1))
+
+         endif
 
 ! make sure Vs is zero in the outer core even if roundoff errors on depth
 ! also set fictitious attenuation to a very high value (attenuation is not used in the fluid)
-  if(material_element(ispec) == IREGION_OUTER_CORE) then
-    vs(i,j,ispec) = 0.d0
-    Qkappa_attenuation(i,j,ispec) = 9999.d0
-    Qmu_attenuation(i,j,ispec) = 9999.d0
-  endif
+         if(material_element(ispec) == IREGION_OUTER_CORE) then
+            vs(i,j,ispec) = 0.d0
+            Qkappa_attenuation(i,j,ispec) = 9999.d0
+            Qmu_attenuation(i,j,ispec) = 9999.d0
+         endif
 
       enddo
     enddo
